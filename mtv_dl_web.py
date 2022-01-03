@@ -3,6 +3,8 @@
 from http.server import BaseHTTPRequestHandler, HTTPServer
 import time
 import subprocess
+import re
+from urllib.parse import unquote
 
 
 class Config:
@@ -21,7 +23,7 @@ class MyServer(BaseHTTPRequestHandler):
             self.send_file("index.html")
         # elif self.path == "/search.js":
         #     self.send_file("search.js")
-        elif self.path == "/search":
+        elif self.path.startswith("/search"):
             self.mtv_dl_dump()
 
     def send_file(self, filename):
@@ -31,7 +33,14 @@ class MyServer(BaseHTTPRequestHandler):
         self.wfile.write(open(filename, "rb").read())
 
     def mtv_dl_dump(self):
-        cmd = 'mtv_dl -r 24 dump topic="Nord bei Nordwest"'
+        # TODO: implement error handling
+        m = re.search(r"/search\?query=(.*)", self.path)
+
+        query = unquote(m.group(1))
+
+        # TODO: This gives you remote code execution!
+        #       sanitize inputs before running the command
+        cmd = f"mtv_dl -r 24 dump {query}"
         print(f"Starting mtv_dl: {cmd}")
         json = subprocess.check_output(cmd, shell=True)
         print("mtv_dl finished")

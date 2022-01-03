@@ -7,14 +7,18 @@
 <body>
     <h1>mtv_dl_web</h1>
     <div>
-        <input type="button" value=search onclick="ShowSearchResults()" />
+
+        <input type="text" id="query" value="" />
+        <br />
+        <button onclick="ShowSearchResults()">search</button>
     </div>
 
     <p id="searchResults"></p>
     <script src="https://code.jquery.com/jquery-3.5.0.js"></script>
     <script>
         function ShowSearchResults() {
-            $.getJSON('/search', function (searchResults) {
+            const query = document.getElementById('query').value;
+            $.getJSON('/search', { query: query }, function (searchResults) {
                 // JSON result in `data` variable
                 // CREATE DYNAMIC TABLE.
                 var table = document.createElement("table");
