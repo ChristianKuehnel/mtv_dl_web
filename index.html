@@ -9,13 +9,19 @@
     <div>
 
         <input type="text" id="query" value="" />
-        <br />
-        <button onclick="ShowSearchResults()">search</button>
+        <button onclick="ShowSearchResults()" id="search">search</button>
     </div>
 
     <p id="searchResults"></p>
     <script src="https://code.jquery.com/jquery-3.5.0.js"></script>
     <script>
+        $(document).ready(function () {
+            $('#query').keypress(function (e) {
+                if (e.keyCode == 13)
+                    $('#search').click();
+            });
+        });
+
         function ShowSearchResults() {
             const query = document.getElementById('query').value;
             $.getJSON('/search', { query: query }, function (searchResults) {
