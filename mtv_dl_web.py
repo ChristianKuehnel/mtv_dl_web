@@ -25,6 +25,8 @@ class MyServer(BaseHTTPRequestHandler):
         #     self.send_file("search.js")
         elif self.path.startswith("/search"):
             self.mtv_dl_dump()
+        elif self.path.startswith("/download"):
+            self.mtv_dl_download()
 
     def send_file(self, filename):
         self.send_response(200)
@@ -48,6 +50,12 @@ class MyServer(BaseHTTPRequestHandler):
         self.send_header("Content-type", "text/json")
         self.end_headers()
         self.wfile.write(json)
+
+    def mtv_dl_download(self):
+        # TODO: implement downloading
+        # TODO: implement queing
+        # TODO: what do we return here?
+        pass
 
 
 if __name__ == "__main__":
