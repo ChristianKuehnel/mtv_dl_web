@@ -6,14 +6,13 @@ This document describes the software architecture for a lightweight web interfac
 ## System Components
 
 ### 1. Backend Architecture
-- Implement a web-API wrapper around the existing functionality of mtv_dl with enhanced features
+- Implement a web-API wrapper around the existing functionality of mtv_dl
 - **Framework**: FastAPI (Python 3.10+)
 - **Concurrency Model**: Async/Await with ThreadPoolExecutor for blocking operations
 - **Database**: SQLite (only for existing mtv_dl database integration)
 - **Configuration**: Use yaml-config files for service configuration, do not create another database.
 - **API Design**: RESTful JSON API
-- **Queue Management**: Support for download queuing and scheduling
-- **Series Handling**: Support for series detection and organized file naming
+- **Integration Approach**: Reuse existing mtv_dl modules without duplicating database logic
 
 ### 2. Frontend Architecture
 - **Framework**: Pure HTML/CSS/JavaScript (no frameworks)
@@ -32,17 +31,44 @@ This document describes the software architecture for a lightweight web interfac
   - Database initialization and connection management
   - Concurrent download handling with background tasks
   - REST API endpoints for frontend communication
+  - Queries and downloads are handled by the mtv_dl functionality
   - Queue management for download scheduling
   - Series detection and handling capabilities
 
 - **Database Integration**: `mtv_dl/src/mtv_dl/mtv_dl.py`
   - Existing mtv_dl Database class for querying shows
   - Downloader class for downloading content
+  - Re-use existing business logic, do *not* talk directly to the database
+  - Use the same filter arguments as mtv_dl
+  - Leverage existing filtering and download logic
 
 #### Frontend (Static Assets)
 - **HTML**: `src/frontend/index.html`
   - Main user interface with search, results, and download controls
   - Responsive design with Tailwind CSS
+
+## Integration with Existing MTV DL Code
+
+### Module Integration Approach
+- The backend imports mtv_dl modules directly from their source location
+- All database operations go through the existing mtv_dl Database class
+- Download operations utilize the existing mtv_dl Downloader class
+- All existing filter logic and parsing capabilities are reused
+- Configuration passes through mtv_dl's native configuration system
+
+### Packaging Strategy
+- **Container Build**: Include mtv_dl source code as submodule or copy it into the container
+- **Dependency Management**: Use uv or pip to incdule the mtv_dl dependencies
+- **Python Path**: Ensure mtv_dl modules are in Python path for imports
+- **Docker Layering**: Place mtv_dl code in appropriate layers to enable caching
+- **Version Pinning**: Pin mtv_dl version to ensure stability
+
+### Source Integration Details
+- mtv_dl modules are imported as Python packages in the backend
+- Database connection strings and paths are preserved from mtv_dl
+- All CLI argument parsing is maintained through mtv_dl's native system
+- Existing logging and error handling patterns are preserved
+- Configuration files are passed through to mtv_dl's configuration system
 
 ## API Design
 
@@ -54,6 +80,10 @@ This document describes the software architecture for a lightweight web interfac
 4. **POST /api/download** - Initiate downloads with parameters
 5. **GET /api/download/status/{download_id}** - Get specific download status
 6. **GET /api/download/status** - Get all active download statuses
+7. **POST /api/database/update** - Trigger manual database update
+8. **GET /api/scheduler/queries** - Get configured scheduled queries
+9. **POST /api/scheduler/queries** - Add new scheduled query
+10. **DELETE /api/scheduler/queries/{query_id}** - Remove scheduled query
 
 ### Data Models
 
@@ -103,6 +133,18 @@ This document describes the software architecture for a lightweight web interfac
 }
 ```
 
+#### ScheduledQuery
+```json
+{
+  "id": "string",
+  "filters": ["channel=ARD", "topic='extra 3'"],
+  "cron_expression": "0 2 * * *",
+  "enabled": true,
+  "last_run": "datetime",
+  "next_run": "datetime"
+}
+```
+
 ## Concurrency & Performance
 
 ### Request Handling
@@ -116,6 +158,7 @@ This document describes the software architecture for a lightweight web interfac
 1. Web requests are handled asynchronously
 2. Download operations are processed with queue management
 3. Status updates are managed with in-memory dictionary
+4. Scheduler runs periodically to monitor and update database
 4. Scheduler runs periodically to monitor and update database
 
 ## Deployment Architecture
