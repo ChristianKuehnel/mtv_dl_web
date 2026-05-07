@@ -1,0 +1,12 @@
+*.py[cod]
+.idea
+/.History.sqlite
+/.Filmliste-akt.xz.cache
+/.Filmliste.*.sqlite
+/.mypy_cache
+/dist
+/MANIFEST
+/build
+/mtv_dl.egg-info
+/.python-version
+/.venv

@@ -20,8 +20,8 @@ from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 from starlette.background import BackgroundTask
 
-# Add the source directory to Python path to import mtv_dl module
-sys.path.insert(0, str(Path(__file__).parent / "src"))
+# Add the mtv_dl directory to Python path to import mtv_dl module
+sys.path.insert(0, str(Path(__file__).parent / "mtv_dl" / "src"))
 
 # Import the mtv_dl functionality
 try:
@@ -56,9 +56,9 @@ if frontend_dir.exists():
     app.mount("/static", StaticFiles(directory=frontend_dir), name="static")
 
 # Global variables for managing downloads
-download_queue = []
+download_queue: list = []
 executor = ThreadPoolExecutor(max_workers=4)
-active_downloads = {}
+active_downloads: dict[str, dict] = {}
 
 
 # Pydantic models for API requests and responses
@@ -116,11 +116,11 @@ except Exception as e:
 async def read_root():
     """Serve the main HTML page"""
     try:
-        with open(frontend_dir / "index.html", "r") as f:
+        with open(frontend_dir / "hello.html", "r") as f:
             content = f.read()
         return content
     except FileNotFoundError:
-        return "<h1>MTV Downloader Web Interface</h1><p>Frontend not found</p>"
+        return "<h1>Hello World</h1><p>MTV Downloader Web Interface</p>"
 
 
 @app.get("/health")

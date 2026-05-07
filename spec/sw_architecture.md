@@ -153,3 +153,44 @@ While optimized for single user, the architecture supports:
 - Unit tests for individual components
 - Integration tests for API endpoints
 - Manual UI testing for frontend interaction
+
+### Testing Framework
+This project will use the following testing frameworks and approaches:
+
+1. **Unit Testing**
+   - Framework: `pytest` (Python)
+   - Purpose: Test individual functions and classes in isolation
+   - Coverage: Core business logic, data models, utility functions
+
+2. **Integration Testing**
+   - Framework: `pytest` with `httpx` or `fastapi.testclient`
+   - Purpose: Test API endpoints and interactions between components
+   - Coverage: REST API endpoints, request/response handling, database operations
+
+3. **Frontend Testing**
+   - Framework: `Jest` (JavaScript)
+   - Purpose: Test JavaScript functionality and UI interactions
+   - Coverage: Form validation, event handlers, DOM manipulation
+
+4. **End-to-End Testing**
+   - Framework: `Playwright` or `Cypress` 
+   - Purpose: Test complete user flows and browser interactions
+   - Coverage: Full user journey from search to download
+
+5. **Static Analysis**
+   - Framework: `mypy` (Python type checking)
+   - Framework: `flake8` (Python linting)
+   - Framework: `prettier` (JavaScript/HTML/CSS formatting)
+   - Purpose: Catch errors early and maintain code quality
+
+6. **Smoke Testing**
+   - Framework: Custom Python scripts
+   - Purpose: Verify core functionality works end-to-end
+   - Coverage: Server startup, health check endpoint, basic UI rendering
+
+7. **Docker Testing**
+   - Framework: `Podman`/`Docker` with automated tests
+   - Purpose: Validate container deployment and runtime behavior
+   - Coverage: Image building, container startup, health checks
+
+Each test suite will be integrated into CI/CD pipeline and run during development and release processes to ensure quality and prevent regressions.
