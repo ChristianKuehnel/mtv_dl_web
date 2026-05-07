@@ -73,7 +73,7 @@ run_shellcheck() {
     echo "Running ShellCheck on shell scripts..."
     if command_exists shellcheck; then
         # Check all shell scripts in scripts directory
-        find scripts/ -name "*.sh" -type f -exec shellcheck {} +
+        find "$ROOT_DIR/scripts/" -name "*.sh" -type f -exec shellcheck {} +
         echo "ShellCheck complete."
     else
         echo "Error: ShellCheck not found. Please run setup script to install all dependencies."
