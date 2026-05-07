@@ -6,10 +6,14 @@ This document describes the software architecture for a lightweight web interfac
 ## System Components
 
 ### 1. Backend Architecture
+- Implement a web-API wrapper around the existing functionality of mtv_dl with enhanced features
 - **Framework**: FastAPI (Python 3.10+)
 - **Concurrency Model**: Async/Await with ThreadPoolExecutor for blocking operations
-- **Database**: SQLite (existing mtv_dl database integration)
+- **Database**: SQLite (only for existing mtv_dl database integration)
+- **Configuration**: Use yaml-config files for service configuration, do not create another database.
 - **API Design**: RESTful JSON API
+- **Queue Management**: Support for download queuing and scheduling
+- **Series Handling**: Support for series detection and organized file naming
 
 ### 2. Frontend Architecture
 - **Framework**: Pure HTML/CSS/JavaScript (no frameworks)
@@ -28,6 +32,8 @@ This document describes the software architecture for a lightweight web interfac
   - Database initialization and connection management
   - Concurrent download handling with background tasks
   - REST API endpoints for frontend communication
+  - Queue management for download scheduling
+  - Series detection and handling capabilities
 
 - **Database Integration**: `mtv_dl/src/mtv_dl/mtv_dl.py`
   - Existing mtv_dl Database class for querying shows
@@ -104,12 +110,13 @@ This document describes the software architecture for a lightweight web interfac
 - **Download Operations**: Thread pool executor for blocking I/O operations
 - **Background Processing**: Background tasks using FastAPI's BackgroundTasks
 - **Database Access**: Single-threaded access to SQLite with proper locking
+- **Queue Management**: Support for multiple queued downloads with scheduling
 
 ### Threading Model
 1. Web requests are handled asynchronously
-2. Download operations are submitted to a thread pool
-3. Database operations remain synchronous but thread-safe
-4. Status updates are managed with in-memory dictionary
+2. Download operations are processed with queue management
+3. Status updates are managed with in-memory dictionary
+4. Scheduler runs periodically to monitor and update database
 
 ## Deployment Architecture
 
@@ -127,6 +134,7 @@ This document describes the software architecture for a lightweight web interfac
   - `TARGET_DIR`: Default download target (default: `/downloads`)
   - `SERIES_TARGET_DIR`: Target directory for series downloads (default: `/downloads/series`)
   - `LOG_LEVEL`: Logging level (default: INFO)
+  - `SCHEDULER_CRON`: Cron expression for periodic database updates (default: "0 2 * * *")
 
 ### Volume Mounts
 1. **/data**: Persistent storage for MTV database files
@@ -164,6 +172,7 @@ database_path: /data/.mtv_dl_web
 target_dir: /downloads
 series_target_dir: /downloads/series
 log_level: INFO
+scheduler_cron: "0 2 * * *"
 ```
 
 ### Environment Variable Precedence
@@ -181,6 +190,7 @@ log_level: INFO
 
 While optimized for single user, the architecture supports:
 - Easy addition of user accounts
-- Multi-threading enhancements
+- Multi-threading enhancements for download processing
 - Database abstraction layer for future storage options
 - Plugin architecture for additional download sources
+- Enhanced scheduler capabilities for more complex scheduling
