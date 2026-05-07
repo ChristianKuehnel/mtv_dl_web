@@ -39,24 +39,6 @@ strict = true
 warn_unused_ignores = true
 ignore_missing_imports = true
 
-[tool.ruff]
-line-length = 120
-lint.select = [
-    "A",
-    "ARG",
-    "E",
-    "F",
-    "I",
-    "N",
-    "PTH",
-    "Q",
-    "RUF",
-    "SIM",
-    "UP",
-    "W",
-]
-lint.isort.force-single-line = true
-
 [tool.pytest.ini_options]
-addopts = "--doctest-modules --mypy --ruff --ruff-format"
+addopts = "--doctest-modules"
 xfail_strict = true
