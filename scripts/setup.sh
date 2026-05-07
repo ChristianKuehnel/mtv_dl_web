@@ -64,17 +64,8 @@ install_python_packages() {
     if [ -f "$ROOT_DIR/requirements-dev.txt" ]; then
         pip install -r "$ROOT_DIR/requirements-dev.txt"
         echo "Python packages installed from requirements-dev.txt."
-    else
-        # Fallback to installing packages directly
-        pip install fastapi uvicorn pydantic python-dotenv
-        pip install pytest mypy black 
-        pip install pre-commit  # For git hooks
-        pip install pytest-cov pytest-asyncio
-        pip install httpx
-        pip install types-requests
-        echo "Python packages installed directly."
     fi
-    
+
     echo "Python packages installed."
 }
 
