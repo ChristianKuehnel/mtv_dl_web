@@ -59,7 +59,8 @@ opencode agent --name=dev-assistant --task="Implement search API endpoint"
 - Runs black formatter on Python code
 - Validates Python type annotations with mypy
 - Lints Dockerfiles with hadolint
-- Formats HTML and JavaScript code
+- Formats HTML and JavaScript code with Prettier
+- Lints shell scripts with ShellCheck
 - Ensures all tests pass
 
 **Usage**:
