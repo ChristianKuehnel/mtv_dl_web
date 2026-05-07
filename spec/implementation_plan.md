@@ -8,6 +8,7 @@ Before each task is considered complete, the following criteria must be met:
 - Use Python type checking with mypy for validation
 - Use hadolint as formatter and linter for Docker files
 - Use ShellCheck as linter for shell scripts
+- @scripts/linting.sh must pass and changes were committed to git
 - Add smoke test to check if the backend starts and health check returns 200 OK
 - Add smoke test to deploy the container using Podman and verify health check
 

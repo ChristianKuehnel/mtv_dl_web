@@ -38,7 +38,7 @@ logger = logging.getLogger(__name__)
 app = FastAPI(
     title="MTV Downloader Web Interface",
     description="A lightweight web interface for downloading videos from German public broadcasting services",
-    version="1.0.0"
+    version="1.0.0",
 )
 
 # Add CORS middleware for development
@@ -60,6 +60,7 @@ download_queue = []
 executor = ThreadPoolExecutor(max_workers=4)
 active_downloads = {}
 
+
 # Pydantic models for API requests and responses
 class DownloadRequest(BaseModel):
     filters: List[str]
@@ -69,12 +70,14 @@ class DownloadRequest(BaseModel):
     include_nfo: bool = True
     merge_to_mkv: bool = False
 
+
 class DownloadStatus(BaseModel):
     id: str
     status: str
     progress: float
     message: str
     file_path: Optional[str] = None
+
 
 class ShowItem(BaseModel):
     hash: str
@@ -88,8 +91,10 @@ class ShowItem(BaseModel):
     region: str
     downloaded: Optional[str] = None
 
+
 class SearchFilters(BaseModel):
     filters: List[str]
+
 
 # Initialize database connection
 DATABASE_DIR = Path.home() / ".mtv_dl_web"
@@ -105,6 +110,7 @@ except Exception as e:
     logger.error(f"Failed to initialize database: {e}")
     raise
 
+
 # API Routes
 @app.get("/", response_class=HTMLResponse)
 async def read_root():
@@ -116,9 +122,11 @@ async def read_root():
     except FileNotFoundError:
         return "<h1>MTV Downloader Web Interface</h1><p>Frontend not found</p>"
 
+
 @app.get("/health")
 async def health_check():
     return {"status": "healthy"}
+
 
 @app.post("/api/search")
 async def search_shows(filters: SearchFilters):
@@ -132,8 +140,11 @@ async def search_shows(filters: SearchFilters):
         logger.error(f"Search failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @app.post("/api/download")
-async def start_download(download_request: DownloadRequest, background_tasks: BackgroundTasks):
+async def start_download(
+    download_request: DownloadRequest, background_tasks: BackgroundTasks
+):
     """
     Start downloading shows based on filters
     """
@@ -141,35 +152,41 @@ async def start_download(download_request: DownloadRequest, background_tasks: Ba
         # Validate target directory
         target_path = Path(download_request.target_directory)
         target_path.mkdir(parents=True, exist_ok=True)
-        
+
         # Get filtered shows
         shows = list(db.filtered(download_request.filters))
-        
+
         if not shows:
-            raise HTTPException(status_code=404, detail="No shows found matching filters")
-            
-        # Process each show in the background 
+            raise HTTPException(
+                status_code=404, detail="No shows found matching filters"
+            )
+
+        # Process each show in the background
         download_ids = []
         for show in shows:
             show_id = show["hash"]
             download_ids.append(show_id)
-            
+
             # Add to active downloads
             active_downloads[show_id] = {
                 "status": "queued",
                 "progress": 0.0,
                 "message": "Queued for download",
-                "file_path": None
+                "file_path": None,
             }
-            
+
             # Submit download task to background
             background_tasks.add_task(download_show_background, show, download_request)
-            
-        return {"message": f"Started downloading {len(shows)} shows", "download_ids": download_ids}
-        
+
+        return {
+            "message": f"Started downloading {len(shows)} shows",
+            "download_ids": download_ids,
+        }
+
     except Exception as e:
         logger.error(f"Download start failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
 
 async def download_show_background(show_data: dict, download_request: DownloadRequest):
     """
@@ -177,31 +194,33 @@ async def download_show_background(show_data: dict, download_request: DownloadRe
     """
     try:
         show_id = show_data["hash"]
-        
+
         # Update status
         active_downloads[show_id]["status"] = "downloading"
         active_downloads[show_id]["message"] = "Starting download..."
-        
+
         # Create downloader instance
         downloader = Downloader(show_data)
-        
+
         # Determine quality
         quality_map = {
             "low": ("url_http_small", "url_http", "url_http_hd"),
             "medium": ("url_http", "url_http_small", "url_http_hd"),
-            "high": ("url_http_hd", "url_http", "url_http_small")
+            "high": ("url_http_hd", "url_http", "url_http_small"),
         }
-        quality = quality_map.get(download_request.quality, ("url_http", "url_http_small", "url_http_hd"))
-        
+        quality = quality_map.get(
+            download_request.quality, ("url_http", "url_http_small", "url_http_hd")
+        )
+
         # Perform download
         path = downloader.download(
             quality=quality,
             target=Path(download_request.target_directory),
             include_subtitles=download_request.include_subtitles,
             include_nfo=download_request.include_nfo,
-            merge_to_mkv=download_request.merge_to_mkv
+            merge_to_mkv=download_request.merge_to_mkv,
         )
-        
+
         # Update status
         if path:
             active_downloads[show_id]["status"] = "completed"
@@ -210,11 +229,12 @@ async def download_show_background(show_data: dict, download_request: DownloadRe
         else:
             active_downloads[show_id]["status"] = "failed"
             active_downloads[show_id]["message"] = "Download failed"
-            
+
     except Exception as e:
         logger.error(f"Background download failed for {show_data['hash']}: {e}")
         active_downloads[show_id]["status"] = "failed"
         active_downloads[show_id]["message"] = f"Download failed: {str(e)}"
+
 
 @app.get("/api/download/status/{download_id}")
 async def get_download_status(download_id: str):
@@ -223,8 +243,9 @@ async def get_download_status(download_id: str):
     """
     if download_id not in active_downloads:
         raise HTTPException(status_code=404, detail="Download not found")
-    
+
     return active_downloads[download_id]
+
 
 @app.get("/api/download/status")
 async def get_all_download_statuses():
@@ -233,8 +254,9 @@ async def get_all_download_statuses():
     """
     return active_downloads
 
+
 if __name__ == "__main__":
     import uvicorn
-    
+
     # For development purposes
     uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info")

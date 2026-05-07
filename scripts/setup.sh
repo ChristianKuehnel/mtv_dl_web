@@ -44,7 +44,8 @@ setup_python_env() {
         echo "Virtual environment already exists in project root."
     fi
     
-    # Activate virtual environment
+    # Activate virtual environment (suppress SC1091 warning as activation is intentional)
+    # shellcheck disable=SC1091
     source "$VENV_DIR/bin/activate"
     
     # Upgrade pip
@@ -56,6 +57,7 @@ setup_python_env() {
 # Function to install Python packages in virtual environment
 install_python_packages() {
     echo "Installing Python packages..."
+    # shellcheck disable=SC1091
     source "$VENV_DIR/bin/activate"
     
     # Install required Python packages from requirements file

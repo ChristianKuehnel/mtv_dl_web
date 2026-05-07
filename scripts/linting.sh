@@ -3,7 +3,7 @@
 # MTV Downloader Web Interface - Linting and Formatting Script
 # This script performs all code quality checks and formatting according to project conventions
 
-set -e  # Exit on any error
+set -euo pipefail  # Exit on any error, undefined vars, pipe failures
 
 # Set root directory to the parent directory of this script
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -21,23 +21,33 @@ command_exists() {
 run_black() {
     echo "Running Black formatter on Python files..."
     source "$VENV_DIR/bin/activate"
-    black src/ scripts/
-    echo "Python formatting complete."
+    # Check if src directory exists before running black
+    if [ -d "$ROOT_DIR/src" ]; then
+        black "$ROOT_DIR/src/" "$ROOT_DIR/scripts/"
+        echo "Python formatting complete."
+    else
+        echo "Warning: src directory not found. Skipping Python formatting."
+    fi
 }
 
 # Function to run Python type checking with mypy
 run_mypy() {
     echo "Running MyPy type checking..."
     source "$VENV_DIR/bin/activate"
-    mypy src/ --ignore-missing-imports
-    echo "Type checking complete."
+    # Check if src directory exists before running mypy
+    if [ -d "$ROOT_DIR/src" ]; then
+        mypy "$ROOT_DIR/src/" --ignore-missing-imports
+        echo "Type checking complete."
+    else
+        echo "Warning: src directory not found. Skipping type checking."
+    fi
 }
 
 # Function to run Dockerfile linting with hadolint
 run_hadolint() {
     echo "Running hadolint on Dockerfile..."
     if command_exists hadolint; then
-        hadolint Dockerfile
+        hadolint "$ROOT_DIR/Dockerfile"
         echo "Dockerfile linting complete."
     else
         echo "Warning: hadolint not found. Skipping Dockerfile linting."
@@ -49,7 +59,9 @@ run_prettier() {
     echo "Running Prettier on HTML/JS files..."
     if command_exists prettier; then
         # Format HTML and JS files
-        find src/ -name "*.html" -o -name "*.js" | xargs prettier --write
+        if [ -d "$ROOT_DIR/src" ]; then
+            find "$ROOT_DIR/src/" -name "*.html" -o -name "*.js" -exec prettier --write {} +
+        fi
         echo "HTML/JS formatting complete."
     else
         echo "Warning: Prettier not found. Skipping HTML/JS formatting."
@@ -61,7 +73,7 @@ run_shellcheck() {
     echo "Running ShellCheck on shell scripts..."
     if command_exists shellcheck; then
         # Check all shell scripts in scripts directory
-        find scripts/ -name "*.sh" -type f | xargs shellcheck
+        find scripts/ -name "*.sh" -type f -exec shellcheck {} +
         echo "ShellCheck complete."
     else
         echo "Error: ShellCheck not found. Please run setup script to install all dependencies."
