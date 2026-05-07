@@ -1,0 +1,3 @@
+[submodule "mtv_dl"]
+	path = mtv_dl
+	url = https://github.com/fnep/mtv_dl
