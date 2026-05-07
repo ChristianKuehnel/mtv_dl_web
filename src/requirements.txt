@@ -1,0 +1,12 @@
+# Main requirements for MTV Downloader Web Interface
+-r requirements-web.txt
+
+# mtv_dl dependencies (these would normally come from the mtv_dl package)
+certifi==2024.8.30
+durationpy==0.7
+ijson==3.2.3
+iso8601==2.0.0
+typer==0.12.5
+typer-config==1.5.0
+beautifulsoup4==4.12.3
+rich==13.8.1
