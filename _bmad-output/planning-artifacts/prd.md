@@ -1,16 +1,3 @@
----
-project_name: 'mtv_dl_web'
-user_name: 'Christian'
-date: '2026-05-07'
-stepsCompleted: ['step-1-init']
-inputDocuments: ['spec/product_design.md']
-briefCount: 0
-researchCount: 0
-brainstormingCount: 0
-projectDocsCount: 1
-stepsCompleted: ['step-1-init', 'step-2-discovery', 'step-3-success']
----
-
 # MTV Downloader Web Interface - Product Requirements Document
 
 ## Executive Summary
@@ -142,11 +129,3 @@ The MTV Downloader (mtv_dl) is a CLI tool for downloading videos from German pub
 4. Scheduler executes queries according to schedule
 5. Container deployment works without issues
 6. All existing mtv_dl CLI features available via web interface
-
-## Next Steps
-
-To move forward with this PRD, we should:
-1. Validate the requirements with stakeholders
-2. Create user stories from this PRD
-3. Define acceptance criteria in more detail
-4. Begin sprint planning for implementation
