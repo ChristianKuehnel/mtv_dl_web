@@ -1,9 +1,6 @@
 # MTV Downloader Web Interface - Development Requirements
 
-This file contains all development dependencies for the MTV Downloader Web Interface project.
-
-## Python Development Dependencies
-
+# Python Development Dependencies
 fastapi
 uvicorn
 pydantic

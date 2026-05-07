@@ -9,6 +9,8 @@ set -e  # Exit on any error
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # Set virtual environment directory
 VENV_DIR="$ROOT_DIR/venv"
+# Set node modules directory
+NODE_MODULES="$ROOT_DIR/node_modules"
 
 echo "Setting up development environment for MTV Downloader Web Interface..."
 
@@ -20,8 +22,8 @@ command_exists() {
 # Function to install Debian packages
 install_debian_packages() {
     echo "Installing Debian packages..."
-    sudo apt-get update
-    sudo apt-get install -y "$@"
+    apt-get update
+    apt-get install -y "$@"
 }
 
 # Function to create and activate Python virtual environment
@@ -74,20 +76,6 @@ install_python_packages() {
     echo "Python packages installed."
 }
 
-# Function to install Python packages in virtual environment
-install_python_packages() {
-    echo "Installing Python packages..."
-    source venv/bin/activate
-    
-    # Install required Python packages from requirements file
-    if [ -f "requirements-dev.txt" ]; then
-        pip install -r requirements-dev.txt
-        echo "Python packages installed from requirements-dev.txt."
-    fi
-    
-    echo "Python packages installed."
-}
-
 # Function to install Node.js and npm packages (for frontend formatting)
 install_frontend_tools() {
     echo "Installing frontend development tools..."
@@ -100,10 +88,12 @@ install_frontend_tools() {
         echo "Node.js already installed."
     fi
     
-    # Install Prettier globally for HTML/JS formatting
+    # Install Prettier locally for HTML/JS formatting
     if ! command_exists prettier; then
         echo "Installing Prettier..."
-        npm install -g prettier
+        # Install to node_modules directory in project root
+        mkdir -p "$NODE_MODULES"
+        npm install --prefix "$ROOT_DIR" prettier
     else
         echo "Prettier already installed."
     fi
@@ -115,41 +105,34 @@ install_frontend_tools() {
 install_container_tools() {
     echo "Checking container tools..."
     
-    # Check for Docker
-    if ! command_exists docker; then
-        echo "Docker not found. Installing Docker..."
-        # Install Docker using official script
-        curl -fsSL https://get.docker.com -o get-docker.sh
-        sudo sh get-docker.sh
-        sudo usermod -aG docker $USER
-        rm get-docker.sh
-    else
-        echo "Docker already installed."
-    fi
-    
-    # Check for Podman
+    # Check for Podman (primary container runtime)
     if ! command_exists podman; then
         echo "Podman not found. Installing Podman..."
         install_debian_packages podman
     else
         echo "Podman already installed."
     fi
-    
-    # Check for Docker Compose
-    if ! command_exists docker-compose; then
-        echo "Docker Compose not found. Installing..."
-        # Try to install via apt first
-        install_debian_packages docker-compose
-    else
-        echo "Docker Compose already installed."
-    fi
+ 
     
     # Check for hadolint (Dockerfile linter)
     if ! command_exists hadolint; then
-        echo "Installing hadolint..."
-        # Install hadolint using the official method
-        sudo wget -O /usr/local/bin/hadolint https://github.com/hadolint/hadolint/releases/latest/download/hadolint-Linux-x86_64
-        sudo chmod +x /usr/local/bin/hadolint
+        echo "Checking hadolint installation..."
+        # Create a simple Dockerfile for testing
+        TEST_DOCKERFILE="$ROOT_DIR/test_dockerfile"
+        echo "FROM alpine:latest" > "$TEST_DOCKERFILE"
+        echo "RUN echo 'test'" >> "$TEST_DOCKERFILE"
+        
+        # Try to run hadolint on the test file
+        if command_exists podman; then
+            echo "Testing hadolint with podman..."
+            podman run --rm -i hadolint/hadolint < "$TEST_DOCKERFILE" 2>/dev/null && echo "hadolint test successful"
+        else
+            echo "hadolint not found. Please install with: sudo apt-get install hadolint"
+        fi
+        
+        # Clean up test file
+        rm -f "$TEST_DOCKERFILE"
+        echo "hadolint can be run as: podman run --rm -i hadolint/hadolint < Dockerfile"
     else
         echo "hadolint already installed."
     fi
@@ -214,7 +197,7 @@ main() {
     echo "Setup complete!"
     echo ""
     echo "Next steps:"
-    echo "1. Activate the virtual environment: source venv/bin/activate"
+    echo "1. Activate the virtual environment: source $VENV_DIR/bin/activate"
     echo "2. Run tests: pytest"
     echo "3. Start development server: uvicorn src.main:app --reload"
     echo "4. For container deployment: docker build -t mtv_dl_web ."
