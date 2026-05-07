@@ -14,6 +14,9 @@ This document outlines the design for a web interface for the MTV Downloader (mt
 - Searching for shows
 - Adding shows to download queue
 - Full CLI functionality integration
+- Series detection and handling
+- Automatic season/episode organization
+- Database update scheduling
 
 ### UI Components
 
@@ -24,6 +27,8 @@ This document outlines the design for a web interface for the MTV Downloader (mt
 - Use the existing filter criteria of mtv_dl
 - Support all filter operators: =, !=, +, -
 - Support all filter fields: description, region, size, channel, topic, title, hash, url, duration, age, start, dow, hour, minute, season, episode
+- Distinguish between normal shows and series
+- Automatic season/episode detection and display
 
 #### 2. Download Queue Interface
 - Add new download tasks
@@ -32,11 +37,19 @@ This document outlines the design for a web interface for the MTV Downloader (mt
 - Remove downloads from queue
 - Progress indicators for downloads
 - Status display (pending, downloading, completed, failed)
+- Series-aware file organization
 
 #### 3. Configuration Panel
 - Query management (add/edit/remove monitoring queries)
 - Download settings configuration
 - Scheduler settings
+- Database update configuration:
+  - Cron-like expression for periodic database updates
+  - Manual database update trigger
+- Series handling configuration:
+  - Enable/disable automatic series detection
+  - Custom naming conventions for series vs normal shows
+  - Season/episode folder structures
 - All CLI options integrated:
   - Quality selection (high, low, default)
   - Target directory configuration
@@ -61,6 +74,7 @@ This document outlines the design for a web interface for the MTV Downloader (mt
 - Query monitoring logic
 - Duplicate detection logic
 - Integration with mtv_dl CLI arguments
+- Series detection and handling
 
 ### Phase 3: Advanced Features
 - Multi-user support
@@ -68,91 +82,4 @@ This document outlines the design for a web interface for the MTV Downloader (mt
 - Performance monitoring
 - Backup and restore functionality
 - Full CLI parameter support
-
-## Technology Stack
-
-### Frontend
-- React.js with Material UI components
-- Responsive design for desktop and mobile
-
-### Backend
-- Node.js with Express.js
-- SQLite for local storage
-- BullMQ for job queue management
-
-### Infrastructure
-- Docker containerization
-- NGINX reverse proxy
-- PM2 for process management
-
-## Data Flow
-
-1. User adds download query through web UI
-2. Query stored in database
-3. Job placed in download queue
-4. Job processor picks up queued item (single-threaded)
-5. CLI tool invoked for actual download
-6. Download status updates stored and reflected in UI
-7. Scheduler periodically checks configured queries
-8. New episodes detected and added to download queue
-
-## Deployment Requirements
-
-### Container Configuration
-- Base image: node:alpine
-- Expose port 3000
-- Mount volume for persistent data
-- Environment variables for configuration
-- Health check endpoint
-
-### Security Considerations
-- Input validation for all user inputs
-- Sanitization of CLI arguments
-- Authentication for admin access
-- Secure storage of sensitive configuration
-
-## Future Enhancements
-- Webhooks for external notifications
-- Integration with media servers
-- Cloud storage integration
-- Mobile app companion
-
-## CLI Command Line Arguments Integration
-
-### Main Commands
-- `list`: Show query results as ASCII table
-- `dump`: Show query results as JSON list
-- `download`: Download shows in query results
-- `history`: Show list of downloaded shows
-
-### Common Options Across Commands
-- `--config`/`-c`: YAML config file for overriding arguments
-- `--include-future`: Include shows that have not yet started
-- `--sets`/`-s`: File to load different sets of filters
-- `--count`/`-c`: Limit number of results (for list command)
-- `--verbose`/`-v`: Show more details
-- `--quiet`/`-q`: Hide everything not really needed
-- `--no-bar`/`-b`: Hide the progress bar
-- `--logfile`/`-l`: Log messages to a file instead of stdout
-- `--certifi`: Use certifi instead of builtin SSL certificates
-- `--dir`/`-d`: Directory to put databases in
-- `--refresh-after`/`-r`: Update database if older than given hours
-
-### List/Dump Command Filters
-- Filter arguments with operators: =, !=, +, -
-- Supported fields: description, region, size, channel, topic, title, hash, url, duration, age, start, dow, hour, minute, season, episode
-- Multiple filters can be combined
-
-### Download Command Options
-- `--high`/`-h`: Download best available version
-- `--low`/`-l`: Download smallest available version
-- `--oblivious`/`-o`: Download even if show already marked as downloaded
-- `--target`/`-t`: Directory to put downloaded files in
-- `--mark-only`: Do not download, just mark as downloaded
-- `--strm`: Create .strm files instead of downloading media
-- `--no-subtitles`: Do not try to download subtitles
-- `--no-nfo`: Do not create nfo files
-- `--set-file-mod-time`: Set file modification time to aired date
-- `--series`: Mark show as series in nfo file
-- `--mkvmerge`/`-m`: Convert downloads to MKV containers using mkvmerge
-- `--post-download`: Program to run after download finishes
+- Series-aware file organization and naming
