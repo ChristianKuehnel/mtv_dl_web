@@ -54,19 +54,27 @@ setup_python_env() {
     echo "Python environment ready."
 }
 
-# Function to install Python packages in virtual environment
+# Function to install Python packages using uv
 install_python_packages() {
-    echo "Installing Python packages..."
+    echo "Installing Python packages with uv..."
     # shellcheck disable=SC1091
     source "$VENV_DIR/bin/activate"
     
-    # Install required Python packages from requirements file
-    if [ -f "$ROOT_DIR/requirements-dev.txt" ]; then
-        pip install -r "$ROOT_DIR/requirements-dev.txt"
-        echo "Python packages installed from requirements-dev.txt."
+    # Install uv if not present
+    if ! command_exists uv; then
+        echo "Installing uv..."
+        pip install uv
     fi
-
-    echo "Python packages installed."
+    
+    # Install main dependencies (from pyproject.toml)
+    echo "Installing main project dependencies..."
+    uv sync --all-extras
+    
+    # Install dev dependencies
+    echo "Installing development dependencies..."
+    uv sync --extra=dev
+    
+    echo "Python packages installed with uv."
 }
 
 # Function to install Node.js and npm packages (for frontend formatting)
@@ -105,8 +113,7 @@ install_container_tools() {
     else
         echo "Podman already installed."
     fi
- 
-    
+
     # Check for hadolint (Dockerfile linter)
     if ! command_exists hadolint; then
         echo "Checking hadolint installation..."
@@ -138,14 +145,14 @@ setup_mtv_dl() {
     echo "Setting up MTV DL dependency..."
     
     # Check if mtv_dl is already available
-    if [ -d "mtv_dl" ]; then
-        echo "mtv_dl directory found."
+    if [ -d "src/mtv_dl" ]; then
+        echo "mtv_dl directory found in src/mtv_dl."
         # Check if it's a git submodule
         if [ -f ".gitmodules" ] && grep -q "mtv_dl" .gitmodules; then
             echo "mtv_dl is configured as git submodule."
         else
             echo "mtv_dl exists but not as submodule. Checking if it's a proper clone..."
-            if [ -d ".git" ] && [ -f "mtv_dl/pyproject.toml" ]; then
+            if [ -d ".git" ] && [ -f "src/mtv_dl/pyproject.toml" ]; then
                 echo "mtv_dl looks like a valid clone."
             else
                 echo "Warning: mtv_dl directory found but doesn't appear to be a proper mtv_dl clone."
@@ -154,6 +161,16 @@ setup_mtv_dl() {
     else
         echo "mtv_dl not found. Cloning from upstream..."
         git submodule update --init --recursive
+    fi
+    
+    # Install mtv_dl dependencies with uv
+    echo "Installing mtv_dl dependencies..."
+    if [ -f "src/mtv_dl/pyproject.toml" ]; then
+        (
+            cd src/mtv_dl
+            # Install mtv_dl dev dependencies with uv
+            uv sync --extra=dev
+        )
     fi
     
     echo "mtv_dl setup complete."
@@ -175,7 +192,7 @@ main() {
     # Setup Python environment
     setup_python_env
     
-    # Install Python packages
+    # Install Python packages with uv
     install_python_packages
     
     # Install frontend tools (Prettier)
