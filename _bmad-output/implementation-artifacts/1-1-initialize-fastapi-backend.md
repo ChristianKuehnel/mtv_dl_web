@@ -1,6 +1,6 @@
 # Story 1.1: Initialize FastAPI Backend
 
-Status: review
+Status: done
 
 ## Story
 
@@ -26,6 +26,20 @@ So that I can extend it for search, queue, and scheduler functionality.
 - [x] Test basic FastAPI startup
   - [x] Confirm app runs without errors
   - [x] Verify configured port is accessible
+
+### Review Findings
+
+- [x] [Review][Decision] Missing `config.py` in `src/` — Added basic `config.py` to satisfy AC3
+- [x] [Review][Patch] Broken `mtv_dl` import path [src/main.py:24]
+- [x] [Review][Patch] Incorrect HTML file served [src/main.py:118]
+- [x] [Review][Patch] Removed version mocking for `mtv_dl` [src/main.py:28-36]
+- [x] [Review][Patch] Deleted critical test files [tests/test_fastapi_backend.py, tests/test_search*.py]
+- [x] [Review][Patch] Broken Python package structure [src/__init__.py, src/mtv_dl_web/__init__.py]
+- [x] [Review][Patch] Removed dependency lock file from `.gitignore` [.gitignore:11]
+- [x] [Review][Patch] Hardcoded test paths in `test_smoke.py` [tests/test_smoke.py:17]
+- [x] [Review][Patch] Inconsistent frontend file handling [src/main.py:118, src/frontend/]
+- [x] [Review][Defer] Deleted sprint status file [_bmad-output/implementation-artifacts/] — deferred, pre-existing
+- [x] [Review][Defer] Deleted implementation artifacts [_bmad-output/implementation-artifacts/] — deferred, pre-existing
 
 ## Dev Notes
 
