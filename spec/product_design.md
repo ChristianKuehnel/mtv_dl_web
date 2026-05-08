@@ -44,7 +44,7 @@ This document outlines the design for a web interface for the MTV Downloader (mt
 - Download settings configuration
 - Scheduler settings
 - Database update configuration:
-  - Cron-like expression for periodic database updates
+  - APScheduler crontab expression for periodic database updates
   - Manual database update trigger
 - Series handling configuration:
   - Enable/disable automatic series detection
@@ -60,6 +60,49 @@ This document outlines the design for a web interface for the MTV Downloader (mt
   - Post-download hooks
   - Logging and verbosity options
   - Database refresh settings
+
+### Scheduler Cron Syntax
+
+The scheduler must use APScheduler `CronTrigger.from_crontab()` syntax for all user-configured schedules.
+
+Supported expression format:
+
+```text
+minute hour day_of_month month day_of_week
+```
+
+Examples:
+
+```text
+0 2 * * *        # Every day at 02:00
+*/30 * * * *     # Every 30 minutes
+15 6 * * mon-fri # Weekdays at 06:15
+0 3 1 * *        # First day of every month at 03:00
+```
+
+Field ranges:
+
+- `minute`: `0-59`
+- `hour`: `0-23`
+- `day_of_month`: `1-31`
+- `month`: `1-12` or `jan-dec`
+- `day_of_week`: `0-6` or `mon-sun`; APScheduler treats `0` as Monday and `6` as Sunday
+
+Supported field operators:
+
+- `*` for every value
+- `,` for lists, such as `1,15,30`
+- `-` for ranges, such as `mon-fri`
+- `/` for steps, such as `*/15` or `1-23/2`
+
+Unsupported schedule forms:
+
+- Seconds or year fields
+- Quartz-only syntax such as `?`, `L`, `W`, or `#`
+- Shortcut aliases such as `@hourly`, `@daily`, or `@weekly`
+- Per-expression timezone declarations; timezone is a separate application configuration value
+
+Invalid expressions must be rejected in the UI and API with a clear validation message.
 
 ## Implementation Plan
 

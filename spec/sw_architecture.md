@@ -11,6 +11,7 @@ This document describes the software architecture for a lightweight web interfac
 - **Concurrency Model**: Async/Await with ThreadPoolExecutor for blocking operations
 - **Database**: SQLite (only for existing mtv_dl database integration)
 - **Configuration**: Use yaml-config files for service configuration, do not create another database.
+- **Scheduling**: APScheduler with `AsyncIOScheduler` for background query searches and cron-like schedules.
 - **API Design**: RESTful JSON API
 
 ### 2. Frontend Architecture
@@ -28,6 +29,7 @@ This document describes the software architecture for a lightweight web interfac
 - **Main Application**: `src/main.py`
   - FastAPI application with routes for search, download, and status
   - download handling with background tasks, only one download at a time
+  - scheduled query searches run via APScheduler `AsyncIOScheduler`, started and stopped in the FastAPI lifespan handler
   - REST API endpoints for frontend communication
   - queries and downloads are handled by the mtv_dl functionality
 
@@ -112,7 +114,17 @@ This document describes the software architecture for a lightweight web interfac
 ### Threading Model
 1. Web requests are handled asynchronously
 2. Download operations are processed single-threaded, matching the existing mtv_dl logic
-3. Status updates are managed with in-memory dictionary
+3. Scheduled query searches are triggered by APScheduler and execute blocking mtv_dl work through the same ThreadPoolExecutor path used by manual searches/downloads
+4. Status updates are managed with in-memory dictionary
+
+### Scheduled Query Search
+- **Framework**: Use `APScheduler` (`apscheduler.schedulers.asyncio.AsyncIOScheduler`) as the only scheduling framework.
+- **Triggers**: Use APScheduler `CronTrigger` for cron-like expressions configured in YAML.
+- **Lifecycle**: Start the scheduler during FastAPI application startup and shut it down during application shutdown via the lifespan handler.
+- **Persistence**: Store scheduled query definitions in the YAML configuration file. Do not use APScheduler job stores or create a separate scheduler database.
+- **Execution**: Scheduler jobs call the existing mtv_dl search/download integration; do not duplicate query logic or access SQLite directly.
+- **Concurrency**: Configure scheduler jobs with `max_instances=1` and avoid overlapping executions of the same scheduled query.
+- **Container Behavior**: The scheduler runs in-process with the FastAPI application; no external cron daemon or sidecar service is required.
 
 ## Deployment Architecture
 
@@ -122,7 +134,7 @@ This document describes the software architecture for a lightweight web interfac
 - Simple configuration with default paths
 
 ### Lightweight Design
-- Minimal dependencies (FastAPI, SQLite, standard library)
+- Minimal dependencies (FastAPI, APScheduler, SQLite, standard library)
 - No external services required
 - Container-ready with Docker support
 
@@ -145,6 +157,7 @@ While optimized for single user, the architecture supports:
 
 ### Tools Used
 - FastAPI for API framework
+- APScheduler for scheduled background query searches
 - config files for local persistence
 - Pydantic for data validation
 - HTML/CSS/JS for frontend
