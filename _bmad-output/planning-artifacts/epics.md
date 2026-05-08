@@ -1,59 +1,431 @@
 ---
-project_name: 'mtv_dl_web'
-user_name: 'Christian'
-date: '2026-05-07'
-stepsCompleted: ['step-1-validate-prerequisites', 'step-2-design-epics']
-inputDocuments: ['_bmad-output/planning-artifacts/prd.md']
-fr_list: |
-  FR1: The system shall provide a web interface for downloading videos from German public broadcasting services
-  FR2: The system shall support searching for shows using all filter criteria of mtv_dl
-  FR3: The system shall support all filter operators: =, !=, +, -
-  FR4: The system shall support all filter fields: description, region, size, channel, topic, title, hash, url, duration, age, start, dow, hour, minute, season, episode
-  FR5: The system shall distinguish between normal shows and series
-  FR6: The system shall support automatic season/episode detection and display
-  FR7: The system shall provide a download management interface
-  FR8: The system shall support queue management for sequential downloads
-  FR9: The system shall support background processing of downloads
-  FR10: The system shall provide a scheduler for monitoring and downloading new episodes
-  FR11: The system shall support self-hosted containerized deployment
-  FR12: The system shall allow adding shows to download queue
-  FR13: The system shall integrate full CLI functionality with web interface
-  FR14: The system shall support series detection and handling
-  FR15: The system shall provide automatic season/episode organization
-  FR16: The system shall support database update scheduling
-  FR17: The system shall provide a search interface with filter criteria
-  FR18: The system shall provide a download queue interface
-  FR19: The system shall provide a configuration panel
-  FR20: The system shall support query management (add/edit/remove monitoring queries)
-  FR21: The system shall support download settings configuration
-  FR22: The system shall support scheduler settings
-  FR23: The system shall support database update configuration with cron-like expression
-  FR24: The system shall support series handling configuration with custom naming conventions
-  FR25: The system shall integrate all CLI options with quality selection, target directory, subtitle/NFO handling, file modification time setting, series mode support, MKV merging support, post-download hooks, logging and verbosity options, database refresh settings
-nfr_list: |
-  NFR1: The system shall be responsive and accessible on all modern browsers
-  NFR2: The system shall support single-user access without authentication
-  NFR3: The system shall maintain performance with large search results
-  NFR4: The system shall provide clear status indicators for downloads and queues
-  NFR5: The system shall be designed for containerized deployment
-  NFR6: The system shall maintain data integrity during concurrent operations
-  NFR7: The system shall preserve existing mtv_dl configuration files
-  NFR8: The system shall comply with the MIT license requirements
-additional_requirements: |
-  - Use existing mtv_dl Database class for SQLite integration
-  - Use existing mtv_dl Downloader class for download processing
-  - Implement FastAPI with Python 3.10+
-  - Use HTML/CSS/JS frontend with Tailwind CSS CDN
-  - Support containerized deployment with Docker and Podman
-  - Use Alpine Linux base image for container deployment
-  - Implement single-threaded download processing to match existing mtv_dl logic
-  - Single-user focus with no authentication required
-  - Use yaml config files for service configuration, do not create another database
-ux_design_requirements: |
-  UX-DR1: Implement a responsive UI design using Tailwind CSS CDN
-  UX-DR2: Create intuitive search interface with filter controls
-  UX-DR3: Design download queue interface with status indicators
-  UX-DR4: Create configuration panel with form elements for settings
-  UX-DR5: Ensure all UI components are accessible and keyboard navigable
-  UX-DR6: Implement clear visual hierarchy for user actions and status updates
+stepsCompleted: ['step-01-validate-prerequisites', 'step-02-design-epics', 'step-03-create-stories']
+inputDocuments: ['_bmad-output/planning-artifacts/prd.md', '_bmad-output/planning-artifacts/architecture.md']
 ---
+
+# mtv_dl_web - Epic Breakdown
+
+## Overview
+
+This document provides the complete epic and story breakdown for **mtv_dl_web**, decomposing the requirements from the PRD and Architecture into implementable stories.
+
+## Requirements Inventory
+
+### Functional Requirements
+
+**Search (FR-1 to FR-5)**:
+- FR-1: Web API for `mtv_dl`-compatible filter expressions.
+- FR-2: Support filter operators `=`, `!=`, `+`, `-`.
+- FR-3: Support filter fields (`description`, `region`, `size`, `channel`, `topic`, `title`, `hash`, `url`, `duration`, `age`, `start`, `dow`, `hour`, `minute`, `season`, `episode`).
+- FR-4: Search results include hash, channel, title, topic, size, start, duration, age, region, URL, and downloaded state.
+- FR-5: Display season/episode metadata where available.
+
+**Downloads (FR-6 to FR-12)**:
+- FR-6: Initiate downloads from search results.
+- FR-7: Preserve `mtv_dl` downloader behavior.
+- FR-8: Configure download quality.
+- FR-9: Configure target directories.
+- FR-10: Enable subtitles/NFO output.
+- FR-11: Enable MKV merge and file modification time behavior.
+- FR-12: Support post-download scripts (filesystem-configured).
+
+**Queue (FR-13 to FR-16)**:
+- FR-13: Add selected shows to download queue.
+- FR-14: Single active download at a time.
+- FR-15: View queue states (`pending`, `downloading`, `completed`, `failed`).
+- FR-16: Remove pending queue items.
+
+**Database (FR-18 to FR-21)**:
+- FR-18: Reuse `mtv_dl` database integration.
+- FR-19: Manual database update action.
+- FR-20: Persist database at `~/.mtv_dl_web/filmliste.sqlite`.
+- FR-21: No direct datastore querying.
+
+**Scheduler (FR-22 to FR-25)**:
+- FR-22: Create/edit/remove scheduled monitoring queries.
+- FR-23: Configure cron-like schedules.
+- FR-24: Auto-enqueue non-duplicate matches (hash/URL fallback).
+- FR-25: View scheduler status, auto-enqueued items, and errors.
+
+**Configuration (FR-26 to FR-28)**:
+- FR-26: Load configuration from mounted file.
+- FR-27: Apply config changes on restart.
+- FR-28: Configure port, database path, target directories, scheduler, log level, quality, subtitles/NFO, MKV merge, series behavior, and post-download scripts.
+
+**Deployment/UI (FR-29 to FR-32)**:
+- FR-29: Container deployment with mounted volumes.
+- FR-30: Readiness endpoint for health checks.
+- FR-31: Serve static frontend.
+- FR-32: UI controls for search, download, queue, scheduler, database update, and configuration.
+
+### NonFunctional Requirements
+
+**Performance (NFR-2, NFR-3)**:
+- NFR-2: Health/status requests respond within 500ms (95th percentile).
+- NFR-3: Support 5+ concurrent health/status requests.
+
+**Persistence (NFR-4)**:
+- NFR-4: Mounted volumes survive container restart.
+
+**Security (NFR-6, NFR-8)**:
+- NFR-6: No external services (trusted single-user deployment).
+- NFR-8: Error responses do not expose secrets/stack traces.
+
+**Validation (NFR-7)**:
+- NFR-7: Reject invalid filters/schedules/paths before execution.
+
+**UI/UX (NFR-13, NFR-14)**:
+- NFR-13: Responsive design (360px, 768px, 1280px).
+- NFR-14: Loading states within 1 second.
+
+### Additional Requirements
+
+**Starter Template**:
+- Use existing repository + `uv sync` for dependencies.
+- No frontend build pipeline (vanilla JS/CSS).
+
+**API Design**:
+- Minimalist REST endpoints (`/search`, `/queue`, `/downloads`).
+- Structured error responses (`{ error: { code, message } }`).
+
+**Project Structure**:
+- Backend: `src/main.py` (FastAPI).
+- Frontend: `src/frontend/js/` (vanilla JS modules).
+- Tests: `tests/` (separate from source).
+
+**Integration**:
+- Reuse `mtv_dl.Database` and `mtv_dl.Downloader` from `src/mtv_dl/`.
+
+### UX Design Requirements
+
+None (UI requirements covered by PRD).
+
+### FR Coverage Map
+
+| FR/NFR | Epic | Description                          |
+|--------|------|--------------------------------------|
+| FR-1   | 2    | Search API                           |
+| FR-2   | 2    | Filter operators                     |
+| FR-3   | 2    | Filter fields                        |
+| FR-4   | 2    | Search results metadata              |
+| FR-5   | 2    | Season/episode display               |
+| FR-6   | 3    | Download initiation                  |
+| FR-7   | 3    | Preserve `mtv_dl` behavior           |
+| FR-8   | 3    | Download quality configuration       |
+| FR-9   | 3    | Target directory configuration       |
+| FR-10  | 3    | Subtitles/NFO output                 |
+| FR-11  | 3    | MKV merge behavior                   |
+| FR-12  | 3    | Post-download scripts                |
+| FR-13  | 3    | Add to queue                         |
+| FR-14  | 3    | Single active download               |
+| FR-15  | 3    | View queue states                    |
+| FR-16  | 3    | Remove pending items                 |
+| FR-18  | 1    | Reuse `mtv_dl` database              |
+| FR-19  | 1    | Manual database update               |
+| FR-20  | 1    | Database persistence                 |
+| FR-21  | 1    | No direct datastore querying         |
+| FR-22  | 4    | Create/edit scheduled queries        |
+| FR-23  | 4    | Cron-like schedules                  |
+| FR-24  | 4    | Auto-enqueue non-duplicates          |
+| FR-25  | 4    | View scheduler status                |
+| FR-26  | 1    | Load configuration                    |
+| FR-27  | 1    | Apply config changes on restart      |
+| FR-28  | 1    | Configure service settings           |
+| FR-29  | 1    | Container deployment                 |
+| FR-30  | 1    | Readiness endpoint                   |
+| FR-31  | 1    | Serve static frontend                |
+| FR-32  | 5    | UI controls                          |
+| NFR-13 | 5    | Responsive design                    |
+| NFR-14 | 5    | Loading states                       |
+
+## Epic List
+
+### Epic 1: Project Foundation & Configuration
+
+**Goal**: Users can deploy and configure the service with persistent storage.
+
+### Story 1.1: Initialize FastAPI Backend
+
+As a self-hosting user,
+I want a FastAPI backend with basic project structure,
+So that I can extend it for search, queue, and scheduler functionality.
+
+**Acceptance Criteria:**
+
+**Given** the existing repository,
+**When** I run `uv sync`,
+**Then** dependencies are installed successfully.
+
+**Given** `src/main.py`,
+**When** I start the FastAPI app,
+**Then** it runs without errors on the configured port.
+
+**Given** the project structure,
+**When** I inspect `src/`,
+**Then** it matches the architecture (`main.py`, `config.py`, `frontend/`, `mtv_dl/`).
+
+---
+
+### Story 1.2: Implement Readiness Endpoint
+
+As a self-hosting user,
+I want a readiness endpoint (`/health`),
+So that I can verify the service is running and healthy.
+
+**Acceptance Criteria:**
+
+**Given** a running service,
+**When** I call `GET /health`,
+**Then** it returns `200 OK` with `{ "status": "healthy" }`.
+
+**Given** the endpoint,
+**When** I check the response time,
+**Then** it responds within 500ms (NFR-2).
+
+---
+
+### Story 1.3: Configure Mounted Volumes (Docker)
+
+As a self-hosting user,
+I want mounted volumes for configuration, data, and downloads,
+So that my files persist after container restarts.
+
+**Acceptance Criteria:**
+
+**Given** a `Dockerfile` and `docker-compose.yml`,
+**When** I start the container with mounted volumes,
+**Then** files in `/data`, `/downloads`, and `/config` persist after restart (NFR-4).
+
+**Given** the container,
+**When** I inspect mounted paths,
+**Then** they match the architecture (`~/.mtv_dl_web/filmliste.sqlite` for database).
+
+---
+
+### Story 1.4: Load Service Configuration
+
+As a self-hosting user,
+I want to configure service settings via a mounted file,
+So that I can customize port, database path, and download options.
+
+**Acceptance Criteria:**
+
+**Given** a configuration file (e.g., `config.yaml`),
+**When** I start the service,
+**Then** it loads settings (port, database path, target directories) from the file (FR-26, FR-27).
+
+**Given** invalid configuration,
+**When** I start the service,
+**Then** it rejects the config and logs an error (NFR-7).
+
+### Epic 2: Search Functionality
+
+**Goal**: Users can search the `mtv_dl` database using filters.
+
+### Story 2.1: Implement Search API Endpoint
+
+As a user,
+I want to search videos using `mtv_dl`-compatible filters,
+So that I can find shows to download.
+
+**Acceptance Criteria:**
+
+**Given** a populated `mtv_dl` database,
+**When** I call `GET /search?q=title=Example`,
+**Then** it returns matching videos with metadata (FR-1, FR-4).
+
+**Given** invalid filters,
+**When** I submit them,
+**Then** the API rejects them with a validation error (NFR-7).
+
+---
+
+### Story 2.2: Validate Filter Operators/Fields
+
+As a user,
+I want to use filter operators (`=`, `!=`, `+`, `-`) and fields (`title`, `channel`, etc.),
+So that I can refine my searches.
+
+**Acceptance Criteria:**
+
+**Given** valid operators/fields,
+**When** I submit a search,
+**Then** the API processes them correctly (FR-2, FR-3).
+
+**Given** unsupported operators/fields,
+**When** I submit them,
+**Then** the API returns a `400 Bad Request` (NFR-1).
+
+---
+
+### Story 2.3: Build Search UI
+
+As a user,
+I want a search form and results list in the UI,
+So that I can search without using the API directly.
+
+**Acceptance Criteria:**
+
+**Given** the search page,
+**When** I enter filters and submit,
+**Then** results display metadata (title, channel, size, etc.) (FR-5).
+
+**Given** no results,
+**When** I search,
+**Then** the UI shows a "No results" message.
+
+### Epic 3: Download Queue Management
+
+**Goal**: Users can queue, monitor, and manage downloads.
+
+### Story 3.1: Implement Queue API Endpoints
+
+As a user,
+I want to add/remove downloads via API,
+So that I can manage my download queue.
+
+**Acceptance Criteria:**
+
+**Given** a video ID,
+**When** I call `POST /queue` with `{ "video_id": "123" }`,
+**Then** it adds the video to the queue (FR-13).
+
+**Given** a pending queue item,
+**When** I call `DELETE /queue/{id}`,
+**Then** it removes the item (FR-16).
+
+---
+
+### Story 3.2: Enforce Single Active Download
+
+As a user,
+I want only one download to run at a time,
+So that my system resources aren’t overwhelmed.
+
+**Acceptance Criteria:**
+
+**Given** an active download,
+**When** I add another item to the queue,
+**Then** it remains `pending` until the active download completes (FR-14).
+
+---
+
+### Story 3.3: Build Queue UI
+
+As a user,
+I want to view and manage the queue in the UI,
+So that I can monitor download status.
+
+**Acceptance Criteria:**
+
+**Given** the queue page,
+**When** I view it,
+**Then** it shows `pending`, `downloading`, `completed`, and `failed` items (FR-15).
+
+**Given** a pending item,
+**When** I click "Remove",
+**Then** it disappears from the queue (FR-16).
+
+---
+
+### Story 3.4: Integrate `mtv_dl.Downloader`
+
+As a user,
+I want downloads to use existing `mtv_dl` behavior,
+So that my files are saved correctly.
+
+**Acceptance Criteria:**
+
+**Given** a queued item,
+**When** it starts downloading,
+**Then** it uses `mtv_dl.Downloader` with configured options (FR-7, FR-8, FR-9).
+
+### Epic 4: Scheduler for Auto-Downloads
+
+**Goal**: Users can schedule recurring searches and auto-enqueue matches.
+
+### Story 4.1: Implement Scheduler Backend
+
+As a user,
+I want to create/edit scheduled queries with cron-like syntax,
+So that I can auto-download new matches.
+
+**Acceptance Criteria:**
+
+**Given** a valid cron expression,
+**When** I schedule a query,
+**Then** it runs at the specified time (FR-23).
+
+**Given** an invalid cron expression,
+**When** I submit it,
+**Then** the scheduler rejects it (NFR-7).
+
+---
+
+### Story 4.2: Auto-Enqueue Non-Duplicates
+
+As a user,
+I want the scheduler to auto-enqueue new matches,
+So that I don’t download duplicates.
+
+**Acceptance Criteria:**
+
+**Given** a scheduled query match,
+**When** its hash/URL isn’t in the queue,
+**Then** it’s added to `pending` (FR-24).
+
+**Given** a duplicate match,
+**When** the scheduler runs,
+**Then** it’s ignored (FR-24).
+
+---
+
+### Story 4.3: Build Scheduler UI
+
+As a user,
+I want to view and manage scheduled queries in the UI,
+So that I can monitor auto-downloads.
+
+**Acceptance Criteria:**
+
+**Given** the scheduler page,
+**When** I view it,
+**Then** it shows job status, last run result, and auto-enqueued count (FR-25).
+
+### Epic 5: Responsive UI & UX
+
+**Goal**: Users can interact with the app across devices.
+
+### Story 5.1: Build Responsive Search/Queue UI
+
+As a user,
+I want the UI to adapt to my device,
+So that I can use it on mobile or desktop.
+
+**Acceptance Criteria:**
+
+**Given** a 360px/768px/1280px viewport,
+**When** I open the UI,
+**Then** controls remain usable without horizontal scrolling (NFR-13).
+
+**Given** a long-running action,
+**When** it starts,
+**Then** a loading state appears within 1 second (NFR-14).
+
+---
+
+### Story 5.2: Style Frontend with CSS
+
+As a user,
+I want a clean, functional UI,
+So that I can navigate easily.
+
+**Acceptance Criteria:**
+
+**Given** the UI,
+**When** I view it,
+**Then** it uses plain CSS (no Tailwind) for styling.
+
+**Given** the UI,
+**When** I interact with it,
+**Then** controls have visible focus states (accessibility).
