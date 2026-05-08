@@ -115,7 +115,8 @@ Applies to: self-hosting media archivist, existing CLI user, occasional download
 4. User selects one or more shows and chooses supported download options.
 5. User adds selected shows to the queue.
 6. System downloads each item when it reaches the active queue position.
-7. User sees completion or failure status for each item.
+7. `mtv_dl` executes its configured post-download hook script after download completion when such a script is configured; this preserves default tool behavior.
+8. User sees completion or failure status for each item.
 
 ### Journey 2: Manage The Download Queue
 
@@ -250,8 +251,6 @@ FR-15: Users can view queue item states `pending`, `downloading`, `completed`, a
 
 FR-16: Users can remove pending queue items.
 
-FR-17: MVP queue controls shall not expose pause or resume actions.
-
 ### Database
 
 FR-18: The system initializes and uses the existing `mtv_dl` database integration.
@@ -372,7 +371,7 @@ AC-14: Given one active download, when five concurrent health or status requests
 | SC-1 | Journey 1, Journey 3 | FR-1, FR-2 | AC-1, AC-2 |
 | SC-2 | Journey 1, Journey 3 | FR-3, FR-4, FR-5 | AC-1 |
 | SC-3 | Journey 1, Journey 5 | FR-6 through FR-12, FR-28 | AC-3, AC-11, AC-12 |
-| SC-4 | Journey 2 | FR-13 through FR-17 | AC-3, AC-4, AC-5 |
+| SC-4 | Journey 2 | FR-13 through FR-16 | AC-3, AC-4, AC-5 |
 | SC-5 | Journey 3 | FR-22 through FR-25 | AC-7, AC-8 |
 | SC-6 | Journey 6 | FR-20, FR-26 through FR-31, NFR-4, NFR-9, NFR-11 | AC-9, AC-10 |
 | SC-7 | Journey 1, Journey 3, Journey 4 | FR-7, FR-18, FR-19, FR-21 | AC-1, AC-6, AC-11 |
