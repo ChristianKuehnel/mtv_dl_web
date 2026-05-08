@@ -14,7 +14,7 @@ def test_basic_imports():
     """Test that we can import the main module without major issues"""
     try:
         # Just test that we can import the main module and it has the basic structure
-        import main
+        from mtv_dl_web.main import app
         print("✓ Main module imports successfully")
         return True
     except Exception as e:
@@ -22,27 +22,27 @@ def test_basic_imports():
         return False
 
 def test_hello_html_exists():
-    """Test that our hello.html file exists and has correct content"""
+    """Test that our index.html file exists and has correct content"""
     try:
-        html_file = os.path.join(os.path.dirname(__file__), '..', 'src', 'frontend', 'hello.html')
+        html_file = os.path.join(os.path.dirname(__file__), '..', 'src', 'mtv_dl_web', 'frontend', 'index.html')
         with open(html_file, 'r') as f:
             content = f.read()
             
-        if "Hello World" in content and "Welcome to the MTV Downloader Web Interface" in content:
-            print("✓ hello.html file exists with correct content")
+        if "MTV Downloader" in content and "Download videos from German public broadcasting services" in content:
+            print("✓ index.html file exists with correct content")
             return True
         else:
-            print("✗ hello.html file exists but content is incorrect")
+            print("✗ index.html file exists but content is incorrect")
             return False
     except Exception as e:
-        print(f"✗ Failed to access hello.html: {e}")
+        print(f"✗ Failed to access index.html: {e}")
         return False
 
 def test_simple_functionality():
     """Test the basic functionality we've implemented"""
     try:
         # Test that our simple changes are in place
-        import main
+        from mtv_dl_web.main import app
         
         # We can't fully test the FastAPI app without mtv_dl deps
         # But we can at least make sure our changes didn't break anything

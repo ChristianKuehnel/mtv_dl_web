@@ -21,11 +21,25 @@ from pydantic import BaseModel
 from starlette.background import BackgroundTask
 
 # Add the mtv_dl directory to Python path to import mtv_dl module
-sys.path.insert(0, str(Path(__file__).parent / "mtv_dl" / "src"))
+sys.path.insert(0, str(Path(__file__).parent.parent / "mtv_dl" / "src"))
 
 # Import the mtv_dl functionality
 try:
+    # Temporarily mock the version function to avoid import issues
+    import importlib.metadata
+    original_version = importlib.metadata.version
+    
+    def mock_version(name):
+        if name == 'mtv_dl':
+            return '0.28.0'
+        return original_version(name)
+    
+    importlib.metadata.version = mock_version
+    
     from mtv_dl.mtv_dl import Database, Downloader
+    
+    # Restore original version function
+    importlib.metadata.version = original_version
 except ImportError as e:
     print(f"Failed to import mtv_dl: {e}")
     raise
@@ -116,7 +130,7 @@ except Exception as e:
 async def read_root():
     """Serve the main HTML page"""
     try:
-        with open(frontend_dir / "hello.html", "r") as f:
+        with open(frontend_dir / "index.html", "r") as f:
             content = f.read()
         return content
     except FileNotFoundError:

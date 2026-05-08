@@ -31,9 +31,6 @@ dev = [
 requires = ["uv-build"]
 build-backend = "uv_build"
 
-[tool.uv]
-dev-dependencies = ["dev"]
-
 [tool.mypy]
 strict = true
 warn_unused_ignores = true
