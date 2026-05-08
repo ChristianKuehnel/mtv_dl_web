@@ -16,17 +16,52 @@ uv run src/main.py
 # The service will be available at http://localhost:8000
 ```
 
-### 2. Production - Podman Container
+### 2. Production - Docker Container
+
+#### Option A: Using Docker Compose (Recommended)
+
+```bash
+# Start the service with Docker Compose (includes volume mounting)
+docker-compose up -d
+
+# The service will be available at http://localhost:8000
+# Volumes will be created in:
+# - ./data - Application data
+# - ./downloads - Download storage
+# - ./config - Configuration files
+# - ./.mtv_dl_web - Database files (including filmliste.sqlite)
+```
+
+#### Option B: Using Docker Directly
 
 ```bash
 # Build the container image
-podman build -t mtv-dl-web .
+docker build -t mtv-dl-web .
 
-# Run the container
-podman run -d -p 8000:8000 --name mtv-dl-web mtv-dl-web
+# Create directories for volume mounting
+mkdir -p ./data ./downloads ./config
+
+# Run the container with volume mounts
+docker run -d -p 8000:8000 \
+  -v $(pwd)/data:/data \
+  -v $(pwd)/downloads:/downloads \
+  -v $(pwd)/config:/config \
+  -v $(pwd)/.mtv_dl_web:/home/appuser/.mtv_dl_web \
+  --name mtv-dl-web \
+  mtv-dl-web
 
 # The service will be available at http://localhost:8000
 ```
+
+#### Volume Persistence
+
+The container uses the following volume mounts for data persistence:
+- `/data` - Application data storage
+- `/downloads` - Downloaded video files
+- `/config` - Configuration files
+- `/home/appuser/.mtv_dl_web` - Database files (filmliste.sqlite)
+
+All volumes are configured to persist across container restarts.
 
 ## API Endpoints
 

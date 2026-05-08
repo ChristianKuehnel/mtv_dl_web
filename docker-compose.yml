@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  mtv_dl_web:
+    build: .
+    container_name: mtv_dl_web
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/data
+      - ./downloads:/downloads
+      - ./config:/config
+      - ./.mtv_dl_web:/home/appuser/.mtv_dl_web
+    environment:
+      - PYTHONPATH=/app/src
+    restart: unless-stopped
+    
+volumes:
+  mtv_dl_data:
+    driver: local
+    driver_opts:
+      type: none
+      device: ./data
+      o: bind
+  mtv_dl_downloads:
+    driver: local
+    driver_opts:
+      type: none
+      device: ./downloads
+      o: bind
+  mtv_dl_config:
+    driver: local
+    driver_opts:
+      type: none
+      device: ./config
+      o: bind

@@ -18,13 +18,17 @@ RUN uv sync --frozen
 # Copy application code
 COPY . .
 
+# Create directories for mounted volumes
+RUN mkdir -p /data /downloads /config
+
 # Expose port
 EXPOSE 8000
 
 # Create a non-root user
 RUN adduser --disabled-password --gecos '' appuser && \
-    chown -R appuser:appuser /app
+    chown -R appuser:appuser /app && \
+    chown -R appuser:appuser /data /downloads /config
 USER appuser
 
-# Run the application
-CMD ["uvicorn", "src/main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Run the application with proper module path
+CMD ["uvicorn", "mtv_dl_web.main:app", "--host", "0.0.0.0", "--port", "8000"]
