@@ -86,3 +86,9 @@ N/A
 - `docker-compose.yml` - New Docker Compose configuration with comprehensive volume definitions
 - `tests/test_docker_volumes.py` - Comprehensive Docker volume configuration tests
 - `README.md` - Needs update with Docker usage instructions
+
+### Review Findings
+
+- [x] [Review][Patch] Dockerfile volume creation could be improved — fixed
+- [x] [Review][Defer] Potential volume mount conflicts with Docker Compose — deferred, pre-existing
+- [x] [Review][Defer] Environment variable setting — deferred, pre-existing

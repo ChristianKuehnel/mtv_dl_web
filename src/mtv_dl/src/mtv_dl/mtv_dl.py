@@ -67,7 +67,9 @@ HISTORY_DATABASE_FILE = ".History.sqlite"
 FILMLISTE_DATABASE_FILE = f".Filmliste.{version('mtv_dl')}.sqlite"
 
 # regex to find characters not allowed in file names
-INVALID_FILENAME_CHARACTERS = re.compile("[{}]".format(re.escape('<>:"/\\|?*' + "".join(chr(i) for i in range(32)))))
+INVALID_FILENAME_CHARACTERS = re.compile(
+    "[{}]".format(re.escape('<>:"/\\|?*' + "".join(chr(i) for i in range(32))))
+)
 
 # see https://res.mediathekview.de/akt.xml
 # and https://forum.mediathekview.de/topic/3508/aktuelle-verteiler-und-filmlisten-server
@@ -131,7 +133,11 @@ class SqlRegexFunction:
         except re.error as e:
             if self.last_error != str(e):
                 self.last_error = str(e)
-                logger.warning("Invalid regular expression %r (using string match instead): %s", expr, e)
+                logger.warning(
+                    "Invalid regular expression %r (using string match instead): %s",
+                    expr,
+                    e,
+                )
             self.pattern = re.compile(re.escape(expr), re.IGNORECASE)
         return self.pattern.search(item) is not None
 
@@ -216,11 +222,12 @@ class Database:
         return int(cursor.execute("PRAGMA main.user_version;").fetchone()[0])
 
     def initialize_filmliste(self) -> None:
-        logger.debug("Initializing Filmliste database in %r.", self.database_file("main"))
+        logger.debug(
+            "Initializing Filmliste database in %r.", self.database_file("main")
+        )
         cursor = self.connection.cursor()
         try:
-            cursor.execute(
-                """
+            cursor.execute("""
                 CREATE TABlE main.show (
                     hash TEXT,
                     channel TEXT,
@@ -241,8 +248,7 @@ class Database:
                     season INTEGER,
                     episode INTEGER
                 );
-                """
-            )
+                """)
         except sqlite3.OperationalError:
             cursor.execute("DELETE FROM main.show")
 
@@ -296,10 +302,11 @@ class Database:
 
     def initialize_history(self) -> None:
         if self.history_version == 0:
-            logger.info("Initializing History database in %r.", self.database_file("main"))
+            logger.info(
+                "Initializing History database in %r.", self.database_file("main")
+            )
             cursor = self.connection.cursor()
-            cursor.execute(
-                """
+            cursor.execute("""
                 CREATE TABlE history.downloaded (
                     hash TEXT,
                     channel TEXT,
@@ -316,11 +323,12 @@ class Database:
                     episode INTEGER,
                     UNIQUE (hash)
                 );
-                """
-            )
+                """)
             cursor.execute("PRAGMA history.user_version=2")
         elif self.history_version == 1:
-            logger.info("Upgrading history database schema, adding columns for season and episode")
+            logger.info(
+                "Upgrading history database schema, adding columns for season and episode"
+            )
             # manually control transactions to make sure this schema upgrade is atomic
             old_isolation_level = self.connection.isolation_level
             self.connection.isolation_level = None
@@ -332,7 +340,12 @@ class Database:
             cursor.execute("COMMIT")
             self.connection.isolation_level = old_isolation_level
 
-    def __init__(self, filmliste: Path, history: Path, filmliste_refresh_after: timedelta = timedelta(hours=3)) -> None:
+    def __init__(
+        self,
+        filmliste: Path,
+        history: Path,
+        filmliste_refresh_after: timedelta = timedelta(hours=3),
+    ) -> None:
         logger.debug("Opening Filmliste database %r.", filmliste)
         self.connection = sqlite3.connect(
             filmliste.absolute().as_posix(),
@@ -377,7 +390,9 @@ class Database:
         return 0
 
     @staticmethod
-    def _show_hash(channel: str, topic: str, title: str, size: int, start: datetime) -> str:
+    def _show_hash(
+        channel: str, topic: str, title: str, size: int, start: datetime
+    ) -> str:
         h = hashlib.sha1()
         h.update(channel.encode())
         h.update(topic.encode())
@@ -403,7 +418,9 @@ class Database:
                 total_size = int(response.getheader("content-length") or 0)
                 with BytesIO() as buffer:
                     with progress_bar() as progress:
-                        bar_id = progress.add_task(total=total_size, description="Downloading database")
+                        bar_id = progress.add_task(
+                            total=total_size, description="Downloading database"
+                        )
                         while True:
                             data = response.read(CHUNK_SIZE)
                             if not data:
@@ -415,7 +432,9 @@ class Database:
                     yield buffer
             except urllib.error.HTTPError as e:
                 if retries:
-                    logger.debug(f"Database download failed ({retries:d} more retries): {e}")
+                    logger.debug(
+                        f"Database download failed ({retries:d} more retries): {e}"
+                    )
                 else:
                     logger.error(f"Database download failed (no more retries): {e}")
                     raise RetryLimitExceededError("retry limit reached, giving up")
@@ -427,7 +446,10 @@ class Database:
         meta: dict[str, Any] = {}
         header: list[str] = []
         channel, topic, region = "", "", ""
-        with self._showlist() as showlist_archive, lzma.open(showlist_archive, "rb") as fh:
+        with (
+            self._showlist() as showlist_archive,
+            lzma.open(showlist_archive, "rb") as fh,
+        ):
             logger.debug("Loading database items.")
 
             # this will loop one time over the whole json for the sole purpose of counting
@@ -438,13 +460,17 @@ class Database:
                 fh.seek(0)
 
             with progress_bar() as progress:
-                bar_id = progress.add_task(total=items_count, description="Reading database items")
+                bar_id = progress.add_task(
+                    total=items_count, description="Reading database items"
+                )
                 for p in ijson.kvitems(fh, ""):
                     progress.update(bar_id, advance=1)
                     if not meta and p[0] == "Filmliste":
                         meta = {
                             # p[1][0] is local date, p[1][1] is gmt date
-                            "date": datetime.strptime(p[1][1], "%d.%m.%Y, %H:%M").replace(tzinfo=utc_zone),
+                            "date": datetime.strptime(
+                                p[1][1], "%d.%m.%Y, %H:%M"
+                            ).replace(tzinfo=utc_zone),
                             "crawler_version": p[1][2],
                             "crawler_agent": p[1][3],
                             "list_id": p[1][4],
@@ -467,12 +493,22 @@ class Database:
 
                             # this should work on all platforms.
                             # See https://github.com/fnep/mtv_dl/issues/42 or https://bugs.python.org/issue36439
-                            start = datetime.fromtimestamp(0, tz=utc_zone) + timedelta(seconds=int(show["start"]))
+                            start = datetime.fromtimestamp(0, tz=utc_zone) + timedelta(
+                                seconds=int(show["start"])
+                            )
 
-                            duration = timedelta(seconds=self._duration_in_seconds(show["duration"]))
+                            duration = timedelta(
+                                seconds=self._duration_in_seconds(show["duration"])
+                            )
                             season, episode = _guess_series_details(title)
                             yield {
-                                "hash": self._show_hash(channel, topic, title, size, start.replace(tzinfo=None)),
+                                "hash": self._show_hash(
+                                    channel,
+                                    topic,
+                                    title,
+                                    size,
+                                    start.replace(tzinfo=None),
+                                ),
                                 "channel": channel,
                                 "description": show["description"],
                                 "region": region,
@@ -482,8 +518,12 @@ class Database:
                                 "website": show["website"],
                                 "new": show["new"] == "true",
                                 "url_http": str(show["url"]) or None,
-                                "url_http_hd": self._qualify_url(show["url"], show["url_hd"]),
-                                "url_http_small": self._qualify_url(show["url"], show["url_small"]),
+                                "url_http_hd": self._qualify_url(
+                                    show["url"], show["url_hd"]
+                                ),
+                                "url_http_small": self._qualify_url(
+                                    show["url"], show["url_small"]
+                                ),
                                 "url_subtitles": show["url_subtitles"],
                                 "start": start.replace(tzinfo=None),
                                 "duration": duration,
@@ -531,7 +571,9 @@ class Database:
             return False
 
         cursor = self.connection.cursor()
-        cursor.execute("SELECT hash FROM history.downloaded WHERE hash LIKE ?", (show_hash + "%",))
+        cursor.execute(
+            "SELECT hash FROM history.downloaded WHERE hash LIKE ?", (show_hash + "%",)
+        )
         found_shows = [r[0] for r in cursor.fetchall()]
         if not found_shows:
             logger.warning("Could not remove %s (not found).", show_hash)
@@ -540,13 +582,17 @@ class Database:
             logger.warning("Could not remove %s (to ambiguous).", show_hash)
             return False
         else:
-            cursor.execute("DELETE FROM history.downloaded WHERE hash=?", (found_shows[0],))
+            cursor.execute(
+                "DELETE FROM history.downloaded WHERE hash=?", (found_shows[0],)
+            )
             self.connection.commit()
             logger.info("Removed %s from history.", show_hash)
             return True
 
     @staticmethod
-    def read_filter_sets(sets_file_path: Path | None, default_filter: list[str]) -> Iterator[list[str]]:
+    def read_filter_sets(
+        sets_file_path: Path | None, default_filter: list[str]
+    ) -> Iterator[list[str]]:
         if sets_file_path:
             with sets_file_path.expanduser().open("r+", encoding="utf-8") as set_fh:
                 for line in set_fh:
@@ -567,7 +613,9 @@ class Database:
             logger.debug("Applying filter: %s (limit: %s)", ", ".join(rules), limit)
 
             for f in rules:
-                match = re.match(r"^(?P<field>\w+)(?P<operator>(?:=|!=|\+|-|\W+))(?P<pattern>.*)$", f)
+                match = re.match(
+                    r"^(?P<field>\w+)(?P<operator>(?:=|!=|\+|-|\W+))(?P<pattern>.*)$", f
+                )
                 if match:
                     field, operator, pattern = (
                         match.group("field"),
@@ -599,59 +647,99 @@ class Database:
                         raise ConfigurationError(f"Invalid field {field!r}.")
 
                     if operator == "=":
-                        if field in ("description", "region", "size", "channel", "topic", "title", "hash", "url_http"):
+                        if field in (
+                            "description",
+                            "region",
+                            "size",
+                            "channel",
+                            "topic",
+                            "title",
+                            "hash",
+                            "url_http",
+                        ):
                             where.append(f"show.{field} REGEXP ?")
                             arguments.append(str(pattern))
                         elif field in ("duration", "age"):
                             where.append(f"show.{field}=?")
-                            arguments.append(durationpy.from_str(pattern).total_seconds())
+                            arguments.append(
+                                durationpy.from_str(pattern).total_seconds()
+                            )
                         elif field in ("start",):
                             where.append(f"show.{field}=?")
                             arguments.append(iso8601.parse_date(pattern).isoformat())
                         elif field in ("dow"):
-                            where.append("CAST(strftime('%w', show.start) AS INTEGER)=?")
+                            where.append(
+                                "CAST(strftime('%w', show.start) AS INTEGER)=?"
+                            )
                             arguments.append(int(pattern))
                         elif field in ("hour"):
-                            where.append("CAST(strftime('%H', datetime(show.start, 'localtime')) AS INTEGER)=?")
+                            where.append(
+                                "CAST(strftime('%H', datetime(show.start, 'localtime')) AS INTEGER)=?"
+                            )
                             arguments.append(int(pattern))
                         elif field in ("minute"):
-                            where.append("CAST(strftime('%M', show.start) AS INTEGER)=?")
+                            where.append(
+                                "CAST(strftime('%M', show.start) AS INTEGER)=?"
+                            )
                             arguments.append(int(pattern))
                         elif field in ("season", "episode"):
                             where.append(f"show.{field}=?")
                             arguments.append(int(pattern))
                         else:
-                            raise ConfigurationError(f"Invalid operator {operator!r} for {field!r}.")
+                            raise ConfigurationError(
+                                f"Invalid operator {operator!r} for {field!r}."
+                            )
 
                     elif operator == "!=":
-                        if field in ("description", "region", "size", "channel", "topic", "title", "hash", "url_http"):
+                        if field in (
+                            "description",
+                            "region",
+                            "size",
+                            "channel",
+                            "topic",
+                            "title",
+                            "hash",
+                            "url_http",
+                        ):
                             where.append(f"show.{field} NOT REGEXP ?")
                             arguments.append(str(pattern))
                         elif field in ("duration", "age"):
                             where.append(f"show.{field}!=?")
-                            arguments.append(durationpy.from_str(pattern).total_seconds())
+                            arguments.append(
+                                durationpy.from_str(pattern).total_seconds()
+                            )
                         elif field in ("start",):
                             where.append(f"show.{field}!=?")
                             arguments.append(iso8601.parse_date(pattern).isoformat())
                         elif field in ("dow"):
-                            where.append("CAST(strftime('%w', show.start) AS INTEGER)!=?")
+                            where.append(
+                                "CAST(strftime('%w', show.start) AS INTEGER)!=?"
+                            )
                             arguments.append(int(pattern))
                         elif field in ("hour"):
-                            where.append("CAST(strftime('%H', datetime(show.start, 'localtime')) AS INTEGER)!=?")
+                            where.append(
+                                "CAST(strftime('%H', datetime(show.start, 'localtime')) AS INTEGER)!=?"
+                            )
                             arguments.append(int(pattern))
                         elif field in ("minute"):
-                            where.append("CAST(strftime('%M', show.start) AS INTEGER)!=?")
+                            where.append(
+                                "CAST(strftime('%M', show.start) AS INTEGER)!=?"
+                            )
                             arguments.append(int(pattern))
                         elif field in ("season", "episode"):
                             where.append(f"show.{field}!=?")
                             arguments.append(int(pattern))
                         else:
-                            raise ConfigurationError(f"Invalid operator {operator!r} for {field!r}.")
+                            raise ConfigurationError(
+                                f"Invalid operator {operator!r} for {field!r}."
+                            )
 
                     elif operator == "-":
                         if field in ("duration", "age"):
                             where.append(f"show.{field}<=?")
-                            arguments.append(durationpy.from_str(pattern).total_seconds())
+                            arguments.append(
+                                durationpy.from_str(pattern).total_seconds()
+                            )
                         elif field in ("size", "season", "episode"):
                             where.append(f"show.{field}<=?")
                             arguments.append(int(pattern))
@@ -659,21 +747,31 @@ class Database:
                             where.append(f"show.{field}<=?")
                             arguments.append(iso8601.parse_date(pattern))
                         elif field in ("dow"):
-                            where.append("CAST(strftime('%w', show.start) AS INTEGER)<=?")
+                            where.append(
+                                "CAST(strftime('%w', show.start) AS INTEGER)<=?"
+                            )
                             arguments.append(int(pattern))
                         elif field in ("hour"):
-                            where.append("CAST(strftime('%H', datetime(show.start, 'localtime')) AS INTEGER)<=?")
+                            where.append(
+                                "CAST(strftime('%H', datetime(show.start, 'localtime')) AS INTEGER)<=?"
+                            )
                             arguments.append(int(pattern))
                         elif field in ("minute"):
-                            where.append("CAST(strftime('%M', show.start) AS INTEGER)<=?")
+                            where.append(
+                                "CAST(strftime('%M', show.start) AS INTEGER)<=?"
+                            )
                             arguments.append(int(pattern))
                         else:
-                            raise ConfigurationError(f"Invalid operator {operator!r} for {field!r}.")
+                            raise ConfigurationError(
+                                f"Invalid operator {operator!r} for {field!r}."
+                            )
 
                     elif operator == "+":
                         if field in ("duration", "age"):
                             where.append(f"show.{field}>=?")
-                            arguments.append(durationpy.from_str(pattern).total_seconds())
+                            arguments.append(
+                                durationpy.from_str(pattern).total_seconds()
+                            )
                         elif field in ("size", "season", "episode"):
                             where.append(f"show.{field}>=?")
                             arguments.append(int(pattern))
@@ -681,22 +779,32 @@ class Database:
                             where.append(f"show.{field}>=?")
                             arguments.append(iso8601.parse_date(pattern))
                         elif field in ("dow"):
-                            where.append("CAST(strftime('%w', show.start) AS INTEGER)>=?")
+                            where.append(
+                                "CAST(strftime('%w', show.start) AS INTEGER)>=?"
+                            )
                             arguments.append(int(pattern))
                         elif field in ("hour"):
-                            where.append("CAST(strftime('%H', datetime(show.start, 'localtime')) AS INTEGER)>=?")
+                            where.append(
+                                "CAST(strftime('%H', datetime(show.start, 'localtime')) AS INTEGER)>=?"
+                            )
                             arguments.append(int(pattern))
                         elif field in ("minute"):
-                            where.append("CAST(strftime('%M', show.start) AS INTEGER)>=?")
+                            where.append(
+                                "CAST(strftime('%M', show.start) AS INTEGER)>=?"
+                            )
                             arguments.append(int(pattern))
                         else:
-                            raise ConfigurationError(f"Invalid operator {operator!r} for {field!r}.")
+                            raise ConfigurationError(
+                                f"Invalid operator {operator!r} for {field!r}."
+                            )
 
                     else:
                         raise ConfigurationError(f"Invalid operator: {operator!r}")
 
                 else:
-                    raise ConfigurationError("Property and filter rule expected to be separated by an operator.")
+                    raise ConfigurationError(
+                        "Property and filter rule expected to be separated by an operator."
+                    )
 
         if not include_future:
             where.append("datetime(show.start) < datetime('now')")
@@ -719,13 +827,11 @@ class Database:
 
     def downloaded(self) -> Iterator["Database.Item"]:
         cursor = self.connection.cursor()
-        cursor.execute(
-            """
+        cursor.execute("""
             SELECT *
             FROM history.downloaded
             ORDER BY downloaded
-            """
-        )
+            """)
         for row in cursor:
             yield dict(row)  # type: ignore
 
@@ -744,7 +850,9 @@ def show_table(shows: Iterable[Database.Item]) -> None:
 
             return str(obj.isoformat())
         elif isinstance(obj, timedelta):
-            return str(re.sub(r"(\d+)", r" \1", durationpy.to_str(obj, extended=True)).strip())
+            return str(
+                re.sub(r"(\d+)", r" \1", durationpy.to_str(obj, extended=True)).strip()
+            )
         else:
             return str(obj)
 
@@ -781,22 +889,32 @@ class Downloader:
 
     @property
     def label(self) -> str:
-        return "{title!r} ({channel}, {topic!r}, {start}, {hash:.11})".format(**self.show)
+        return "{title!r} ({channel}, {topic!r}, {start}, {hash:.11})".format(
+            **self.show
+        )
 
-    def _download_files(self, destination_dir_path: Path, target_urls: list[str]) -> Iterable[Path]:
+    def _download_files(
+        self, destination_dir_path: Path, target_urls: list[str]
+    ) -> Iterable[Path]:
         file_sizes = []
         with progress_bar() as progress:
             bar_id = progress.add_task(description=f"Downloading {self.label}")
 
             for url in target_urls:
-                response: http.client.HTTPResponse = urllib.request.urlopen(url, timeout=60, context=SSL_CONTEXT)
+                response: http.client.HTTPResponse = urllib.request.urlopen(
+                    url, timeout=60, context=SSL_CONTEXT
+                )
 
                 # determine file size for progressbar
                 file_sizes.append(int(response.getheader("content-length") or 0))
-                progress.update(bar_id, total=sum(file_sizes) / len(file_sizes) * len(target_urls))
+                progress.update(
+                    bar_id, total=sum(file_sizes) / len(file_sizes) * len(target_urls)
+                )
 
                 # determine file name and destination
-                destination_file_path = destination_dir_path / escape_path(Path(url).name or "unknown")
+                destination_file_path = destination_dir_path / escape_path(
+                    Path(url).name or "unknown"
+                )
 
                 # actual download
                 with destination_file_path.open("wb") as fh:
@@ -810,7 +928,9 @@ class Downloader:
 
                 yield destination_file_path
 
-    def _create_strm_files(self, destination_dir_path: Path, target_urls: list[str]) -> Iterable[Path]:
+    def _create_strm_files(
+        self, destination_dir_path: Path, target_urls: list[str]
+    ) -> Iterable[Path]:
         for url in target_urls:
             file_name = Path(url).with_suffix(".strm").name
             destination_file_path = destination_dir_path / file_name
@@ -833,8 +953,12 @@ class Downloader:
             posix_target += "{ext}"
 
         escaped_show_details = {k: escape_path(str(v)) for k, v in self.show.items()}
-        escaped_show_details["season"] = "00" if self.show["season"] is None else f"{self.show['season']:02d}"
-        escaped_show_details["episode"] = "00" if self.show["episode"] is None else f"{self.show['episode']:02d}"
+        escaped_show_details["season"] = (
+            "00" if self.show["season"] is None else f"{self.show['season']:02d}"
+        )
+        escaped_show_details["episode"] = (
+            "00" if self.show["episode"] is None else f"{self.show['episode']:02d}"
+        )
         destination_file_path = Path(
             posix_target.format(
                 dir=Path.cwd().as_posix(),
@@ -850,15 +974,25 @@ class Downloader:
         try:
             shutil.move(source_path.as_posix(), destination_file_path)
         except OSError as e:
-            logger.warning("Skipped %s. Moving %r to %r failed: %s", self.label, source_path, destination_file_path, e)
+            logger.warning(
+                "Skipped %s. Moving %r to %r failed: %s",
+                self.label,
+                source_path,
+                destination_file_path,
+                e,
+            )
         else:
-            logger.info("Saved %s %s to %r.", media_type, self.label, destination_file_path)
+            logger.info(
+                "Saved %s %s to %r.", media_type, self.label, destination_file_path
+            )
             return destination_file_path
 
         return False
 
     @staticmethod
-    def _get_m3u8_segments(base_url: str, m3u8_file_path: Path) -> Iterator[dict[str, Any]]:
+    def _get_m3u8_segments(
+        base_url: str, m3u8_file_path: Path
+    ) -> Iterator[dict[str, Any]]:
         with m3u8_file_path.open("r+", encoding="utf-8") as fh:
             segment: dict[str, Any] = {}
             for line in fh:
@@ -866,7 +1000,10 @@ class Downloader:
                     continue
                 elif line.startswith("#EXT-X-STREAM-INF:"):
                     # see http://archive.is/Pe9Pt#section-4.3.4.2
-                    segment = {m.group(1).lower(): m.group(2).strip() for m in re.finditer(r"([A-Z-]+)=([^,]+)", line)}
+                    segment = {
+                        m.group(1).lower(): m.group(2).strip()
+                        for m in re.finditer(r"([A-Z-]+)=([^,]+)", line)
+                    }
                     for key, value in segment.items():
                         if value[0] in ('"', "'") and value[0] == value[-1]:
                             segment[key] = value[1:-1]
@@ -887,7 +1024,11 @@ class Downloader:
         quality_preference: tuple[str, str, str],
     ) -> Path:
         hls_index_segments = sorted(
-            [s for s in m3u8_segments if "mp4a" not in s.get("codecs", {}) and s.get("bandwidth")],
+            [
+                s
+                for s in m3u8_segments
+                if "mp4a" not in s.get("codecs", {}) and s.get("bandwidth")
+            ],
             key=lambda s: s.get("bandwidth", 0),
         )
 
@@ -899,7 +1040,9 @@ class Downloader:
         else:
             designated_index_segment = hls_index_segments[len(hls_index_segments) // 2]
 
-        designated_index_file = next(iter(self._download_files(temp_dir_path, [designated_index_segment["url"]])))
+        designated_index_file = next(
+            iter(self._download_files(temp_dir_path, [designated_index_segment["url"]]))
+        )
         logger.debug(
             "Selected HLS bandwidth is %d (available: %s).",
             designated_index_segment["bandwidth"],
@@ -907,12 +1050,18 @@ class Downloader:
         )
 
         # get stream segments
-        hls_target_segments = list(self._get_m3u8_segments(base_url, designated_index_file))
-        hls_target_files = self._download_files(temp_dir_path, list(s["url"] for s in hls_target_segments))
+        hls_target_segments = list(
+            self._get_m3u8_segments(base_url, designated_index_file)
+        )
+        hls_target_files = self._download_files(
+            temp_dir_path, list(s["url"] for s in hls_target_segments)
+        )
         logger.debug("%d HLS segments to download.", len(hls_target_segments))
 
         # download and join the segment files
-        with NamedTemporaryFile(mode="wb", prefix=".tmp", dir=temp_dir_path, delete=False) as out_fh:
+        with NamedTemporaryFile(
+            mode="wb", prefix=".tmp", dir=temp_dir_path, delete=False
+        ) as out_fh:
             temp_file_path = Path(temp_dir_path) / out_fh.name
             for segment_file_path in hls_target_files:
                 with segment_file_path.open("rb") as in_fh:
@@ -923,13 +1072,19 @@ class Downloader:
 
         return temp_file_path
 
-    def _download_m3u8_target(self, m3u8_segments: list[dict[str, Any]], temp_dir_path: Path) -> Path:
+    def _download_m3u8_target(
+        self, m3u8_segments: list[dict[str, Any]], temp_dir_path: Path
+    ) -> Path:
         # get segments
-        hls_target_files = self._download_files(temp_dir_path, list(s["url"] for s in m3u8_segments))
+        hls_target_files = self._download_files(
+            temp_dir_path, list(s["url"] for s in m3u8_segments)
+        )
         logger.debug("%d m3u8 segments to download.", len(m3u8_segments))
 
         # download and join the segment files
-        with NamedTemporaryFile(mode="wb", prefix=".tmp", dir=temp_dir_path, delete=False) as out_fh:
+        with NamedTemporaryFile(
+            mode="wb", prefix=".tmp", dir=temp_dir_path, delete=False
+        ) as out_fh:
             temp_file_path = Path(temp_dir_path) / out_fh.name
 
             for segment_file_path in hls_target_files:
@@ -943,8 +1098,12 @@ class Downloader:
 
     @staticmethod
     def _convert_subtitles_xml_to_srt(subtitles_xml_path: Path) -> Path:
-        subtitles_srt_path = subtitles_xml_path.parent / (subtitles_xml_path.stem + ".srt")
-        soup = BeautifulSoup(subtitles_xml_path.read_text(encoding="utf-8"), "html.parser")
+        subtitles_srt_path = subtitles_xml_path.parent / (
+            subtitles_xml_path.stem + ".srt"
+        )
+        soup = BeautifulSoup(
+            subtitles_xml_path.read_text(encoding="utf-8"), "html.parser"
+        )
 
         colour_to_rgb = {
             "textBlack": "#000000",
@@ -970,7 +1129,9 @@ class Downloader:
         }
 
         def font_colour(text: str, colour: str) -> str:
-            return f'<font color="{colour_to_rgb.get(colour, "#000000")}">{text}</font>\n'
+            return (
+                f'<font color="{colour_to_rgb.get(colour, "#000000")}">{text}</font>\n'
+            )
 
         def convert_time(t: str) -> str:
             t = t.replace(".", ",")
@@ -980,17 +1141,27 @@ class Downloader:
         with subtitles_srt_path.open("w", encoding="utf-8") as srt:
             for p_tag in soup.find_all(["tt:p", "p"]):
                 try:
-                    srt.write(str(int(re.sub(r"\D", "", p_tag.get("xml:id"))) + 1) + "\n")
-                    srt.write(f"{convert_time(p_tag['begin'])} --> {convert_time(p_tag['end'])}\n")
+                    srt.write(
+                        str(int(re.sub(r"\D", "", p_tag.get("xml:id"))) + 1) + "\n"
+                    )
+                    srt.write(
+                        f"{convert_time(p_tag['begin'])} --> {convert_time(p_tag['end'])}\n"
+                    )
                     for span_tag in p_tag.find_all(["tt:span", "span"]):
-                        srt.write(font_colour(span_tag.text, span_tag.get("style")).replace("&apos", "'"))
+                        srt.write(
+                            font_colour(span_tag.text, span_tag.get("style")).replace(
+                                "&apos", "'"
+                            )
+                        )
                     srt.write("\n")
                 except Exception as e:
                     logger.debug("Unexpected data in subtitle xml tag %r: %s", p_tag, e)
 
         return subtitles_srt_path
 
-    def _mux_with_mkvmerge(self, video_path: Path, subtitle_path: Path | None) -> Path | None:
+    def _mux_with_mkvmerge(
+        self, video_path: Path, subtitle_path: Path | None
+    ) -> Path | None:
         mkvmerge_binary = shutil.which("mkvmerge")
         if not mkvmerge_binary:
             logger.error(
@@ -1025,7 +1196,9 @@ class Downloader:
                 text=True,
             )
         except subprocess.CalledProcessError as e:
-            logger.error("mkvmerge failed for %s: %s", self.label, (e.stdout or "").strip())
+            logger.error(
+                "mkvmerge failed for %s: %s", self.label, (e.stdout or "").strip()
+            )
             with suppress(FileNotFoundError):
                 mkv_output_path.unlink(missing_ok=True)
             return None
@@ -1054,7 +1227,9 @@ class Downloader:
         subtitle_target_path: Path | None = None
         try:
             # show url based on quality preference
-            show_url = self.show[quality[0]] or self.show[quality[1]] or self.show[quality[2]]
+            show_url = (
+                self.show[quality[0]] or self.show[quality[1]] or self.show[quality[2]]
+            )
 
             if not show_url:
                 logger.error("No valid url to download %r", self.label)
@@ -1065,7 +1240,9 @@ class Downloader:
             if not create_strm_files:
                 show_file_path = next(iter(self._download_files(temp_path, [show_url])))
             else:
-                show_file_path = next(iter(self._create_strm_files(temp_path, [show_url])))
+                show_file_path = next(
+                    iter(self._create_strm_files(temp_path, [show_url]))
+                )
 
             if set_file_modification_date and self.show["start"]:
                 os.utime(
@@ -1093,25 +1270,45 @@ class Downloader:
             elif show_file_extension == ".m3u8":
                 m3u8_segments = list(self._get_m3u8_segments(show_url, show_file_path))
                 if any("codecs" in s for s in m3u8_segments):
-                    ts_file_path = self._download_hls_target(m3u8_segments, temp_path, show_url, quality)
+                    ts_file_path = self._download_hls_target(
+                        m3u8_segments, temp_path, show_url, quality
+                    )
                 else:
                     ts_file_path = self._download_m3u8_target(m3u8_segments, temp_path)
-                final_show_file = self._move_to_user_target(ts_file_path, target, show_file_name, ".ts", "show")
+                final_show_file = self._move_to_user_target(
+                    ts_file_path, target, show_file_name, ".ts", "show"
+                )
                 if not final_show_file:
                     return None
 
             else:
-                logger.error("File extension %s of %s not supported.", show_file_extension, self.label)
+                logger.error(
+                    "File extension %s of %s not supported.",
+                    show_file_extension,
+                    self.label,
+                )
                 return None
 
             if include_subtitles and self.show["url_subtitles"]:
-                logger.debug("Downloading subtitles for %s from %r.", self.label, self.show["url_subtitles"])
+                logger.debug(
+                    "Downloading subtitles for %s from %r.",
+                    self.label,
+                    self.show["url_subtitles"],
+                )
                 try:
-                    subtitles_xml_path = next(iter(self._download_files(temp_path, [self.show["url_subtitles"]])))
+                    subtitles_xml_path = next(
+                        iter(
+                            self._download_files(
+                                temp_path, [self.show["url_subtitles"]]
+                            )
+                        )
+                    )
                 except urllib.error.HTTPError:
                     logger.warning("Missing subtitles for %s.", self.label)
                 else:
-                    subtitles_srt_path = self._convert_subtitles_xml_to_srt(subtitles_xml_path)
+                    subtitles_srt_path = self._convert_subtitles_xml_to_srt(
+                        subtitles_xml_path
+                    )
                     moved_subtitles = self._move_to_user_target(
                         subtitles_srt_path, target, show_file_name, ".srt", "subtitles"
                     )
@@ -1120,7 +1317,9 @@ class Downloader:
 
             if include_nfo:
                 root_node = "movie" if not series_mode else "episodedetails"
-                nfo_movie = Et.fromstring(f'<?xml version="1.0" encoding="UTF-8" standalone="yes" ?><{root_node}/>')
+                nfo_movie = Et.fromstring(
+                    f'<?xml version="1.0" encoding="UTF-8" standalone="yes" ?><{root_node}/>'
+                )
                 nfo_id = Et.SubElement(nfo_movie, "uniqueid")
                 nfo_id.set("type", "hash")
                 nfo_id.text = self.show["hash"]
@@ -1129,24 +1328,38 @@ class Downloader:
                 Et.SubElement(nfo_movie, "plot").text = self.show["description"]
                 Et.SubElement(nfo_movie, "studio").text = self.show["channel"]
                 if self.show["start"]:
-                    Et.SubElement(nfo_movie, "aired").text = self.show["start"].isoformat()
+                    Et.SubElement(nfo_movie, "aired").text = self.show[
+                        "start"
+                    ].isoformat()
                 Et.SubElement(nfo_movie, "country").text = self.show["region"]
-                if series_mode and self.show["season"] is not None and self.show["episode"] is not None:
+                if (
+                    series_mode
+                    and self.show["season"] is not None
+                    and self.show["episode"] is not None
+                ):
                     Et.SubElement(nfo_movie, "season").text = str(self.show["season"])
                     Et.SubElement(nfo_movie, "episode").text = str(self.show["episode"])
 
-                with NamedTemporaryFile(mode="wb", prefix=".tmp", dir=temp_path, delete=False) as out_fh:
+                with NamedTemporaryFile(
+                    mode="wb", prefix=".tmp", dir=temp_path, delete=False
+                ) as out_fh:
                     nfo_path = Path(temp_path) / out_fh.name
-                    out_fh.write(Et.tostring(nfo_movie, xml_declaration=True, encoding="UTF-8"))
+                    out_fh.write(
+                        Et.tostring(nfo_movie, xml_declaration=True, encoding="UTF-8")
+                    )
 
                 nfo_path.chmod(0o644)
-                self._move_to_user_target(nfo_path, target, show_file_name, ".nfo", "nfo")
+                self._move_to_user_target(
+                    nfo_path, target, show_file_name, ".nfo", "nfo"
+                )
 
             file_suffix = final_show_file.suffix.lower()
             if merge_to_mkv and file_suffix != ".mkv":
                 supported_video_suffixes = {".mp4", ".flv", ".ts"}
                 if file_suffix in supported_video_suffixes:
-                    mkv_path = self._mux_with_mkvmerge(final_show_file, subtitle_target_path)
+                    mkv_path = self._mux_with_mkvmerge(
+                        final_show_file, subtitle_target_path
+                    )
                     if mkv_path:
                         final_show_file = mkv_path
                 else:
@@ -1166,7 +1379,9 @@ class Downloader:
         return None
 
 
-def _guess_series_details(title: str, manual_season: int = 1) -> tuple[int | None, int | None]:
+def _guess_series_details(
+    title: str, manual_season: int = 1
+) -> tuple[int | None, int | None]:
     """Heuristics to extract season and episode information from the title.
 
     Examples with season and episode information:
@@ -1268,7 +1483,9 @@ def _guess_series_details(title: str, manual_season: int = 1) -> tuple[int | Non
     return None, None
 
 
-def run_post_download_hook(executable: Path, item: Database.Item, downloaded_file: Path) -> None:
+def run_post_download_hook(
+    executable: Path, item: Database.Item, downloaded_file: Path
+) -> None:
     try:
         subprocess.run(
             [executable.as_posix()],
@@ -1294,7 +1511,12 @@ def run_post_download_hook(executable: Path, item: Database.Item, downloaded_fil
             encoding="utf-8",
         )
     except subprocess.CalledProcessError as e:
-        logger.error("Post-download hook %r returned with code %s:\n%s", executable, e.returncode, e.stdout)
+        logger.error(
+            "Post-download hook %r returned with code %s:\n%s",
+            executable,
+            e.returncode,
+            e.stdout,
+        )
     else:
         logger.info("Post-download hook %r returned successful.", executable)
 
@@ -1316,8 +1538,7 @@ config_help = """
         high: true
         dir: ~/download
 """.replace("\n", "\n\n")  # noqa: W291, W293
-filter_argument = typer.Argument(
-    help="""
+filter_argument = typer.Argument(help="""
         Use filter to select only the shows wanted. Syntax is always <field><operator><pattern>.
         
         The following operators and fields are available:
@@ -1357,8 +1578,7 @@ filter_argument = typer.Argument(
         
         As many filters as needed may be given as separated arguments (separated  with space).
         For a show to get considered, _all_ given filter criteria must meet.
-    """.replace("\n", "\n\n")  # noqa: W291, W293
-)
+    """.replace("\n", "\n\n"))  # noqa: W291, W293
 filter_set_option = typer.Option(
     "--sets",
     "-s",
@@ -1450,7 +1670,11 @@ def dump_command(
                 )
             )
         )
-        print(json.dumps(list(shows), default=serialize_for_json, indent=4, sort_keys=True))
+        print(
+            json.dumps(
+                list(shows), default=serialize_for_json, indent=4, sort_keys=True
+            )
+        )
     except ConfigurationError as e:
         logger.error(str(e))
 
@@ -1591,11 +1815,23 @@ def download_command(
             if not downloader.show.get("downloaded") or oblivious:
                 if not mark_only:
                     if high:
-                        quality_preference = ("url_http_hd", "url_http", "url_http_small")
+                        quality_preference = (
+                            "url_http_hd",
+                            "url_http",
+                            "url_http_small",
+                        )
                     elif low:
-                        quality_preference = ("url_http_small", "url_http", "url_http_hd")
+                        quality_preference = (
+                            "url_http_small",
+                            "url_http",
+                            "url_http_hd",
+                        )
                     else:
-                        quality_preference = ("url_http", "url_http_hd", "url_http_small")
+                        quality_preference = (
+                            "url_http",
+                            "url_http_hd",
+                            "url_http_small",
+                        )
                     downloaded_file = downloader.download(
                         quality=quality_preference,  # type: ignore
                         target=target.expanduser(),
@@ -1615,7 +1851,11 @@ def download_command(
                     SHOWLIST.add_to_downloaded(downloader.show)
                     logger.info("Marked %s as downloaded.", downloader.label)
             else:
-                logger.debug("Skipping %s (already loaded on %s)", downloader.label, item["downloaded"])
+                logger.debug(
+                    "Skipping %s (already loaded on %s)",
+                    downloader.label,
+                    item["downloaded"],
+                )
 
     except ConfigurationError as e:
         logger.error(str(e))
@@ -1710,7 +1950,9 @@ def setup(
 
     # ISO8601 logger
     if logfile:
-        logging_handler: logging.Handler = logging.FileHandler(Path(logfile).expanduser(), encoding="utf-8")
+        logging_handler: logging.Handler = logging.FileHandler(
+            Path(logfile).expanduser(), encoding="utf-8"
+        )
         logging_handler.setFormatter(
             logging.Formatter(
                 fmt="%(asctime)s %(levelname)-8s %(message)s",
@@ -1726,7 +1968,9 @@ def setup(
         logging_handler.setFormatter(logging.Formatter(datefmt="%Y-%m-%dT%H:%M:%S%z "))
 
     logger.addHandler(logging_handler)
-    sys.excepthook = lambda _c, _e, _t: logger.critical("%s: %s\n%s", _c, _e, "".join(traceback.format_tb(_t)))
+    sys.excepthook = lambda _c, _e, _t: logger.critical(
+        "%s: %s\n%s", _c, _e, "".join(traceback.format_tb(_t))
+    )
 
     # progressbar handling
     global HIDE_PROGRESSBAR

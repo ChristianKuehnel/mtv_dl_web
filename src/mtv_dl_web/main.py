@@ -97,6 +97,76 @@ class SearchFilters(BaseModel):
     filters: List[str]
 
 
+# Supported filter operators and fields for validation
+SUPPORTED_OPERATORS = {"=", "!=", "+", "-"}
+SUPPORTED_FIELDS = {
+    "description",
+    "region",
+    "size",
+    "channel",
+    "topic",
+    "title",
+    "hash",
+    "url_http",
+    "duration",
+    "age",
+    "start",
+    "dow",
+    "hour",
+    "minute",
+    "season",
+    "episode",
+}
+
+
+def validate_filters(filters: List[str]) -> None:
+    """
+    Validate that filters use supported operators and fields
+    
+    Args:
+        filters: List of filter strings to validate
+        
+    Raises:
+        HTTPException: 400 Bad Request if invalid operators or fields are found
+    """
+    import re
+
+    for filter_str in filters:
+        # Parse filter string using the same regex as mtv_dl
+        match = re.match(
+            r"^(?P<field>\w+)(?P<operator>(?:=|!=|\+|-|\W+))(?P<pattern>.*)$",
+            filter_str,
+        )
+        if not match:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid filter format: '{filter_str}'. Expected format: field<operator>value (e.g., channel=ARD, title+News)",
+            )
+
+        field = match.group("field")
+        operator = match.group("operator")
+
+        # Replace url with url_http for validation (same as mtv_dl does)
+        if field == "url":
+            field = "url_http"
+
+        # Validate operator
+        if operator not in SUPPORTED_OPERATORS:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Unsupported operator '{operator}' in filter: '{filter_str}'. "
+                f"Supported operators: {', '.join(sorted(SUPPORTED_OPERATORS))}",
+            )
+
+        # Validate field
+        if field not in SUPPORTED_FIELDS:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Unsupported field '{field}' in filter: '{filter_str}'. "
+                f"Supported fields: {', '.join(sorted(SUPPORTED_FIELDS))}",
+            )
+
+
 # Initialize database connection
 DATABASE_DIR = Path.home() / ".mtv_dl_web"
 DATABASE_DIR.mkdir(exist_ok=True)
@@ -128,19 +198,20 @@ async def read_root():
 async def health_check():
     """
     Health check endpoint that verifies service readiness
-    
+
     Returns:
         JSON: { "status": "healthy" } or { "status": "unhealthy" }
     """
     import time
+
     start_time = time.time()
-    
+
     # Initialize response
     response = {"status": "healthy"}
-    
+
     try:
         # Check database connectivity with timeout
-        if db is not None and hasattr(db, 'connection'):
+        if db is not None and hasattr(db, "connection"):
             try:
                 # Use a simple query to validate connectivity (SQLite threading limitations workaround)
                 with db.connection:
@@ -155,18 +226,22 @@ async def health_check():
         logger.error(f"Database health check error: {e}")
         response["status"] = "unhealthy"
         return response
-    
+
     # Calculate response time
     response_time_ms = round((time.time() - start_time) * 1000, 2)
-    
+
     # Log health check (sanitized)
-    logger.info(f"Health check: {response['status']}, response time: {response_time_ms}ms")
-    
+    logger.info(
+        f"Health check: {response['status']}, response time: {response_time_ms}ms"
+    )
+
     # Enforce 500ms threshold (fail if exceeded)
     if response_time_ms > 500:
-        logger.warning(f"Health check response time {response_time_ms}ms exceeds 500ms threshold")
+        logger.warning(
+            f"Health check response time {response_time_ms}ms exceeds 500ms threshold"
+        )
         response["status"] = "unhealthy"
-    
+
     return response
 
 
@@ -174,10 +249,19 @@ async def health_check():
 async def search_shows(filters: SearchFilters):
     """
     Search for shows based on filters
+
+    Validates filter operators and fields before processing the search.
     """
     try:
+        # Validate filters before processing
+        validate_filters(filters.filters)
+
+        # Perform the search
         shows = list(db.filtered(filters.filters))
         return {"results": [ShowItem(**show) for show in shows]}
+    except HTTPException:
+        # Re-raise HTTPExceptions (validation errors)
+        raise
     except Exception as e:
         logger.error(f"Search failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))

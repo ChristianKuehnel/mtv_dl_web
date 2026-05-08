@@ -19,15 +19,13 @@ RUN uv sync --frozen
 COPY . .
 
 # Create directories for mounted volumes
-RUN mkdir -p /data /downloads /config
+RUN mkdir -p /data /downloads /config && \
+    chown -R appuser:appuser /app /data /downloads /config
 
 # Expose port
 EXPOSE 8000
 
 # Create a non-root user
-RUN adduser --disabled-password --gecos '' appuser && \
-    chown -R appuser:appuser /app && \
-    chown -R appuser:appuser /data /downloads /config
 USER appuser
 
 # Run the application with proper module path

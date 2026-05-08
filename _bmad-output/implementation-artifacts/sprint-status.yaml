@@ -37,7 +37,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-08T00:00:00Z
-last_updated: 2026-05-08T00:00:00Z
+last_updated: 2026-05-08T15:00:00Z
 project: mtv_dl_web
 project_key: NOKEY
 tracking_system: file-system
@@ -55,7 +55,7 @@ development_status:
   # Epic 2: Search Functionality
   epic-2: in-progress
   2-1-implement-search-api-endpoint: review
-  2-2-validate-filter-operators-fields: ready-for-dev
+  2-2-validate-filter-operators-fields: review
   2-3-build-search-ui: backlog
   epic-2-retrospective: optional
 
