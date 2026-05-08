@@ -47,7 +47,7 @@ development_status:
   # Epic 1: Project Foundation & Configuration
   epic-1: in-progress
   1-1-initialize-fastapi-backend: done
-  1-2-implement-readiness-endpoint: ready-for-dev
+  1-2-implement-readiness-endpoint: done
   1-3-configure-mounted-volumes-docker: ready-for-dev
   1-4-load-service-configuration: backlog
   epic-1-retrospective: optional
