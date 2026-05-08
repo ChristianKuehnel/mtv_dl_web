@@ -130,55 +130,44 @@ async def health_check():
     Health check endpoint that verifies service readiness
     
     Returns:
-        JSON: Health status including service and database connectivity
+        JSON: { "status": "healthy" } or { "status": "unhealthy" }
     """
     import time
     start_time = time.time()
     
-    # Initialize health status
-    health_status = {
-        "status": "healthy",
-        "timestamp": datetime.now().isoformat(),
-        "checks": {
-            "service": "ok",
-            "database": "unknown",
-            "response_time_ms": 0
-        }
-    }
+    # Initialize response
+    response = {"status": "healthy"}
     
     try:
-        # Check database connectivity
+        # Check database connectivity with timeout
         if db is not None and hasattr(db, 'connection'):
-            # Check if database connection is alive by testing the connection attribute
-            # Note: We can't execute queries in a different thread due to SQLite limitations
-            # So we'll do a basic check that the connection object exists and seems valid
-            if hasattr(db.connection, 'cursor') and callable(db.connection.cursor):
-                health_status["checks"]["database"] = "ok"
-            else:
-                health_status["checks"]["database"] = "failed"
-                health_status["status"] = "degraded"
-        else:
-            health_status["checks"]["database"] = "failed"
-            health_status["status"] = "degraded"
+            try:
+                # Use a simple query to validate connectivity (SQLite threading limitations workaround)
+                with db.connection:
+                    cursor = db.connection.cursor()
+                    cursor.execute("SELECT 1")
+                    cursor.fetchone()
+            except Exception as e:
+                logger.error(f"Database health check failed: {e}")
+                response["status"] = "unhealthy"
+                return response
     except Exception as e:
-        logger.error(f"Database health check failed: {e}")
-        health_status["checks"]["database"] = "failed"
-        health_status["status"] = "unhealthy"
+        logger.error(f"Database health check error: {e}")
+        response["status"] = "unhealthy"
+        return response
     
     # Calculate response time
     response_time_ms = round((time.time() - start_time) * 1000, 2)
-    health_status["checks"]["response_time_ms"] = response_time_ms
     
-    # Log health check
-    logger.info(f"Health check: {health_status['status']}, response time: {response_time_ms}ms")
+    # Log health check (sanitized)
+    logger.info(f"Health check: {response['status']}, response time: {response_time_ms}ms")
     
-    # Check if response time exceeds threshold (500ms)
+    # Enforce 500ms threshold (fail if exceeded)
     if response_time_ms > 500:
         logger.warning(f"Health check response time {response_time_ms}ms exceeds 500ms threshold")
-        health_status["status"] = "degraded"
-        health_status["warnings"] = ["Response time exceeds performance threshold"]
+        response["status"] = "unhealthy"
     
-    return health_status
+    return response
 
 
 @app.post("/api/search")

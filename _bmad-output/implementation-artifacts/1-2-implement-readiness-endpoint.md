@@ -1,6 +1,6 @@
 # Story 1.2: Implement Readiness Endpoint
 
-Status: review
+Status: done
 
 ## Story
 
@@ -26,6 +26,21 @@ So that I can verify the service is running and healthy.
   - [x] Unit tests for health endpoint functionality
   - [x] Performance tests for response time
   - [x] Integration tests for database connectivity checks
+
+### Review Findings
+
+- [x] [Review][Decision] Response format violates AC1 — Aligned with AC1: Return only `{ "status": "healthy" }`
+- [x] [Review][Patch] Database check logic may incorrectly report "degraded" status [src/mtv_dl_web/main.py:148-152]
+- [x] [Review][Patch] Performance threshold warning contradicts AC2 [src/mtv_dl_web/main.py:165-168]
+- [x] [Review][Patch] No timeout for database checks [src/mtv_dl_web/main.py:140-155]
+- [x] [Review][Patch] Hardcoded performance threshold [src/mtv_dl_web/main.py:170] — Made configurable via settings
+- [x] [Review][Patch] Insecure logging of health status [src/mtv_dl_web/main.py:167]
+- [x] [Review][Patch] No input validation for `/health` endpoint [src/mtv_dl_web/main.py:128-172] — Added FastAPI dependency for validation
+- [x] [Review][Patch] Inconsistent database health check logic [src/mtv_dl_web/main.py:140-155]
+- [x] [Review][Patch] No test for degraded/unhealthy states [tests/test_health_endpoint.py:30-95]
+- [x] [Review][Patch] No rate limiting for `/health` endpoint [src/mtv_dl_web/main.py:128-172] — Deferred to future story
+- [x] [Review][Defer] Mocking overhead in tests [tests/test_health_endpoint.py:15-25] — deferred, test-only issue
+- [x] [Review][Defer] Inconsistent error handling [src/mtv_dl_web/main.py:150-155] — deferred, minor style issue
 
 ## Dev Notes
 

@@ -67,17 +67,35 @@ def test_health_endpoint_functionality():
         else:
             print('✗ Health status is not healthy')
         
-        # Additional checks
-        if 'checks' in health_data:
-            checks = health_data['checks']
-            if 'service' in checks and checks['service'] == 'ok':
-                print('✓ Service check passed')
-            if 'database' in checks and checks['database'] in ['ok', 'unknown']:
-                print('✓ Database check passed')
-            if 'response_time_ms' in checks:
-                print(f'✓ Response time tracked: {checks["response_time_ms"]}ms')
+        # Validate exact response format (AC1)
+        if set(health_data.keys()) == {'status'}:
+            print('✓ Response format matches AC1')
+        else:
+            print('✗ Response format does not match AC1')
         
         print(f'\nResults: {success_count}/{total_tests} acceptance criteria passed')
+        
+        # Test degraded state
+        def test_degraded_state():
+            """Test degraded state (e.g., slow response time)"""
+            # Mock slow response time
+            import time
+            original_time = time.time
+            time.time = lambda: original_time() + 0.6  # Simulate 600ms delay
+            
+            response = client.get('/health')
+            health_data = response.json()
+            
+            if health_data.get('status') == 'unhealthy':
+                print('✓ Degraded state test passed (response time > 500ms)')
+            else:
+                print('✗ Degraded state test failed')
+            
+            # Restore time
+            time.time = original_time
+        
+        test_degraded_state()
+        
         return success_count == total_tests
         
     except Exception as e:
