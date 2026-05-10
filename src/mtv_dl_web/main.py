@@ -10,16 +10,14 @@ import logging
 import os
 import sys
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime
 from pathlib import Path
-from typing import List, Optional
+from typing import Any
 
-from fastapi import FastAPI, HTTPException, BackgroundTasks, Depends
+from fastapi import BackgroundTasks, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-from starlette.background import BackgroundTask
 
 # Add the mtv_dl directory to Python path to import mtv_dl module
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "mtv_dl" / "src"))
@@ -57,14 +55,14 @@ if frontend_dir.exists():
     app.mount("/static", StaticFiles(directory=frontend_dir), name="static")
 
 # Global variables for managing downloads
-download_queue: list = []
+download_queue: list[dict[str, Any]] = []
 executor = ThreadPoolExecutor(max_workers=4)
-active_downloads: dict[str, dict] = {}
+active_downloads: dict[str, dict[str, Any]] = {}
 
 
 # Pydantic models for API requests and responses
 class DownloadRequest(BaseModel):
-    filters: List[str]
+    filters: list[str]
     quality: str = "url_http"
     target_directory: str = "./downloads"
     include_subtitles: bool = True
@@ -77,7 +75,7 @@ class DownloadStatus(BaseModel):
     status: str
     progress: float
     message: str
-    file_path: Optional[str] = None
+    file_path: str | None = None
 
 
 class ShowItem(BaseModel):
@@ -90,11 +88,11 @@ class ShowItem(BaseModel):
     duration: str
     age: str
     region: str
-    downloaded: Optional[str] = None
+    downloaded: str | None = None
 
 
 class SearchFilters(BaseModel):
-    filters: List[str]
+    filters: list[str]
 
 
 # Supported filter operators and fields for validation
@@ -119,13 +117,13 @@ SUPPORTED_FIELDS = {
 }
 
 
-def validate_filters(filters: List[str]) -> None:
+def validate_filters(filters: list[str]) -> None:
     """
     Validate that filters use supported operators and fields
-    
+
     Args:
         filters: List of filter strings to validate
-        
+
     Raises:
         HTTPException: 400 Bad Request if invalid operators or fields are found
     """
@@ -175,7 +173,8 @@ HISTORY_FILE = DATABASE_DIR / "history.sqlite"
 
 try:
     db = Database(DATABASE_FILE, HISTORY_FILE)
-    db.update_if_old()  # Ensure database is up to date
+    if os.environ.get("MTV_DL_WEB_SKIP_DB_UPDATE") != "1":
+        db.update_if_old()  # Ensure database is up to date
     logger.info("Database initialized successfully")
 except Exception as e:
     logger.error(f"Failed to initialize database: {e}")
@@ -184,7 +183,7 @@ except Exception as e:
 
 # API Routes
 @app.get("/", response_class=HTMLResponse)
-async def read_root():
+async def read_root() -> str:
     """Serve the main HTML page"""
     try:
         with open(frontend_dir / "hello.html", "r") as f:
@@ -195,7 +194,7 @@ async def read_root():
 
 
 @app.get("/health")
-async def health_check():
+async def health_check() -> dict[str, str]:
     """
     Health check endpoint that verifies service readiness
 
@@ -231,22 +230,18 @@ async def health_check():
     response_time_ms = round((time.time() - start_time) * 1000, 2)
 
     # Log health check (sanitized)
-    logger.info(
-        f"Health check: {response['status']}, response time: {response_time_ms}ms"
-    )
+    logger.info(f"Health check: {response['status']}, response time: {response_time_ms}ms")
 
     # Enforce 500ms threshold (fail if exceeded)
     if response_time_ms > 500:
-        logger.warning(
-            f"Health check response time {response_time_ms}ms exceeds 500ms threshold"
-        )
+        logger.warning(f"Health check response time {response_time_ms}ms exceeds 500ms threshold")
         response["status"] = "unhealthy"
 
     return response
 
 
 @app.post("/api/search")
-async def search_shows(filters: SearchFilters):
+async def search_shows(filters: SearchFilters) -> dict[str, list[ShowItem]]:
     """
     Search for shows based on filters
 
@@ -268,9 +263,7 @@ async def search_shows(filters: SearchFilters):
 
 
 @app.post("/api/download")
-async def start_download(
-    download_request: DownloadRequest, background_tasks: BackgroundTasks
-):
+async def start_download(download_request: DownloadRequest, background_tasks: BackgroundTasks) -> dict[str, object]:
     """
     Start downloading shows based on filters
     """
@@ -283,9 +276,7 @@ async def start_download(
         shows = list(db.filtered(download_request.filters))
 
         if not shows:
-            raise HTTPException(
-                status_code=404, detail="No shows found matching filters"
-            )
+            raise HTTPException(status_code=404, detail="No shows found matching filters")
 
         # Process each show in the background
         download_ids = []
@@ -314,13 +305,13 @@ async def start_download(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-async def download_show_background(show_data: dict, download_request: DownloadRequest):
+async def download_show_background(show_data: dict[str, Any], download_request: DownloadRequest) -> None:
     """
     Background task to handle the actual download
     """
-    try:
-        show_id = show_data["hash"]
+    show_id = str(show_data.get("hash", "unknown"))
 
+    try:
         # Update status
         active_downloads[show_id]["status"] = "downloading"
         active_downloads[show_id]["message"] = "Starting download..."
@@ -334,9 +325,7 @@ async def download_show_background(show_data: dict, download_request: DownloadRe
             "medium": ("url_http", "url_http_small", "url_http_hd"),
             "high": ("url_http_hd", "url_http", "url_http_small"),
         }
-        quality = quality_map.get(
-            download_request.quality, ("url_http", "url_http_small", "url_http_hd")
-        )
+        quality = quality_map.get(download_request.quality, ("url_http", "url_http_small", "url_http_hd"))
 
         # Perform download
         path = downloader.download(
@@ -357,13 +346,14 @@ async def download_show_background(show_data: dict, download_request: DownloadRe
             active_downloads[show_id]["message"] = "Download failed"
 
     except Exception as e:
-        logger.error(f"Background download failed for {show_data['hash']}: {e}")
-        active_downloads[show_id]["status"] = "failed"
-        active_downloads[show_id]["message"] = f"Download failed: {str(e)}"
+        logger.error(f"Background download failed for {show_id}: {e}")
+        if show_id in active_downloads:
+            active_downloads[show_id]["status"] = "failed"
+            active_downloads[show_id]["message"] = f"Download failed: {str(e)}"
 
 
 @app.get("/api/download/status/{download_id}")
-async def get_download_status(download_id: str):
+async def get_download_status(download_id: str) -> dict[str, Any]:
     """
     Get the status of a specific download
     """
@@ -374,7 +364,7 @@ async def get_download_status(download_id: str):
 
 
 @app.get("/api/download/status")
-async def get_all_download_statuses():
+async def get_all_download_statuses() -> dict[str, dict[str, Any]]:
     """
     Get statuses of all active downloads
     """

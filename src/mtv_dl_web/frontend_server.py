@@ -3,22 +3,21 @@
 Simple static file server for serving the MTV Downloader frontend
 """
 
-import os
 import sys
-from pathlib import Path
 from http.server import HTTPServer, SimpleHTTPRequestHandler
-import threading
+from pathlib import Path
+from typing import Any
 import webbrowser
 
 
 class FrontendHandler(SimpleHTTPRequestHandler):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         # Serve from frontend directory
         self.directory = str(Path(__file__).parent / "frontend")
         super().__init__(*args, **kwargs)
 
 
-def run_frontend_server(port=8080):
+def run_frontend_server(port: int = 8080) -> None:
     """Run a simple HTTP server for the frontend"""
     handler = FrontendHandler
     server = HTTPServer(("localhost", port), handler)

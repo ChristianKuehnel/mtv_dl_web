@@ -89,10 +89,18 @@ mock_mtv_dl_module.Downloader = Mock()
 sys.modules['mtv_dl.mtv_dl'] = mock_mtv_dl_module
 
 # Now import the main module
+import mtv_dl_web.main as main_module
 from mtv_dl_web.main import app
 
 # Create test client
 client = TestClient(app)
+
+
+@pytest.fixture(autouse=True)
+def mock_database():
+    """Reset the app database mock for each test."""
+    main_module.db = MockDatabase(None, None)
+    yield
 
 
 def test_search_endpoint_success():
@@ -121,10 +129,10 @@ def test_search_endpoint_invalid_filters():
     """Test error handling for invalid filters"""
     response = client.post("/api/search", json={"filters": ["invalid_field=value"]})
     
-    assert response.status_code == 500
+    assert response.status_code == 400
     data = response.json()
     assert "detail" in data
-    assert "Invalid filter field" in data["detail"]
+    assert "Unsupported field" in data["detail"]
 
 
 def test_search_endpoint_missing_filters():
@@ -138,7 +146,7 @@ def test_search_endpoint_missing_filters():
 
 def test_search_endpoint_database_error():
     """Test error handling for database errors"""
-    response = client.post("/api/search", json={"filters": ["Database connection failed"]})
+    response = client.post("/api/search", json={"filters": ["title=Database connection failed"]})
     
     assert response.status_code == 500
     data = response.json()
