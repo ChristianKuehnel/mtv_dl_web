@@ -15,8 +15,8 @@ def test_project_structure():
     import os
     assert os.path.exists("pyproject.toml")
     assert os.path.exists("Dockerfile")
-    assert os.path.exists("src/main.py")
-    assert os.path.exists("src/frontend/hello.html")
+    assert os.path.exists("src/mtv_dl_web/main.py")
+    assert os.path.exists("src/mtv_dl_web/frontend/hello.html")
     print("✓ Project structure test passed")
 
 if __name__ == "__main__":

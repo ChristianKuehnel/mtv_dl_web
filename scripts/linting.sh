@@ -1,7 +1,8 @@
 #!/bin/bash
 
 # MTV Downloader Web Interface - Linting and Formatting Script
-# This script performs all code quality checks and formatting according to project conventions
+# This script performs code quality checks and formatting according to project conventions.
+# Use --check in CI to verify formatting without modifying files.
 
 set -euo pipefail  # Exit on any error, undefined vars, pipe failures
 
@@ -9,37 +10,105 @@ set -euo pipefail  # Exit on any error, undefined vars, pipe failures
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # Set virtual environment directory
 VENV_DIR="$ROOT_DIR/venv"
+UV_VENV_DIR="$ROOT_DIR/.venv"
+CHECK_MODE=false
 
-echo "Running code quality checks and formatting..."
+usage() {
+    cat <<EOF
+Usage: $0 [--check]
+
+Options:
+  --check   Verify formatting and linting without modifying files.
+  -h, --help
+            Show this help message.
+EOF
+}
+
+while [ "$#" -gt 0 ]; do
+    case "$1" in
+        --check)
+            CHECK_MODE=true
+            ;;
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        *)
+            echo "Error: Unknown argument: $1"
+            usage
+            exit 1
+            ;;
+    esac
+    shift
+done
+
+if [ "$CHECK_MODE" = true ]; then
+    echo "Running code quality checks..."
+else
+    echo "Running code quality checks and formatting..."
+fi
 
 # Function to check if a command exists
 command_exists() {
     command -v "$1" >/dev/null 2>&1
 }
 
+run_python_module() {
+    if [ -n "${VIRTUAL_ENV:-}" ] && [ -x "$VIRTUAL_ENV/bin/python" ]; then
+        "$VIRTUAL_ENV/bin/python" -m "$@"
+    elif [ -x "$VENV_DIR/bin/python" ]; then
+        "$VENV_DIR/bin/python" -m "$@"
+    elif [ -x "$UV_VENV_DIR/bin/python" ]; then
+        "$UV_VENV_DIR/bin/python" -m "$@"
+    elif command_exists uv; then
+        (
+            cd "$ROOT_DIR"
+            uv run "$@"
+        )
+    else
+        echo "Error: No Python environment found. Please run setup script first: ./scripts/setup.sh"
+        exit 1
+    fi
+}
+
+run_prettier_command() {
+    if [ -x "$ROOT_DIR/node_modules/.bin/prettier" ]; then
+        "$ROOT_DIR/node_modules/.bin/prettier" "$@"
+    elif command_exists prettier; then
+        prettier "$@"
+    elif [ "$CHECK_MODE" = true ]; then
+        echo "Error: Prettier not found. Run npm install before linting."
+        exit 1
+    else
+        echo "Warning: Prettier not found. Skipping HTML/JS formatting."
+    fi
+}
+
 # Function to run Python formatting with black
 run_black() {
-    echo "Running Black formatter on Python files..."
-    source "$VENV_DIR/bin/activate"
-    # Check if src directory exists before running black
-    if [ -d "$ROOT_DIR/src" ]; then
-        black "$ROOT_DIR/src/" "$ROOT_DIR/scripts/"
-        echo "Python formatting complete."
+    echo "Running Black on Python files..."
+    # Check if first-party source directory exists before running black.
+    if [ -d "$ROOT_DIR/src/mtv_dl_web" ]; then
+        if [ "$CHECK_MODE" = true ]; then
+            run_python_module black --check "$ROOT_DIR/src/mtv_dl_web/" "$ROOT_DIR/scripts/"
+        else
+            run_python_module black "$ROOT_DIR/src/mtv_dl_web/" "$ROOT_DIR/scripts/"
+        fi
+        echo "Black complete."
     else
-        echo "Warning: src directory not found. Skipping Python formatting."
+        echo "Warning: src/mtv_dl_web directory not found. Skipping Python formatting."
     fi
 }
 
 # Function to run Python type checking with mypy
 run_mypy() {
     echo "Running MyPy type checking..."
-    source "$VENV_DIR/bin/activate"
-    # Check if src directory exists before running mypy
-    if [ -d "$ROOT_DIR/src" ]; then
-        mypy "$ROOT_DIR/src/" --ignore-missing-imports
+    # Check only first-party application code; src/mtv_dl is vendored upstream code.
+    if [ -d "$ROOT_DIR/src/mtv_dl_web" ]; then
+        run_python_module mypy "$ROOT_DIR/src/mtv_dl_web/" --ignore-missing-imports
         echo "Type checking complete."
     else
-        echo "Warning: src directory not found. Skipping type checking."
+        echo "Warning: src/mtv_dl_web directory not found. Skipping type checking."
     fi
 }
 
@@ -47,8 +116,15 @@ run_mypy() {
 run_hadolint() {
     echo "Running hadolint on Dockerfile..."
     if command_exists hadolint; then
-        hadolint "$ROOT_DIR/Dockerfile"
+        if [ -f "$ROOT_DIR/Dockerfile" ]; then
+            hadolint "$ROOT_DIR/Dockerfile"
+        else
+            echo "Warning: Dockerfile not found. Skipping Dockerfile linting."
+        fi
         echo "Dockerfile linting complete."
+    elif [ "$CHECK_MODE" = true ]; then
+        echo "Error: hadolint not found. Install hadolint before linting."
+        exit 1
     else
         echo "Warning: hadolint not found. Skipping Dockerfile linting."
     fi
@@ -56,15 +132,19 @@ run_hadolint() {
 
 # Function to run HTML/JS formatting with Prettier
 run_prettier() {
-    echo "Running Prettier on HTML/JS files..."
-    if command_exists prettier; then
-        # Format HTML and JS files
-        if [ -d "$ROOT_DIR/src" ]; then
-            find "$ROOT_DIR/src/" -name "*.html" -o -name "*.js" -exec prettier --write {} +
+    echo "Running Prettier on HTML/JS/CSS files..."
+    if [ -d "$ROOT_DIR/src" ]; then
+        mapfile -d '' prettier_files < <(find "$ROOT_DIR/src/" -type f \( -name "*.html" -o -name "*.js" -o -name "*.css" \) -print0)
+        if [ "${#prettier_files[@]}" -eq 0 ]; then
+            echo "No HTML/JS/CSS files found. Skipping Prettier."
+        elif [ "$CHECK_MODE" = true ]; then
+            run_prettier_command --check "${prettier_files[@]}"
+        else
+            run_prettier_command --write "${prettier_files[@]}"
         fi
-        echo "HTML/JS formatting complete."
+        echo "Prettier complete."
     else
-        echo "Warning: Prettier not found. Skipping HTML/JS formatting."
+        echo "Warning: src directory not found. Skipping Prettier."
     fi
 }
 
@@ -95,22 +175,20 @@ run_all_checks() {
     echo "All code quality checks completed successfully!"
     echo ""
     echo "Summary:"
-    echo "- Python code formatted with Black"
+    if [ "$CHECK_MODE" = true ]; then
+        echo "- Python code formatting verified with Black"
+        echo "- HTML/JS/CSS formatting verified with Prettier"
+    else
+        echo "- Python code formatted with Black"
+        echo "- HTML/JS/CSS formatted with Prettier"
+    fi
     echo "- Python types checked with MyPy"
     echo "- Dockerfile linted with hadolint"
-    echo "- HTML/JS formatted with Prettier"
     echo "- Shell scripts checked with ShellCheck"
 }
 
 # Main execution
 main() {
-    # Check if virtual environment exists
-    if [ ! -d "$VENV_DIR" ]; then
-        echo "Error: Virtual environment not found at $VENV_DIR."
-        echo "Please run setup script first: ./scripts/setup.sh"
-        exit 1
-    fi
-    
     # Run all checks
     run_all_checks
 }

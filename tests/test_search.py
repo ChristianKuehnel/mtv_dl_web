@@ -80,13 +80,13 @@ def test_search_endpoint_invalid_filters():
     """Test error handling for invalid filters"""
     with patch.object(Database, 'filtered') as mock_filtered:
         mock_filtered.side_effect = Exception("Invalid filter field")
-        
+
         response = client.post("/api/search", json={"filters": ["invalid_field=value"]})
-        
-        assert response.status_code == 500
+
+        assert response.status_code == 400
         data = response.json()
         assert "detail" in data
-        assert "Invalid filter field" in data["detail"]
+        assert "Unsupported field" in data["detail"]
 
 
 def test_search_endpoint_missing_filters():

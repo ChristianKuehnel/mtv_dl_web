@@ -4,7 +4,9 @@ FROM python:3.11-slim
 WORKDIR /app
 
 # Install uv
-RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+RUN curl -LsSf https://astral.sh/uv/install.sh -o /tmp/install-uv.sh && \
+    sh /tmp/install-uv.sh && \
+    rm /tmp/install-uv.sh
 
 # Set PATH to include uv
 ENV PATH="/root/.cargo/bin:$PATH"
