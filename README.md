@@ -2,6 +2,8 @@
 
 A lightweight web interface for the MediathekView Downloader with Python backend supporting concurrent web requests and downloads.
 
+⚠️ This project is mostly AI generated, it will do strange things.
+
 ## Quick Start
 
 ### 1. Development - Local Shell
@@ -100,24 +102,6 @@ black src/ tests/
 
 # Run type checking
 mypy src/ tests/
-```
-
-## Deployment
-
-### Docker
-
-```bash
-# Build and run with Docker
-docker build -t mtv-dl-web .
-docker run -d -p 8000:8000 --name mtv-dl-web mtv-dl-web
-```
-
-### Podman
-
-```bash
-# Build and run with Podman
-podman build -t mtv-dl-web .
-podman run -d -p 8000:8000 --name mtv-dl-web mtv-dl-web
 ```
 
 ## Architecture
