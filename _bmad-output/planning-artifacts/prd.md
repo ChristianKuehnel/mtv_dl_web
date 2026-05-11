@@ -13,12 +13,16 @@ stepsCompleted:
   - 'step-e-01-discovery'
   - 'step-e-02-review'
   - 'step-e-03-edit'
-lastEdited: '2026-05-08'
+lastEdited: '2026-05-11'
 editHistory:
   - date: '2026-05-08'
     changes: 'Normalized legacy PRD into BMAD structure with measurable success criteria, scope, user journeys, numbered FRs, numbered NFRs, risks, acceptance criteria, and open questions.'
   - date: '2026-05-08'
     changes: 'Resolved validation findings by clarifying scheduler auto-enqueue behavior, removing pause/resume from MVP, defining canonical database path, preserving filesystem-configured post-download hooks, tightening NFR metrics, adding web-app readiness requirements, and adding traceability.'
+  - date: '2026-05-11'
+    changes: 'Added FR-13 and AC-22 to address download naming patterns and folder structure requirements per GitHub issue #16. Updated traceability matrix to include new requirements.'
+  - date: '2026-05-11'
+    changes: 'Fixed duplicate FR-13 by renumbering to FR-14, removed duplicate AC-22, clarified AC-22 for multiple files, and updated traceability matrix accordingly.'
 ---
 
 # MTV Downloader Web Interface - Product Requirements Document
@@ -241,6 +245,10 @@ FR-11: Users can enable MKV merge and file modification time behavior when those
 
 FR-12: Users can use post-download scripts configured on the filesystem and mounted into the container; MVP does not require web UI controls for editing hook scripts.
 
+FR-13: Downloads must follow mtv_dl's naming patterns and folder structure conventions, preserving existing CLI behavior for file organization and naming.
+
+FR-14: Downloads follow a consistent naming pattern: `{title} - {episode_title}.{ext}` for series content and `{title}.{ext}` for non-series content, with spaces replaced by underscores and special characters sanitized. Files are organized in a flat folder structure under the configured target directory.
+
 ### Queue
 
 FR-13: Users can add one or more selected shows to a download queue.
@@ -378,6 +386,8 @@ AC-20: Given a database refresh operation is in progress, when health check or s
 
 AC-21: Given a database refresh operation is in progress, when queue management operations are performed, then they execute normally without being blocked by the refresh operation.
 
+AC-22: Given a completed download, when the system verifies the files, then all file names match the configured naming pattern and files are located in the configured target directory.
+
 AC-11: Given supported download options, when the user starts a download, then the backend passes those options through existing `mtv_dl` behavior in the expected format.
 
 AC-12: Given post-download scripts configured on the filesystem and mounted into the container, when `mtv_dl` invokes configured hooks, then the web app does not block or replace that behavior.
@@ -392,7 +402,7 @@ AC-14: Given one active download, when five concurrent health or status requests
 | --- | --- | --- | --- |
 | SC-1 | Journey 1, Journey 3 | FR-1, FR-2 | AC-1, AC-2 |
 | SC-2 | Journey 1, Journey 3 | FR-3, FR-4, FR-5 | AC-1 |
-| SC-3 | Journey 1, Journey 5 | FR-6 through FR-12, FR-28 | AC-3, AC-11, AC-12 |
+| SC-3 | Journey 1, Journey 5 | FR-6 through FR-14, FR-28 | AC-3, AC-11, AC-12, AC-22 |
 | SC-4 | Journey 2 | FR-13 through FR-16 | AC-3, AC-4, AC-5 |
 | SC-5 | Journey 3 | FR-22 through FR-25 | AC-7, AC-8 |
 | SC-6 | Journey 6 | FR-20, FR-26 through FR-31, NFR-4, NFR-9, NFR-11, NFR-16, NFR-17, NFR-18, NFR-19 | AC-9, AC-10, AC-15, AC-16, AC-17, AC-18, AC-19, AC-20, AC-21 |
