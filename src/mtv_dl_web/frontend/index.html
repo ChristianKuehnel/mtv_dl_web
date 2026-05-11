@@ -14,7 +14,20 @@
     <div id="app" class="container mx-auto px-4 py-8">
       <!-- Header -->
       <header class="mb-8 text-center">
-        <h1 class="text-3xl font-bold text-gray-800 mb-2">MTV Downloader</h1>
+        <div class="flex flex-col items-center gap-3">
+          <h1 class="text-3xl font-bold text-gray-800">MTV Downloader</h1>
+          <div
+            id="health-indicator"
+            class="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-3 py-1 text-sm font-medium text-gray-700 shadow-sm"
+          >
+            <span
+              id="health-dot"
+              class="h-2.5 w-2.5 rounded-full bg-red-500"
+              aria-hidden="true"
+            ></span>
+            <span id="health-label">offline</span>
+          </div>
+        </div>
         <p class="text-gray-600">
           Download videos from German public broadcasting services
         </p>
@@ -176,6 +189,58 @@
       const noDownloads = document.getElementById("no-downloads");
       const statusBar = document.getElementById("status-bar");
       const statusMessage = document.getElementById("status-message");
+      const healthIndicator = document.getElementById("health-indicator");
+      const healthDot = document.getElementById("health-dot");
+      const healthLabel = document.getElementById("health-label");
+
+      const HEALTH_STATES = {
+        online: {
+          label: "online",
+          indicatorClass:
+            "inline-flex items-center gap-2 rounded-full border border-green-200 bg-green-50 px-3 py-1 text-sm font-medium text-green-800 shadow-sm",
+          dotClass: "h-2.5 w-2.5 rounded-full bg-green-500",
+        },
+        updating: {
+          label: "updating",
+          indicatorClass:
+            "inline-flex items-center gap-2 rounded-full border border-yellow-200 bg-yellow-50 px-3 py-1 text-sm font-medium text-yellow-800 shadow-sm",
+          dotClass: "h-2.5 w-2.5 rounded-full bg-yellow-500",
+        },
+        offline: {
+          label: "offline",
+          indicatorClass:
+            "inline-flex items-center gap-2 rounded-full border border-red-200 bg-red-50 px-3 py-1 text-sm font-medium text-red-800 shadow-sm",
+          dotClass: "h-2.5 w-2.5 rounded-full bg-red-500",
+        },
+      };
+
+      function updateHealthStatus(state) {
+        const healthState = HEALTH_STATES[state] || HEALTH_STATES.offline;
+
+        healthIndicator.className = healthState.indicatorClass;
+        healthDot.className = healthState.dotClass;
+        healthLabel.textContent = healthState.label;
+      }
+
+      async function refreshHealthStatus() {
+        try {
+          const response = await fetch("/health", { cache: "no-store" });
+
+          if (!response.ok) {
+            throw new Error("Health check failed");
+          }
+
+          const data = await response.json();
+          if (data.status === "updating") {
+            updateHealthStatus("updating");
+            return;
+          }
+
+          updateHealthStatus(data.status === "healthy" ? "online" : "offline");
+        } catch (error) {
+          updateHealthStatus("offline");
+        }
+      }
 
       // Show status message
       function showStatus(message, type = "info") {
@@ -485,6 +550,8 @@
 
       // Initialize
       document.addEventListener("DOMContentLoaded", () => {
+        refreshHealthStatus();
+        setInterval(refreshHealthStatus, 5000);
         // Periodically refresh downloads
         setInterval(refreshDownloads, 5000);
       });
