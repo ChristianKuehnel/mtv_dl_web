@@ -174,9 +174,12 @@ DATABASE_FILE = DATABASE_DIR / "filmliste.sqlite"
 HISTORY_FILE = DATABASE_DIR / "history.sqlite"
 
 
-def get_db_connection():
+def get_db_connection() -> Database:
     """
     Create a new database connection for each request to avoid thread-safety issues
+
+    Returns:
+        Database: A new database connection instance
     """
     try:
         db = Database(DATABASE_FILE, HISTORY_FILE)
@@ -262,23 +265,23 @@ async def search_shows(filters: SearchFilters) -> dict[str, list[ShowItem]]:
         # Perform the search using a fresh database connection
         db_conn = get_db_connection()
         shows = list(db_conn.filtered(filters.filters))
-        
+
         # Convert datetime and timedelta objects to strings for Pydantic validation
         results = []
         for show in shows:
             show_dict = dict(show)
             # Convert datetime objects to ISO format strings
-            if isinstance(show_dict.get('start'), datetime):
-                show_dict['start'] = show_dict['start'].isoformat()
-            if isinstance(show_dict.get('downloaded'), datetime):
-                show_dict['downloaded'] = show_dict['downloaded'].isoformat()
+            if isinstance(show_dict.get("start"), datetime):
+                show_dict["start"] = show_dict["start"].isoformat()
+            if isinstance(show_dict.get("downloaded"), datetime):
+                show_dict["downloaded"] = show_dict["downloaded"].isoformat()
             # Convert timedelta objects to string representation
-            if isinstance(show_dict.get('duration'), timedelta):
-                show_dict['duration'] = str(show_dict['duration'])
-            if isinstance(show_dict.get('age'), timedelta):
-                show_dict['age'] = str(show_dict['age'])
+            if isinstance(show_dict.get("duration"), timedelta):
+                show_dict["duration"] = str(show_dict["duration"])
+            if isinstance(show_dict.get("age"), timedelta):
+                show_dict["age"] = str(show_dict["age"])
             results.append(ShowItem(**show_dict))
-        
+
         return {"results": results}
     except HTTPException:
         # Re-raise HTTPExceptions (validation errors)
