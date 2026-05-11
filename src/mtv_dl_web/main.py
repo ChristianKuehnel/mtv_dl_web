@@ -12,6 +12,8 @@ import sys
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
 from pathlib import Path
+from threading import Lock
+from time import perf_counter
 from typing import Any
 
 from fastapi import BackgroundTasks, FastAPI, HTTPException
@@ -60,6 +62,8 @@ if frontend_dir.exists():
 download_queue: list[dict[str, Any]] = []
 executor = ThreadPoolExecutor(max_workers=4)
 active_downloads: dict[str, dict[str, Any]] = {}
+database_update_lock = Lock()
+_database_update_in_progress = False
 
 
 # Pydantic models for API requests and responses
@@ -174,6 +178,20 @@ DATABASE_FILE = DATABASE_DIR / "filmliste.sqlite"
 HISTORY_FILE = DATABASE_DIR / "history.sqlite"
 
 
+def set_database_update_in_progress(is_in_progress: bool) -> None:
+    """Record whether mtv_dl is refreshing the show database."""
+    global _database_update_in_progress
+
+    with database_update_lock:
+        _database_update_in_progress = is_in_progress
+
+
+def is_database_update_in_progress() -> bool:
+    """Return true while mtv_dl database refresh work is active."""
+    with database_update_lock:
+        return _database_update_in_progress
+
+
 def get_db_connection() -> Database:
     """
     Create a new database connection for each request to avoid thread-safety issues
@@ -184,7 +202,11 @@ def get_db_connection() -> Database:
     try:
         db = Database(DATABASE_FILE, HISTORY_FILE)
         if os.environ.get("MTV_DL_WEB_SKIP_DB_UPDATE") != "1":
-            db.update_if_old()  # Ensure database is up to date
+            set_database_update_in_progress(True)
+            try:
+                db.update_if_old()  # Ensure database is up to date
+            finally:
+                set_database_update_in_progress(False)
         logger.debug("Database connection created successfully")
         return db
     except Exception as e:
@@ -210,45 +232,29 @@ async def health_check() -> dict[str, str]:
     Health check endpoint that verifies service readiness
 
     Returns:
-        JSON: { "status": "healthy" } or { "status": "unhealthy" }
+        JSON: { "status": "healthy" }, { "status": "updating" }, or { "status": "unhealthy" }
     """
-    import time
-
-    start_time = time.time()
-
-    # Initialize response
-    response = {"status": "healthy"}
+    start_time = perf_counter()
+    status = "updating" if is_database_update_in_progress() else "healthy"
 
     try:
-        # Check database connectivity by creating a new connection
-        try:
-            db_conn = get_db_connection()
-            # Use a simple query to validate connectivity
-            with db_conn.connection:
-                cursor = db_conn.connection.cursor()
-                cursor.execute("SELECT 1")
-                cursor.fetchone()
-        except Exception as e:
-            logger.error(f"Database health check failed: {e}")
-            response["status"] = "unhealthy"
-            return response
+        DATABASE_DIR.mkdir(parents=True, exist_ok=True)
     except Exception as e:
-        logger.error(f"Database health check error: {e}")
-        response["status"] = "unhealthy"
-        return response
+        logger.error(f"Health check failed: {e}")
+        status = "unhealthy"
 
     # Calculate response time
-    response_time_ms = round((time.time() - start_time) * 1000, 2)
+    response_time_ms = round((perf_counter() - start_time) * 1000, 2)
 
     # Log health check (sanitized)
-    logger.info(f"Health check: {response['status']}, response time: {response_time_ms}ms")
+    logger.info(f"Health check: {status}, response time: {response_time_ms}ms")
 
-    # Enforce 500ms threshold (fail if exceeded)
-    if response_time_ms > 500:
-        logger.warning(f"Health check response time {response_time_ms}ms exceeds 500ms threshold")
-        response["status"] = "unhealthy"
+    # Story 1.5 requires health checks to complete within 1 second at p95.
+    if response_time_ms > 1000:
+        logger.warning(f"Health check response time {response_time_ms}ms exceeds 1000ms threshold")
+        status = "unhealthy"
 
-    return response
+    return {"status": status}
 
 
 @app.post("/api/search")
