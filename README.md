@@ -1,116 +1,151 @@
 # MTV Downloader Web Interface
 
-A lightweight web interface for the MediathekView Downloader with Python backend supporting concurrent web requests and downloads.
+A small self-hosted web UI for [mtv_dl](https://github.com/fnep/mtv_dl), the MediathekView downloader. Run it on a server, mini PC, or NAS-adjacent machine, search the public broadcasting catalog "Mediathek" from a browser, and download shows directly into a mounted media folder so they are ready to watch from your NAS.
 
-⚠️ This project is mostly AI generated, it will do strange things.
+This project is mostly AI generated using the BMAD method for vibe coding: product notes, architecture, stories, and implementation context live in `_bmad-output/` so future agent sessions can keep working from the same plan. Expect sharp edges, but also a pleasantly direct path from idea to working software.
+
+![MTV Downloader web UI screenshot](docs/web-ui-screenshot.png)
+
+## What It Does
+
+- Provides a FastAPI backend with a browser-based search and download interface.
+- Reuses `mtv_dl` for database updates, filtering, and downloading instead of reimplementing MediathekView logic.
+- Stores downloaded media in a host-mounted `/downloads` directory, which can point at local disk or NAS storage.
+- Keeps application data, config, downloads, and the `mtv_dl` SQLite database outside the container so restarts do not wipe state.
 
 ## Quick Start
 
-### 1. Development - Local Shell
+### Docker Compose
 
 ```bash
-# Install dependencies
-uv sync
-
-# Start the development server
-uv run src/main.py
-
-# The service will be available at http://localhost:8000
-```
-
-### 2. Production - Docker Container
-
-#### Option A: Using Docker Compose (Recommended)
-
-```bash
-# Start the service with Docker Compose (includes volume mounting)
 docker-compose up -d
-
-# The service will be available at http://localhost:8000
-# Volumes will be created in:
-# - ./data - Application data
-# - ./downloads - Download storage
-# - ./config - Configuration files
-# - ./.mtv_dl_web - Database files (including filmliste.sqlite)
 ```
 
-#### Option B: Using Docker Directly
+Open <http://localhost:8000>.
+
+The compose file mounts these host directories into the container:
+
+| Host path       | Container path              | Purpose                                 |
+| --------------- | --------------------------- | --------------------------------------- |
+| `./downloads`   | `/downloads`                | Downloaded video files                  |
+| `./config`      | `/config`                   | Configuration files                     |
+| `./data`        | `/data`                     | Application data                        |
+| `./.mtv_dl_web` | `/home/appuser/.mtv_dl_web` | `filmliste.sqlite` and download history |
+
+To write directly to NAS storage, change the `./downloads:/downloads` mount in `docker-compose.yml` to a mounted NAS path, for example `/mnt/nas/mediathek:/downloads`.
+
+### Docker
 
 ```bash
-# Build the container image
 docker build -t mtv-dl-web .
+mkdir -p ./data ./downloads ./config ./.mtv_dl_web
 
-# Create directories for volume mounting
-mkdir -p ./data ./downloads ./config
-
-# Run the container with volume mounts
 docker run -d -p 8000:8000 \
-  -v $(pwd)/data:/data \
-  -v $(pwd)/downloads:/downloads \
-  -v $(pwd)/config:/config \
-  -v $(pwd)/.mtv_dl_web:/home/appuser/.mtv_dl_web \
+  -v "$(pwd)/data:/data" \
+  -v "$(pwd)/downloads:/downloads" \
+  -v "$(pwd)/config:/config" \
+  -v "$(pwd)/.mtv_dl_web:/home/appuser/.mtv_dl_web" \
   --name mtv-dl-web \
   mtv-dl-web
-
-# The service will be available at http://localhost:8000
 ```
 
-#### Volume Persistence
+Open <http://localhost:8000>.
 
-The container uses the following volume mounts for data persistence:
-- `/data` - Application data storage
-- `/downloads` - Downloaded video files
-- `/config` - Configuration files
-- `/home/appuser/.mtv_dl_web` - Database files (filmliste.sqlite)
+### Local Development
 
-All volumes are configured to persist across container restarts.
+```bash
+uv sync
+uv run uvicorn mtv_dl_web.main:app --host 0.0.0.0 --port 8000
+```
+
+## Using The Web UI
+
+1. Enter one or more filters in the **Filters** field.
+2. Set the target directory. In Docker this should usually be `/downloads` or a subdirectory like `/downloads/tatort`.
+3. Click **Search Shows**.
+4. Select the results you want.
+5. Choose quality and subtitle options.
+6. Click **Download Selected Shows**.
+
+The first start may take longer because `mtv_dl` needs a local copy of the MediathekView film list.
+
+## Filter Queries
+
+Filters use the same basic syntax as `mtv_dl`:
+
+```text
+field<operator>value
+```
+
+Examples:
+
+```text
+channel=ARD
+topic='extra 3' duration+20m age-1w
+title!=spezial duration+45m
+topic=Tatort dow=0 hour=20
+```
+
+Multiple filters are combined with **AND**, so every filter must match. Quote values that contain spaces, such as `topic='Die Anstalt'`.
+
+Supported operators:
+
+| Operator | Meaning                                                  |
+| -------- | -------------------------------------------------------- |
+| `=`      | Contains or equals, depending on the field type          |
+| `!=`     | Does not contain or does not equal                       |
+| `+`      | Greater than for numeric, age, and duration-style fields |
+| `-`      | Less than for numeric, age, and duration-style fields    |
+
+Supported fields include `description`, `region`, `size`, `channel`, `topic`, `title`, `hash`, `url`, `duration`, `age`, `start`, `dow`, `hour`, `minute`, `season`, and `episode`.
+
+Useful patterns:
+
+- `duration+20m` finds shows longer than 20 minutes.
+- `age-1w` finds shows newer than one week.
+- `channel=ZDF topic=heute-show` finds ZDF shows whose topic contains `heute-show`.
+- `topic=Tatort dow=0 hour=20` finds Sunday evening Tatort-style matches.
 
 ## API Endpoints
 
-- **GET /** - Main HTML interface
-- **GET /health** - Health check endpoint
-- **POST /api/search** - Search for shows with filters
-- **POST /api/download** - Initiate downloads
-- **GET /api/download/status/{download_id}** - Get download status
-- **GET /api/download/status** - Get all download statuses
+- `GET /` - Main web interface
+- `GET /health` - Health check
+- `POST /api/search` - Search for shows with filters
+- `POST /api/download` - Start downloads for matching shows
+- `GET /api/download/status/{download_id}` - Get one download status
+- `GET /api/download/status` - Get all download statuses
+
+Example search request:
+
+```bash
+curl -X POST http://localhost:8000/api/search \
+  -H "Content-Type: application/json" \
+  -d '{"filters":["channel=ARD","topic='\''extra 3'\''","duration+20m"]}'
+```
 
 ## Configuration
 
-The service uses the following environment variables:
+Environment variables:
 
-- `PORT` - Service port (default: 8000)
-- `DATABASE_DIR` - Database directory (default: ~/.mtv_dl_web)
-- `LOG_LEVEL` - Logging level (default: INFO)
+| Variable       | Default         | Description        |
+| -------------- | --------------- | ------------------ |
+| `PORT`         | `8000`          | Service port       |
+| `DATABASE_DIR` | `~/.mtv_dl_web` | Database directory |
+| `LOG_LEVEL`    | `INFO`          | Logging level      |
 
 ## Development
 
-### Running Tests
-
 ```bash
-# Run all tests
 pytest tests/
-
-# Run specific test
-pytest tests/test_search.py
-```
-
-### Code Quality
-
-```bash
-# Run linting
 black src/ tests/
-
-# Run type checking
 mypy src/ tests/
+npx prettier --check "src/mtv_dl_web/frontend/**/*.html"
 ```
 
-## Architecture
+## Credits
 
-- **Backend:** FastAPI (Python 3.10+)
-- **Frontend:** Pure HTML/CSS/JavaScript with Tailwind CSS
-- **Database:** SQLite via mtv_dl integration
-- **Concurrency:** Async/Await with ThreadPoolExecutor
+This web interface stands on top of [mtv_dl](https://github.com/fnep/mtv_dl). Thank you to the `mtv_dl` maintainers for doing the hard part: integrating with the MediathekView data and downloader workflow so this project can stay focused on a small self-hosted UI.
 
 ## License
 
-MIT License - See LICENSE file for details.
+MIT License.

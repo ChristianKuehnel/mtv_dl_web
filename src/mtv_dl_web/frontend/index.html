@@ -194,15 +194,70 @@
         }, 5000);
       }
 
+      // Split mtv_dl-style filters while preserving quoted values.
+      function parseFilters(input) {
+        const filters = [];
+        let current = "";
+        let quote = null;
+        let escaped = false;
+
+        for (const char of input.trim()) {
+          if (escaped) {
+            current += char;
+            escaped = false;
+            continue;
+          }
+
+          if (char === "\\") {
+            current += char;
+            escaped = true;
+            continue;
+          }
+
+          if ((char === "'" || char === '"') && quote === null) {
+            quote = char;
+            current += char;
+            continue;
+          }
+
+          if (char === quote) {
+            quote = null;
+            current += char;
+            continue;
+          }
+
+          if (/\s/.test(char) && quote === null) {
+            if (current.length > 0) {
+              filters.push(current);
+              current = "";
+            }
+            continue;
+          }
+
+          current += char;
+        }
+
+        if (quote !== null) {
+          throw new Error("Unclosed quoted filter value");
+        }
+
+        if (current.length > 0) {
+          filters.push(current);
+        }
+
+        return filters;
+      }
+
       // Search for shows
       async function searchShows() {
-        const filters = searchBar.value.trim();
-        if (!filters) {
+        const filterText = searchBar.value.trim();
+        if (!filterText) {
           showStatus("Please enter search filters", "error");
           return;
         }
 
         try {
+          const filters = parseFilters(filterText);
           showStatus("Searching shows...");
           const response = await fetch(`${API_BASE}/search`, {
             method: "POST",
@@ -210,7 +265,7 @@
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
-              filters: filters.split(" "),
+              filters,
             }),
           });
 
@@ -288,7 +343,14 @@
           return;
         }
 
-        const filters = searchBar.value.trim().split(" ");
+        let filters;
+        try {
+          filters = parseFilters(searchBar.value);
+        } catch (error) {
+          showStatus(`Filter error: ${error.message}`, "error");
+          return;
+        }
+
         const targetDirectory = targetDir.value || "./downloads";
         const quality = qualitySelect.value;
         const includeSubtitles = subtitlesCheckbox.checked;

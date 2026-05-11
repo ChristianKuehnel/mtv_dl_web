@@ -19,8 +19,8 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-# Add the mtv_dl directory to Python path to import mtv_dl module
-sys.path.insert(0, str(Path(__file__).parent.parent.parent / "mtv_dl" / "src"))
+# Add the bundled mtv_dl directory to Python path to import mtv_dl module
+sys.path.insert(0, str(Path(__file__).parent.parent / "mtv_dl" / "src"))
 
 # Import the mtv_dl functionality
 try:
@@ -30,7 +30,8 @@ except ImportError as e:
     raise
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
+log_level = os.environ.get("LOG_LEVEL", "INFO").upper()
+logging.basicConfig(level=getattr(logging, log_level, logging.INFO))
 logger = logging.getLogger(__name__)
 
 # Initialize FastAPI app
@@ -166,8 +167,8 @@ def validate_filters(filters: list[str]) -> None:
 
 
 # Initialize database connection
-DATABASE_DIR = Path.home() / ".mtv_dl_web"
-DATABASE_DIR.mkdir(exist_ok=True)
+DATABASE_DIR = Path(os.environ.get("DATABASE_DIR", str(Path.home() / ".mtv_dl_web"))).expanduser()
+DATABASE_DIR.mkdir(parents=True, exist_ok=True)
 DATABASE_FILE = DATABASE_DIR / "filmliste.sqlite"
 HISTORY_FILE = DATABASE_DIR / "history.sqlite"
 
@@ -186,7 +187,7 @@ except Exception as e:
 async def read_root() -> str:
     """Serve the main HTML page"""
     try:
-        with open(frontend_dir / "hello.html", "r") as f:
+        with open(frontend_dir / "index.html", "r") as f:
             content = f.read()
         return content
     except FileNotFoundError:

@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 services:
   mtv_dl_web:
@@ -14,23 +14,3 @@ services:
     environment:
       - PYTHONPATH=/app/src
     restart: unless-stopped
-    
-volumes:
-  mtv_dl_data:
-    driver: local
-    driver_opts:
-      type: none
-      device: ./data
-      o: bind
-  mtv_dl_downloads:
-    driver: local
-    driver_opts:
-      type: none
-      device: ./downloads
-      o: bind
-  mtv_dl_config:
-    driver: local
-    driver_opts:
-      type: none
-      device: ./config
-      o: bind
