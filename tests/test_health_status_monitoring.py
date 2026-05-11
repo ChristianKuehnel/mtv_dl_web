@@ -7,16 +7,10 @@ import importlib
 import sys
 import time
 from pathlib import Path
-from unittest.mock import Mock
 
 from fastapi.testclient import TestClient
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
-
-mock_mtv_dl_module = Mock()
-mock_mtv_dl_module.Database = Mock()
-mock_mtv_dl_module.Downloader = Mock()
-sys.modules["mtv_dl.mtv_dl"] = mock_mtv_dl_module
 
 import mtv_dl_web.main as main_module
 
@@ -54,7 +48,7 @@ def test_health_check_completes_within_one_second() -> None:
     assert elapsed < 1.0
 
 
-def test_database_refresh_state_is_reset_after_connection_update() -> None:
+def test_database_refresh_state_is_reset_after_connection_update(monkeypatch) -> None:
     class UpdatingDatabase:
         def __init__(self, database_file: Path, history_file: Path) -> None:
             self.database_file = database_file
@@ -63,7 +57,7 @@ def test_database_refresh_state_is_reset_after_connection_update() -> None:
         def update_if_old(self) -> None:
             assert main_module.is_database_update_in_progress() is True
 
-    main_module.Database = UpdatingDatabase
+    monkeypatch.setattr(main_module, "Database", UpdatingDatabase)
     main_module.set_database_update_in_progress(False)
 
     main_module.get_db_connection()

@@ -17,7 +17,11 @@ cd "$ROOT_DIR"
 
 # Function to run tests with proper environment
 run_tests() {
-    if ! command -v uv >/dev/null 2>&1; then
+    if command -v uv >/dev/null 2>&1; then
+        UV_BIN="uv"
+    elif [ -x "$HOME/.local/bin/uv" ]; then
+        UV_BIN="$HOME/.local/bin/uv"
+    else
         echo "Error: uv is required to run the test suite."
         echo "Install uv, then run: uv sync --extra dev"
         exit 1
@@ -25,7 +29,7 @@ run_tests() {
 
     echo "🔍 Running pytest with uv..."
     echo "-----------------------------------"
-    uv run pytest tests/ -v
+    "$UV_BIN" run pytest tests/ -v
 }
 
 # Run tests
@@ -33,9 +37,3 @@ run_tests
 
 echo
 echo "🎉 All tests completed successfully!"
-echo
-echo "Test Summary:"
-echo "- Total tests: 39"
-echo "- All tests passed ✅"
-echo
-echo "📊 Detailed test results above"
