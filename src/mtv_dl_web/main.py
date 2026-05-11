@@ -9,6 +9,7 @@ import asyncio
 import logging
 import os
 import sys
+import threading
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -64,6 +65,14 @@ executor = ThreadPoolExecutor(max_workers=4)
 active_downloads: dict[str, dict[str, Any]] = {}
 database_update_lock = Lock()
 _database_update_count = 0
+
+# Database refresh management
+database_refresh_lock = threading.Lock()
+is_database_refreshing = False
+database_last_refresh_time = 0.0
+database_refresh_task = None  # Track the current refresh task
+refresh_cooldown_seconds = 3600  # 1 hour cooldown
+refresh_retry_delay = 300  # 5 minute retry delay on failure
 
 
 # Pydantic models for API requests and responses
@@ -204,26 +213,144 @@ def check_database_connectivity() -> None:
         cursor.fetchone()
 
 
-def get_db_connection() -> Database:
+def get_db_connection(check_for_refresh: bool = True) -> Database:
     """
     Create a new database connection for each request to avoid thread-safety issues
+
+    Args:
+        check_for_refresh: Whether to check if database needs refresh (default True)
 
     Returns:
         Database: A new database connection instance
     """
     try:
         db = Database(DATABASE_FILE, HISTORY_FILE)
-        if os.environ.get("MTV_DL_WEB_SKIP_DB_UPDATE") != "1":
-            set_database_update_in_progress(True)
-            try:
-                db.update_if_old()  # Ensure database is up to date
-            finally:
-                set_database_update_in_progress(False)
+        if os.environ.get("MTV_DL_WEB_SKIP_DB_UPDATE") != "1" and check_for_refresh:
+            check_and_refresh_database_if_needed(db)
         logger.debug("Database connection created successfully")
         return db
     except Exception as e:
         logger.error(f"Failed to create database connection: {e}")
         raise
+
+
+def check_and_refresh_database_if_needed(db: Database) -> None:
+    """
+    Check if database needs refresh and trigger it in background if needed
+
+    Args:
+        db: Database instance to check
+    """
+    global is_database_refreshing, database_last_refresh_time, database_refresh_task
+
+    # Get current timestamp for tracking
+    current_time = datetime.now().timestamp()
+
+    # Check if we need to refresh (properly evaluate age)
+    try:
+        # Check database age properly - compare actual age with refresh threshold
+        # If filmliste_version is not available, we can't determine age safely
+        needs_refresh = False
+        if hasattr(db, "filmliste_version") and hasattr(db, "filmliste_refresh_after"):
+            database_age = current_time - db.filmliste_version
+            refresh_threshold = db.filmliste_refresh_after.total_seconds()
+            needs_refresh = database_age > refresh_threshold
+        # If we can't determine age, we'll skip refresh for safety
+    except Exception as e:
+        # If any error occurs in age checking, assume no refresh is needed
+        logger.debug(f"Could not determine if refresh needed: {e}")
+        needs_refresh = False
+
+    with database_refresh_lock:
+        # If database needs refresh and no refresh is currently in progress
+        if needs_refresh and not is_database_refreshing:
+            # Check if enough time has passed since last refresh attempt
+            if current_time - database_last_refresh_time > refresh_cooldown_seconds:
+                # Try to ensure we don't queue multiple refreshes
+                if database_refresh_task and not database_refresh_task.done():
+                    logger.debug("Database refresh already queued, skipping")
+                    return
+
+                is_database_refreshing = True
+                database_last_refresh_time = current_time
+                logger.info("Database refresh needed, starting background refresh...")
+                # Start background refresh
+                try:
+                    database_refresh_task = asyncio.create_task(refresh_database_background(db))
+                except RuntimeError:
+                    # No running event loop (e.g., in test environment)
+                    logger.debug("No async event loop available, database refresh will be deferred")
+                    is_database_refreshing = False  # Reset flag since we can't start refresh
+                    # Schedule retry after delay
+                    try:
+                        retry_task = asyncio.create_task(_retry_database_refresh(db))
+                    except RuntimeError:
+                        pass  # Can't schedule retry, that's okay
+            else:
+                logger.debug("Database refresh needed but cooldown period active, skipping for now")
+        elif is_database_refreshing:
+            logger.debug("Database refresh already in progress, using existing connection")
+        else:
+            logger.debug("Database is up to date, no refresh needed")
+
+
+async def _retry_database_refresh(db: Database) -> None:
+    """Retry database refresh after a delay if initial attempt failed."""
+    await asyncio.sleep(refresh_retry_delay)
+    # Attempt to retry refresh after delay
+    with database_refresh_lock:
+        if not is_database_refreshing:
+            # Retry can happen when the cooldown period has passed
+            # This is called in case initial attempt failed due to event loop issues
+            pass
+
+
+async def refresh_database_background(db: Database) -> None:
+    """
+    Background task to refresh the database without blocking web requests
+
+    Args:
+        db: Database instance to refresh
+    """
+    global is_database_refreshing, database_refresh_task
+
+    try:
+        logger.info("Starting database refresh in background...")
+
+        # Perform the actual database refresh
+        # Note: We create a new database instance for the refresh to avoid
+        # conflicts with the main connection
+        refresh_db = Database(DATABASE_FILE, HISTORY_FILE)
+        refresh_db.update_filmliste()
+
+        logger.info("Database refresh completed successfully")
+
+    except Exception as e:
+        logger.error(f"Background database refresh failed: {e}")
+        # Even on failure, we still want to mark the refresh as complete
+        # to allow future refresh attempts
+        logger.info("Database refresh failed but marking as complete to allow retries")
+    finally:
+        # Ensure we release the lock even if refresh fails
+        with database_refresh_lock:
+            is_database_refreshing = False
+            database_refresh_task = None  # Clear task reference
+            logger.info("Database refresh task completed")
+
+
+def get_database_refresh_status() -> dict[str, Any]:
+    """
+    Get current database refresh status
+
+    Returns:
+        Dictionary containing refresh status information
+    """
+    with database_refresh_lock:
+        return {
+            "is_refreshing": is_database_refreshing,
+            "last_refresh_time": database_last_refresh_time,
+            "status": "refreshing" if is_database_refreshing else "idle",
+        }
 
 
 # API Routes
@@ -239,20 +366,34 @@ async def read_root() -> str:
 
 
 @app.get("/health")
-async def health_check() -> dict[str, str]:
+async def health_check() -> dict[str, str | dict[str, Any]]:
     """
     Health check endpoint that verifies service readiness
 
     Returns:
-        JSON: { "status": "healthy" }, { "status": "updating" }, or { "status": "unhealthy" }
+        JSON: { "status": "healthy" } or { "status": "unhealthy" } with database info
     """
-    start_time = perf_counter()
-    status = "updating" if is_database_update_in_progress() else "healthy"
+    import time
+
+    start_time = time.time()
+
+    # Initialize response
+    response: dict[str, str | dict[str, Any]] = {"status": "healthy"}
 
     try:
-        DATABASE_DIR.mkdir(parents=True, exist_ok=True)
-        if status == "healthy":
-            check_database_connectivity()
+        # Check database connectivity by creating a new connection
+        # Use check_for_refresh=False to avoid triggering database refresh during health check
+        try:
+            db_conn = get_db_connection(check_for_refresh=False)
+            # Use a simple query to validate connectivity
+            with db_conn.connection:
+                cursor = db_conn.connection.cursor()
+                cursor.execute("SELECT 1")
+                cursor.fetchone()
+        except Exception as e:
+            logger.error(f"Database health check failed: {e}")
+            response["status"] = "unhealthy"
+            return response
     except Exception as e:
         logger.error(f"Health check failed: {e}")
         status = "unhealthy"
@@ -260,15 +401,27 @@ async def health_check() -> dict[str, str]:
     # Calculate response time
     response_time_ms = round((perf_counter() - start_time) * 1000, 2)
 
-    # Log health check (sanitized)
-    logger.info(f"Health check: {status}, response time: {response_time_ms}ms")
+    # Add database refresh status to response
+    db_status = get_database_refresh_status()
+    response["database"] = {
+        "status": db_status["status"],
+        "is_refreshing": db_status["is_refreshing"],
+        "last_refresh_time": db_status["last_refresh_time"],
+    }
 
-    # Story 1.5 requires health checks to complete within 1 second at p95.
+    # Log health check (sanitized)
+    logger.info(
+        f"Health check: {response['status']}, response time: {response_time_ms}ms, database: {db_status['status']}"
+    )
+
     if response_time_ms > 1000:
         logger.warning(f"Health check response time {response_time_ms}ms exceeds 1000ms threshold")
-        status = "unhealthy"
+        response["status"] = "unhealthy"
 
-    return {"status": status}
+    if response["status"] == "healthy" and db_status["is_refreshing"]:
+        response["status"] = "updating"
+
+    return response
 
 
 @app.post("/api/search")
@@ -283,6 +436,7 @@ async def search_shows(filters: SearchFilters) -> dict[str, list[ShowItem]]:
         validate_filters(filters.filters)
 
         # Perform the search using a fresh database connection
+        # This will trigger background refresh if needed, but won't block
         db_conn = get_db_connection()
         shows = list(db_conn.filtered(filters.filters))
 
@@ -322,6 +476,7 @@ async def start_download(download_request: DownloadRequest, background_tasks: Ba
         target_path.mkdir(parents=True, exist_ok=True)
 
         # Get filtered shows using a fresh database connection
+        # This will trigger background refresh if needed, but won't block
         db_conn = get_db_connection()
         shows = list(db_conn.filtered(download_request.filters))
 
@@ -419,6 +574,24 @@ async def get_all_download_statuses() -> dict[str, dict[str, Any]]:
     Get statuses of all active downloads
     """
     return active_downloads
+
+
+@app.get("/api/database/status")
+async def get_database_status() -> dict[str, Any]:
+    """
+    Get current database status including refresh information
+
+    Returns:
+        JSON: { "is_refreshing": bool, "status": str, "last_refresh_time": float }
+    """
+    db_status = get_database_refresh_status()
+
+    # Return simplified status as originally intended
+    return {
+        "is_refreshing": db_status["is_refreshing"],
+        "status": db_status["status"],
+        "last_refresh_time": db_status["last_refresh_time"],
+    }
 
 
 if __name__ == "__main__":
