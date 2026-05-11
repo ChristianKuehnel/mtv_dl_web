@@ -6,8 +6,10 @@ Tests for Story 1.5: Improve Health Status Monitoring
 import importlib
 import sys
 import time
+from collections.abc import Iterator
 from pathlib import Path
 
+import pytest
 from fastapi.testclient import TestClient
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
@@ -16,6 +18,44 @@ import mtv_dl_web.main as main_module
 
 main_module = importlib.reload(main_module)
 client = TestClient(main_module.app)
+
+
+class HealthyCursor:
+    def execute(self, query: str) -> None:
+        assert query == "SELECT 1"
+
+    def fetchone(self) -> tuple[int]:
+        return (1,)
+
+
+class HealthyConnection:
+    def __enter__(self) -> "HealthyConnection":
+        return self
+
+    def __exit__(self, exc_type: object, exc_value: object, traceback: object) -> None:
+        pass
+
+    def cursor(self) -> HealthyCursor:
+        return HealthyCursor()
+
+
+class HealthyDatabase:
+    connection = HealthyConnection()
+
+    def __init__(self, database_file: Path, history_file: Path) -> None:
+        self.database_file = database_file
+        self.history_file = history_file
+
+    def update_if_old(self) -> None:
+        pass
+
+
+@pytest.fixture(autouse=True)
+def health_database(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
+    monkeypatch.setattr(main_module, "Database", HealthyDatabase)
+    main_module._database_update_count = 0
+    yield
+    main_module._database_update_count = 0
 
 
 def test_health_reports_healthy_when_database_is_not_updating() -> None:
@@ -63,6 +103,59 @@ def test_database_refresh_state_is_reset_after_connection_update(monkeypatch) ->
     main_module.get_db_connection()
 
     assert main_module.is_database_update_in_progress() is False
+
+
+def test_database_refresh_state_tracks_overlapping_updates() -> None:
+    main_module.set_database_update_in_progress(False)
+
+    main_module.set_database_update_in_progress(True)
+    main_module.set_database_update_in_progress(True)
+    main_module.set_database_update_in_progress(False)
+
+    assert main_module.is_database_update_in_progress() is True
+
+    response = client.get("/health")
+
+    assert response.status_code == 200
+    assert response.json() == {"status": "updating"}
+
+    main_module.set_database_update_in_progress(False)
+
+    assert main_module.is_database_update_in_progress() is False
+
+
+def test_health_reports_unhealthy_when_database_query_fails(monkeypatch) -> None:
+    class BrokenCursor:
+        def execute(self, query: str) -> None:
+            raise RuntimeError("database is unavailable")
+
+        def fetchone(self) -> tuple[int]:
+            return (1,)
+
+    class BrokenConnection:
+        def __enter__(self) -> "BrokenConnection":
+            return self
+
+        def __exit__(self, exc_type: object, exc_value: object, traceback: object) -> None:
+            pass
+
+        def cursor(self) -> BrokenCursor:
+            return BrokenCursor()
+
+    class BrokenDatabase:
+        connection = BrokenConnection()
+
+        def __init__(self, database_file: Path, history_file: Path) -> None:
+            self.database_file = database_file
+            self.history_file = history_file
+
+    monkeypatch.setattr(main_module, "Database", BrokenDatabase)
+    main_module.set_database_update_in_progress(False)
+
+    response = client.get("/health")
+
+    assert response.status_code == 200
+    assert response.json() == {"status": "unhealthy"}
 
 
 def test_frontend_contains_three_state_health_indicator() -> None:

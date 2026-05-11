@@ -34,32 +34,9 @@ from mtv_dl_web.main import app
 importlib.metadata.version = original_version
 
 
-class FakeCursor:
-    def execute(self, query: str) -> None:
-        assert query == "SELECT 1"
-
-    def fetchone(self) -> tuple[int]:
-        return (1,)
-
-
-class FakeConnection:
-    def __enter__(self) -> "FakeConnection":
-        return self
-
-    def __exit__(self, exc_type: object, exc_value: object, traceback: object) -> None:
-        pass
-
-    def cursor(self) -> FakeCursor:
-        return FakeCursor()
-
-
-class FakeDatabase:
-    connection = FakeConnection()
-
-
 def test_health_endpoint_functionality(monkeypatch):
     """Test that health endpoint returns proper response"""
-    monkeypatch.setattr(main, "get_db_connection", lambda: FakeDatabase())
+    monkeypatch.setattr(main, "check_database_connectivity", lambda: None)
     client = TestClient(app)
 
     start_time = time.time()

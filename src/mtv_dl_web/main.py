@@ -63,7 +63,7 @@ download_queue: list[dict[str, Any]] = []
 executor = ThreadPoolExecutor(max_workers=4)
 active_downloads: dict[str, dict[str, Any]] = {}
 database_update_lock = Lock()
-_database_update_in_progress = False
+_database_update_count = 0
 
 
 # Pydantic models for API requests and responses
@@ -180,16 +180,28 @@ HISTORY_FILE = DATABASE_DIR / "history.sqlite"
 
 def set_database_update_in_progress(is_in_progress: bool) -> None:
     """Record whether mtv_dl is refreshing the show database."""
-    global _database_update_in_progress
+    global _database_update_count
 
     with database_update_lock:
-        _database_update_in_progress = is_in_progress
+        if is_in_progress:
+            _database_update_count += 1
+        else:
+            _database_update_count = max(0, _database_update_count - 1)
 
 
 def is_database_update_in_progress() -> bool:
     """Return true while mtv_dl database refresh work is active."""
     with database_update_lock:
-        return _database_update_in_progress
+        return _database_update_count > 0
+
+
+def check_database_connectivity() -> None:
+    """Verify that the database can be opened and queried without refreshing it."""
+    db_conn = Database(DATABASE_FILE, HISTORY_FILE)
+    with db_conn.connection:
+        cursor = db_conn.connection.cursor()
+        cursor.execute("SELECT 1")
+        cursor.fetchone()
 
 
 def get_db_connection() -> Database:
@@ -239,6 +251,8 @@ async def health_check() -> dict[str, str]:
 
     try:
         DATABASE_DIR.mkdir(parents=True, exist_ok=True)
+        if status == "healthy":
+            check_database_connectivity()
     except Exception as e:
         logger.error(f"Health check failed: {e}")
         status = "unhealthy"
