@@ -14,7 +14,11 @@ dependencies = [
     "python-multipart>=0.0.17,<0.1.0",
     "pydantic>=2.9.2,<3.0.0",
     "anyio>=3.7.0,<4.0.0",
+    "mtv-dl",
 ]
+
+[tool.uv.sources]
+mtv-dl = { path = "src/mtv_dl", editable = true }
 
 [project.optional-dependencies]
 dev = [
