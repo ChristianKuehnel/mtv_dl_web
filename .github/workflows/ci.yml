@@ -64,6 +64,6 @@ jobs:
         run: uv sync --extra dev
 
       - name: Run tests
-        run: uv run pytest tests/
+        run: ./scripts/tests.sh
         env:
           MTV_DL_WEB_SKIP_DB_UPDATE: "1"
