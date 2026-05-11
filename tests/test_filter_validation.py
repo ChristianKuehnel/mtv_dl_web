@@ -12,31 +12,21 @@ from fastapi.testclient import TestClient
 # Add the src directory to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-import mtv_dl_web.main as main_module
+import mtv_dl_web.main as main
 from mtv_dl_web.main import app
 
-
-class MockDatabase:
-    def __init__(self, database_file, history_file):
-        self.database_file = database_file
-        self.history_file = history_file
-
-    def update_if_old(self):
-        # Mock method - do nothing
-        pass
-
-    def filtered(self, filters):
-        # Mock method - return empty list to avoid database errors
-        return []
-
-
+# Create test client
 client = TestClient(app)
 
 
+class FakeDb:
+    def filtered(self, _filters):
+        return []
+
+
 @pytest.fixture(autouse=True)
-def mock_database(monkeypatch):
-    """Use a deterministic database double for validation-only tests."""
-    monkeypatch.setattr(main_module, "get_db_connection", lambda: MockDatabase(None, None))
+def mock_db_connection(monkeypatch):
+    monkeypatch.setattr(main, "get_db_connection", lambda *args, **kwargs: FakeDb())
 
 
 def test_valid_operators():
