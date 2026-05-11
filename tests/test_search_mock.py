@@ -99,7 +99,8 @@ client = TestClient(app)
 @pytest.fixture(autouse=True)
 def mock_database():
     """Reset the app database mock for each test."""
-    main_module.db = MockDatabase(None, None)
+    # Mock the get_db_connection function to return our mock database
+    main_module.get_db_connection = lambda: MockDatabase(None, None)
     yield
 
 

@@ -10,6 +10,7 @@ import logging
 import os
 import sys
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -166,20 +167,29 @@ def validate_filters(filters: list[str]) -> None:
             )
 
 
-# Initialize database connection
+# Database configuration
 DATABASE_DIR = Path(os.environ.get("DATABASE_DIR", str(Path.home() / ".mtv_dl_web"))).expanduser()
 DATABASE_DIR.mkdir(parents=True, exist_ok=True)
 DATABASE_FILE = DATABASE_DIR / "filmliste.sqlite"
 HISTORY_FILE = DATABASE_DIR / "history.sqlite"
 
-try:
-    db = Database(DATABASE_FILE, HISTORY_FILE)
-    if os.environ.get("MTV_DL_WEB_SKIP_DB_UPDATE") != "1":
-        db.update_if_old()  # Ensure database is up to date
-    logger.info("Database initialized successfully")
-except Exception as e:
-    logger.error(f"Failed to initialize database: {e}")
-    raise
+
+def get_db_connection() -> Database:
+    """
+    Create a new database connection for each request to avoid thread-safety issues
+
+    Returns:
+        Database: A new database connection instance
+    """
+    try:
+        db = Database(DATABASE_FILE, HISTORY_FILE)
+        if os.environ.get("MTV_DL_WEB_SKIP_DB_UPDATE") != "1":
+            db.update_if_old()  # Ensure database is up to date
+        logger.debug("Database connection created successfully")
+        return db
+    except Exception as e:
+        logger.error(f"Failed to create database connection: {e}")
+        raise
 
 
 # API Routes
@@ -210,18 +220,18 @@ async def health_check() -> dict[str, str]:
     response = {"status": "healthy"}
 
     try:
-        # Check database connectivity with timeout
-        if db is not None and hasattr(db, "connection"):
-            try:
-                # Use a simple query to validate connectivity (SQLite threading limitations workaround)
-                with db.connection:
-                    cursor = db.connection.cursor()
-                    cursor.execute("SELECT 1")
-                    cursor.fetchone()
-            except Exception as e:
-                logger.error(f"Database health check failed: {e}")
-                response["status"] = "unhealthy"
-                return response
+        # Check database connectivity by creating a new connection
+        try:
+            db_conn = get_db_connection()
+            # Use a simple query to validate connectivity
+            with db_conn.connection:
+                cursor = db_conn.connection.cursor()
+                cursor.execute("SELECT 1")
+                cursor.fetchone()
+        except Exception as e:
+            logger.error(f"Database health check failed: {e}")
+            response["status"] = "unhealthy"
+            return response
     except Exception as e:
         logger.error(f"Database health check error: {e}")
         response["status"] = "unhealthy"
@@ -252,9 +262,27 @@ async def search_shows(filters: SearchFilters) -> dict[str, list[ShowItem]]:
         # Validate filters before processing
         validate_filters(filters.filters)
 
-        # Perform the search
-        shows = list(db.filtered(filters.filters))
-        return {"results": [ShowItem(**show) for show in shows]}
+        # Perform the search using a fresh database connection
+        db_conn = get_db_connection()
+        shows = list(db_conn.filtered(filters.filters))
+
+        # Convert datetime and timedelta objects to strings for Pydantic validation
+        results = []
+        for show in shows:
+            show_dict = dict(show)
+            # Convert datetime objects to ISO format strings
+            if isinstance(show_dict.get("start"), datetime):
+                show_dict["start"] = show_dict["start"].isoformat()
+            if isinstance(show_dict.get("downloaded"), datetime):
+                show_dict["downloaded"] = show_dict["downloaded"].isoformat()
+            # Convert timedelta objects to string representation
+            if isinstance(show_dict.get("duration"), timedelta):
+                show_dict["duration"] = str(show_dict["duration"])
+            if isinstance(show_dict.get("age"), timedelta):
+                show_dict["age"] = str(show_dict["age"])
+            results.append(ShowItem(**show_dict))
+
+        return {"results": results}
     except HTTPException:
         # Re-raise HTTPExceptions (validation errors)
         raise
@@ -273,8 +301,9 @@ async def start_download(download_request: DownloadRequest, background_tasks: Ba
         target_path = Path(download_request.target_directory)
         target_path.mkdir(parents=True, exist_ok=True)
 
-        # Get filtered shows
-        shows = list(db.filtered(download_request.filters))
+        # Get filtered shows using a fresh database connection
+        db_conn = get_db_connection()
+        shows = list(db_conn.filtered(download_request.filters))
 
         if not shows:
             raise HTTPException(status_code=404, detail="No shows found matching filters")
