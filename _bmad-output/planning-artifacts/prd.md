@@ -309,6 +309,14 @@ NFR-8: Error responses shall not expose secrets, environment variable values, st
 
 NFR-9: The readiness endpoint shall return HTTP 200 with `{"status": "healthy"}` when the app is ready, verified by health tests and container smoke tests.
 
+NFR-16: The health status indicator in the Web UI shall show three distinct states: "online" (green dot) when backend is healthy and not updating database, "updating" (yellow dot) when backend is refreshing the database, and "offline" (red dot) when backend is unhealthy or down.
+
+NFR-17: Health check API responses shall complete within 1 second for 95th percentile to avoid UI delays.
+
+NFR-18: The web UI and API shall remain accessible and responsive during database refresh operations, allowing users to view current status and download queue.
+
+NFR-19: Database refresh operations shall not block or interfere with concurrent health checks, status requests, or queue management operations.
+
 NFR-10: Failed downloads and scheduler jobs shall expose item/job identifier, failed state, timestamp, and human-readable error message.
 
 NFR-11: Container smoke tests shall verify startup, readiness response, mounted path availability, and persistence after restart.
@@ -356,6 +364,20 @@ AC-9: Given mounted configuration, data, post-download scripts, and download vol
 
 AC-10: Given a running container, when the readiness endpoint is requested, then it returns HTTP 200 and `{"status": "healthy"}`.
 
+AC-15: Given the Web UI health status indicator, when the backend is healthy and not updating database, then it shows "online" with green dot.
+
+AC-16: Given the Web UI health status indicator, when the backend is refreshing the database, then it shows "updating" with yellow dot.
+
+AC-17: Given the Web UI health status indicator, when the backend is unhealthy or down, then it shows "offline" with red dot.
+
+AC-18: Given a health check request, when executed, then it completes within 1 second for 95th percentile.
+
+AC-19: Given a database refresh operation is in progress, when a user accesses the web UI, then the UI remains accessible and shows current status and download queue.
+
+AC-20: Given a database refresh operation is in progress, when health check or status API requests are made, then they complete successfully within performance targets.
+
+AC-21: Given a database refresh operation is in progress, when queue management operations are performed, then they execute normally without being blocked by the refresh operation.
+
 AC-11: Given supported download options, when the user starts a download, then the backend passes those options through existing `mtv_dl` behavior in the expected format.
 
 AC-12: Given post-download scripts configured on the filesystem and mounted into the container, when `mtv_dl` invokes configured hooks, then the web app does not block or replace that behavior.
@@ -373,7 +395,7 @@ AC-14: Given one active download, when five concurrent health or status requests
 | SC-3 | Journey 1, Journey 5 | FR-6 through FR-12, FR-28 | AC-3, AC-11, AC-12 |
 | SC-4 | Journey 2 | FR-13 through FR-16 | AC-3, AC-4, AC-5 |
 | SC-5 | Journey 3 | FR-22 through FR-25 | AC-7, AC-8 |
-| SC-6 | Journey 6 | FR-20, FR-26 through FR-31, NFR-4, NFR-9, NFR-11 | AC-9, AC-10 |
+| SC-6 | Journey 6 | FR-20, FR-26 through FR-31, NFR-4, NFR-9, NFR-11, NFR-16, NFR-17, NFR-18, NFR-19 | AC-9, AC-10, AC-15, AC-16, AC-17, AC-18, AC-19, AC-20, AC-21 |
 | SC-7 | Journey 1, Journey 3, Journey 4 | FR-7, FR-18, FR-19, FR-21 | AC-1, AC-6, AC-11 |
 | SC-8 | All journeys | NFR-1 through NFR-15 | AC-1 through AC-14 |
 | SC-9 | Journey 1 through Journey 6 | PTR-5 through PTR-14, FR-32, NFR-13 | AC-13 |

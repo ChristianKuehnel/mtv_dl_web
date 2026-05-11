@@ -137,6 +137,10 @@ None (UI requirements covered by PRD).
 | FR-32  | 5    | UI controls                          |
 | NFR-13 | 5    | Responsive design                    |
 | NFR-14 | 5    | Loading states                       |
+| NFR-16 | 1    | Health status indicator              |
+| NFR-17 | 1    | Health check performance             |
+| NFR-18 | 1    | Concurrent web UI access             |
+| NFR-19 | 1    | Non-blocking database operations     |
 
 ## Epic List
 
@@ -217,6 +221,58 @@ So that I can customize port, database path, and download options.
 **Given** invalid configuration,
 **When** I start the service,
 **Then** it rejects the config and logs an error (NFR-7).
+
+---
+
+### Story 1.5: Improve Health Status Monitoring
+
+As a self-hosting user,
+I want the Web UI to show accurate health status with three states (online/updating/offline),
+So that I can quickly understand the backend status and database update state.
+
+**Acceptance Criteria:**
+
+**Given** a healthy backend not updating database,
+**When** I view the Web UI health status indicator,
+**Then** it shows "online" with a green dot (NFR-16, AC-15).
+
+**Given** a backend that is refreshing the database,
+**When** I view the Web UI health status indicator,
+**Then** it shows "updating" with a yellow dot (NFR-16, AC-16).
+
+**Given** an unhealthy or down backend,
+**When** I view the Web UI health status indicator,
+**Then** it shows "offline" with a red dot (NFR-16, AC-17).
+
+**Given** a health check request,
+**When** executed,
+**Then** it completes within 1 second for 95th percentile (NFR-17, AC-18).
+
+---
+
+### Story 1.6: Enable Concurrent Web UI Access During Database Refresh
+
+As a self-hosting user,
+I want to access the web UI and perform status/queue operations while the database is refreshing,
+So that I can monitor the system and manage downloads without interruption.
+
+**Acceptance Criteria:**
+
+**Given** a database refresh operation is in progress,
+**When** I access the web UI,
+**Then** the UI remains accessible and shows current status and download queue (NFR-18, AC-19).
+
+**Given** a database refresh operation is in progress,
+**When** I make health check or status API requests,
+**Then** they complete successfully within performance targets (NFR-19, AC-20).
+
+**Given** a database refresh operation is in progress,
+**When** I perform queue management operations (view, add, remove items),
+**Then** they execute normally without being blocked by the refresh operation (NFR-19, AC-21).
+
+**Given** concurrent database refresh and user operations,
+**When** both are executing,
+**Then** the system maintains data consistency and operational integrity.
 
 ### Epic 2: Search Functionality
 
