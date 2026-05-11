@@ -366,62 +366,32 @@ async def read_root() -> str:
 
 
 @app.get("/health")
-async def health_check() -> dict[str, str | dict[str, Any]]:
+async def health_check() -> dict[str, str]:
     """
     Health check endpoint that verifies service readiness
 
     Returns:
         JSON: { "status": "healthy" } or { "status": "unhealthy" } with database info
     """
-    import time
-
-    start_time = time.time()
-
-    # Initialize response
-    response: dict[str, str | dict[str, Any]] = {"status": "healthy"}
+    start_time = perf_counter()
+    status = "updating" if is_database_update_in_progress() else "healthy"
 
     try:
-        # Check database connectivity by creating a new connection
-        # Use check_for_refresh=False to avoid triggering database refresh during health check
-        try:
-            db_conn = get_db_connection(check_for_refresh=False)
-            # Use a simple query to validate connectivity
-            with db_conn.connection:
-                cursor = db_conn.connection.cursor()
-                cursor.execute("SELECT 1")
-                cursor.fetchone()
-        except Exception as e:
-            logger.error(f"Database health check failed: {e}")
-            response["status"] = "unhealthy"
-            return response
+        DATABASE_DIR.mkdir(parents=True, exist_ok=True)
+        if status == "healthy":
+            check_database_connectivity()
     except Exception as e:
         logger.error(f"Health check failed: {e}")
         status = "unhealthy"
 
-    # Calculate response time
     response_time_ms = round((perf_counter() - start_time) * 1000, 2)
-
-    # Add database refresh status to response
-    db_status = get_database_refresh_status()
-    response["database"] = {
-        "status": db_status["status"],
-        "is_refreshing": db_status["is_refreshing"],
-        "last_refresh_time": db_status["last_refresh_time"],
-    }
-
-    # Log health check (sanitized)
-    logger.info(
-        f"Health check: {response['status']}, response time: {response_time_ms}ms, database: {db_status['status']}"
-    )
+    logger.info(f"Health check: {status}, response time: {response_time_ms}ms")
 
     if response_time_ms > 1000:
         logger.warning(f"Health check response time {response_time_ms}ms exceeds 1000ms threshold")
-        response["status"] = "unhealthy"
+        status = "unhealthy"
 
-    if response["status"] == "healthy" and db_status["is_refreshing"]:
-        response["status"] = "updating"
-
-    return response
+    return {"status": status}
 
 
 @app.post("/api/search")
