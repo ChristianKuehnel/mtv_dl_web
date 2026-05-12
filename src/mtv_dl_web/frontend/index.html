@@ -225,7 +225,10 @@
 
       async function refreshHealthStatus() {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), HEALTH_REQUEST_TIMEOUT_MS);
+        const timeoutId = setTimeout(
+          () => controller.abort(),
+          HEALTH_REQUEST_TIMEOUT_MS,
+        );
 
         try {
           const response = await fetch("/health", {

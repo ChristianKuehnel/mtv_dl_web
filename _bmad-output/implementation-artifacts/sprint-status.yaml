@@ -51,7 +51,7 @@ development_status:
   1-3-configure-mounted-volumes-docker: done
   1-4-load-service-configuration: backlog
   1-5-improve-health-status-monitoring: done
-  1-6-enable-concurrent-web-ui-access: review
+  1-6-enable-concurrent-web-ui-access: done
   epic-1-retrospective: optional
 
   # Epic 2: Search Functionality

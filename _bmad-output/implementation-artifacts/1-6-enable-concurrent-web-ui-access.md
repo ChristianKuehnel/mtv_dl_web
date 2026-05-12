@@ -40,6 +40,16 @@ So that I can monitor the system and manage downloads without interruption.
 - [x] **Task 5**: Update Web UI to handle concurrent operations gracefully
 - [x] **Task 6**: Add comprehensive tests for concurrent access scenarios
 
+### Review Findings
+
+- [x] [Review][Patch] Cooldown is applied even when refresh task creation fails, delaying real refresh attempts [src/mtv_dl_web/main.py:275]
+- [x] [Review][Patch] Retry path is a no-op and never performs a deferred refresh [src/mtv_dl_web/main.py:297]
+- [x] [Review][Patch] Health endpoint status can report healthy while refresh is active due to disconnected refresh flags [src/mtv_dl_web/main.py:377]
+- [x] [Review][Patch] Health endpoint does not include database refresh status; status was added to a separate endpoint instead [src/mtv_dl_web/main.py:369]
+- [x] [Review][Patch] Refresh scheduling uses `asyncio.create_task` instead of FastAPI background task mechanism required by story constraints [src/mtv_dl_web/main.py:279]
+- [x] [Review][Patch] Queue management acceptance criteria include remove operations, but this story commit does not implement or validate removal during refresh [src/mtv_dl_web/main.py:546]
+- [x] [Review][Patch] Concurrent-access test file relies on print flows and weak assertions, reducing confidence in AC enforcement [tests/test_concurrent_database_access.py:136]
+
 ## Dev Notes
 
 ### Architecture Requirements
@@ -118,4 +128,4 @@ So that I can monitor the system and manage downloads without interruption.
 - Added comprehensive test suite for concurrent access scenarios
 
 ## Status
-review
+done

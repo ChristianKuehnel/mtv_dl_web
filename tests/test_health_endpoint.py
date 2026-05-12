@@ -78,4 +78,6 @@ def test_health_endpoint_functionality(monkeypatch):
     assert response_time <= 500
     
     response_data = response.json()
-    assert response_data == {"status": "healthy"}
+    assert response_data["status"] == "healthy"
+    assert "database" in response_data
+    assert "is_refreshing" in response_data["database"]
