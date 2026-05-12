@@ -108,6 +108,10 @@ class SearchFilters(BaseModel):
     filters: list[str]
 
 
+class SearchResponse(BaseModel):
+    results: list[ShowItem]
+
+
 # Supported filter operators and fields for validation
 SUPPORTED_OPERATORS = {"=", "!=", "+", "-"}
 SUPPORTED_FIELDS = {
@@ -142,13 +146,23 @@ def validate_filters(filters: list[str]) -> None:
     """
     import re
 
+    if not filters:
+        logger.error("Filter validation failed: empty filter list")
+        raise HTTPException(status_code=400, detail="At least one filter is required")
+
     for filter_str in filters:
+        normalized_filter = filter_str.strip()
+        if not normalized_filter:
+            logger.error("Filter validation failed: blank filter")
+            raise HTTPException(status_code=400, detail="Filter entries must not be empty")
+
         # Parse filter string using the same regex as mtv_dl
         match = re.match(
-            r"^(?P<field>\w+)(?P<operator>(?:=|!=|\+|-|\W+))(?P<pattern>.*)$",
-            filter_str,
+            r"^(?P<field>\w+)\s*(?P<operator>!=|=|\+|-)\s*(?P<pattern>.+)$",
+            normalized_filter,
         )
         if not match:
+            logger.error(f"Filter validation failed: invalid format '{filter_str}'")
             raise HTTPException(
                 status_code=400,
                 detail=f"Invalid filter format: '{filter_str}'. Expected format: field<operator>value (e.g., channel=ARD, title+News)",
@@ -163,6 +177,7 @@ def validate_filters(filters: list[str]) -> None:
 
         # Validate operator
         if operator not in SUPPORTED_OPERATORS:
+            logger.error(f"Filter validation failed: unsupported operator '{operator}' in '{filter_str}'")
             raise HTTPException(
                 status_code=400,
                 detail=f"Unsupported operator '{operator}' in filter: '{filter_str}'. "
@@ -171,6 +186,7 @@ def validate_filters(filters: list[str]) -> None:
 
         # Validate field
         if field not in SUPPORTED_FIELDS:
+            logger.error(f"Filter validation failed: unsupported field '{field}' in '{filter_str}'")
             raise HTTPException(
                 status_code=400,
                 detail=f"Unsupported field '{field}' in filter: '{filter_str}'. "
@@ -400,8 +416,8 @@ async def health_check() -> dict[str, Any]:
     }
 
 
-@app.post("/api/search")
-async def search_shows(filters: SearchFilters, background_tasks: BackgroundTasks) -> dict[str, list[ShowItem]]:
+@app.post("/api/search", response_model=SearchResponse)
+async def search_shows(filters: SearchFilters, background_tasks: BackgroundTasks) -> SearchResponse:
     """
     Search for shows based on filters
 
@@ -432,13 +448,13 @@ async def search_shows(filters: SearchFilters, background_tasks: BackgroundTasks
                 show_dict["age"] = str(show_dict["age"])
             results.append(ShowItem(**show_dict))
 
-        return {"results": results}
+        return SearchResponse(results=results)
     except HTTPException:
         # Re-raise HTTPExceptions (validation errors)
         raise
     except Exception as e:
         logger.error(f"Search failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Search operation failed")
 
 
 @app.post("/api/download")

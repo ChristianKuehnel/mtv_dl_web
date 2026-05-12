@@ -32,6 +32,27 @@ def fake_db(monkeypatch):
     return db
 
 
+class FakeDatabaseIntegration:
+    def __init__(self, _database_file, _history_file):
+        self.connection = object()
+
+    def filtered(self, _filters):
+        return [
+            {
+                "hash": "integration1",
+                "channel": "ARD",
+                "title": "Integration Show",
+                "topic": "News",
+                "size": 111,
+                "start": "2023-01-03T12:00:00",
+                "duration": "30m",
+                "age": "1d",
+                "region": "DE",
+                "downloaded": None,
+            }
+        ]
+
+
 def test_search_endpoint_success(fake_db):
     """Test successful search with valid filters"""
     # Mock the database filtered method
@@ -104,6 +125,26 @@ def test_search_endpoint_missing_filters():
     assert "detail" in data
 
 
+def test_search_endpoint_empty_filters_rejected():
+    """Test empty filter list is rejected"""
+    response = client.post("/api/search", json={"filters": []})
+
+    assert response.status_code == 400
+    data = response.json()
+    assert "detail" in data
+    assert "At least one filter" in data["detail"]
+
+
+def test_search_endpoint_malformed_filter_rejected():
+    """Test malformed filter string gets format validation error"""
+    response = client.post("/api/search", json={"filters": ["channel"]})
+
+    assert response.status_code == 400
+    data = response.json()
+    assert "detail" in data
+    assert "Invalid filter format" in data["detail"]
+
+
 def test_search_endpoint_database_error(fake_db):
     """Test error handling for database errors"""
     fake_db.filtered.side_effect = Exception("Database connection failed")
@@ -112,7 +153,18 @@ def test_search_endpoint_database_error(fake_db):
     assert response.status_code == 500
     data = response.json()
     assert "detail" in data
-    assert "Database connection failed" in data["detail"]
+    assert "Search operation failed" in data["detail"]
+
+
+def test_search_endpoint_integration_path(monkeypatch):
+    """Test route using get_db_connection path without monkeypatching it."""
+    monkeypatch.setattr(main, "Database", FakeDatabaseIntegration)
+    response = client.post("/api/search", json={"filters": ["channel=ARD"]})
+
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data["results"]) == 1
+    assert data["results"][0]["hash"] == "integration1"
 
 
 def test_search_endpoint_complex_filters(fake_db):
