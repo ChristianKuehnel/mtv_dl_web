@@ -25,6 +25,10 @@ editHistory:
     changes: 'Fixed duplicate FR-13 by renumbering to FR-14, removed duplicate AC-22, clarified AC-22 for multiple files, and updated traceability matrix accordingly.'
   - date: '2026-05-12'
     changes: 'Reviewed GitHub milestone 1 issues and added uncovered requirements for database refresh cadence/status/logging, mtv_dl dependency consolidation, and published container image workflow. Added milestone issue coverage and backlog traceability.'
+  - date: '2026-05-12'
+    changes: 'Clarified pyproject.toml as the single source of truth for the mtv_dl dependency version and required all imports to resolve to that exact declared version.'
+  - date: '2026-05-12'
+    changes: 'Cleaned planning consistency: defined APScheduler crontab syntax, aligned database path wording, added thread-safe shared-state NFR, and removed resolved cron open question.'
 ---
 
 # MTV Downloader Web Interface - Product Requirements Document
@@ -73,7 +77,7 @@ SC-10: Users can install from a project-published container image built from the
 - Queue controls for adding downloads and removing pending items.
 - No pause/resume controls in MVP.
 - Manual database update action.
-- Automatic database refresh every 24 hours by default, configurable through service configuration.
+- Automatic database refresh once every 24 hours by default, configurable through a service refresh cron expression.
 - Database refresh status, last successful update time, and database age displayed where available.
 - Scheduled monitoring/query execution with automatic enqueue of non-duplicate matches.
 - Hash-preferred duplicate detection with URL fallback when hash is unavailable.
@@ -83,7 +87,7 @@ SC-10: Users can install from a project-published container image built from the
 - Project-published container image built from the main branch, with documentation for where to pull it and how to run it.
 - Series-aware display and file organization where supported by `mtv_dl` metadata and options.
 - Post-download scripts remain configured through the filesystem and existing `mtv_dl` behavior; no web UI for hook editing is required in MVP.
-- A single canonical `mtv_dl` integration source is used; vendored duplicate copies and conflicting submodule/dependency arrangements are excluded from MVP.
+- `pyproject.toml` is the single source of truth for the `mtv_dl` dependency version; vendored duplicate copies, conflicting submodule/dependency arrangements, and imports resolving to a different `mtv_dl` version are excluded from MVP.
 
 ### Future Scope
 
@@ -145,7 +149,7 @@ Applies to: self-hosting media archivist, existing CLI user.
 Applies to: self-hosting media archivist, existing CLI user.
 
 1. User creates a saved query using `mtv_dl`-compatible filters.
-2. User configures a cron-like schedule.
+2. User configures an APScheduler `CronTrigger.from_crontab()` schedule.
 3. Scheduler updates or checks the database at the configured interval.
 4. System evaluates the saved query and identifies matching items.
 5. System automatically enqueues matches whose hash, or URL fallback, is not already pending, downloading, completed, or recorded by the scheduler.
@@ -166,7 +170,7 @@ Applies to: self-hosting media archivist, existing CLI user.
 
 Applies to: self-hosting media archivist, existing CLI user.
 
-1. User edits the mounted configuration file for settings such as port, database path, target directories, quality, subtitles, NFO files, MKV merge, series behavior, logging, scheduler expression, and post-download script paths.
+1. User edits the mounted configuration file for settings such as port, database path, target directories, quality, subtitles, NFO files, MKV merge, series behavior, logging, scheduler expressions, database refresh cron expression, and post-download script paths.
 2. User mounts configuration, post-download scripts, data, and download directories into the container.
 3. System loads configuration at startup.
 4. User restarts the service when changing settings that are only loaded at startup.
@@ -194,7 +198,7 @@ PTR-3: Persistent runtime state shall use mounted container paths for configurat
 
 PTR-4: The application shall reuse existing `mtv_dl` behavior for search, download, database update, and post-download script execution.
 
-PTR-15: The application shall depend on one canonical `mtv_dl` integration source for MVP, preferably the packaged dependency, and shall not keep a duplicate vendored library copy alongside a conflicting submodule or dependency declaration.
+PTR-15: `pyproject.toml` shall be the single source of truth for the `mtv_dl` dependency version; the application shall not keep duplicate vendored library copies, conflicting submodule copies, or alternate dependency declarations that can resolve a different version.
 
 ### Browser Support Matrix
 
@@ -276,11 +280,11 @@ FR-19: The system initializes and uses the existing `mtv_dl` database integratio
 
 FR-20: Users can trigger a manual database update action through the web interface.
 
-FR-21: The database persists in the `/data/mtv_dl/` folder inside the container.
+FR-21: The database persists at `~/.mtv_dl_web/filmliste.sqlite` inside the container unless explicitly overridden by configuration.
 
 FR-22: The web application shall not bypass existing `mtv_dl` database behavior to query the underlying datastore directly.
 
-FR-34: The system shall automatically refresh the database every 24 hours by default, with the interval configurable through service configuration.
+FR-34: The system shall automatically refresh the database once every 24 hours by default, with the refresh cadence configurable through a service refresh cron expression.
 
 FR-35: The system shall start database refreshes only from a manual user action or the configured refresh schedule; search and download operations shall not implicitly trigger a refresh.
 
@@ -292,7 +296,7 @@ FR-37: The system shall log database refresh start, success, failure, trigger so
 
 FR-23: Users can create, edit, and remove scheduled monitoring queries.
 
-FR-24: Users can configure cron-like schedules for scheduled database update and query execution; invalid expressions are rejected before scheduling.
+FR-24: Users can configure scheduled database update and query execution with APScheduler `CronTrigger.from_crontab()` five-field syntax (`minute hour day_of_month month day_of_week`); invalid expressions are rejected before scheduling.
 
 FR-25: Scheduled queries automatically enqueue matching items whose hash is not already pending, downloading, completed, or recorded by the scheduler; when hash is unavailable, URL is used as the duplicate key.
 
@@ -304,7 +308,7 @@ FR-27: The system loads service configuration from a user-editable configuration
 
 FR-28: Configuration changes are applied on service restart unless a feature explicitly documents runtime reload behavior.
 
-FR-29: Configuration includes port, database path, target directories, scheduler expression, database refresh interval, log level, quality values, subtitle/NFO options, MKV merge behavior, file modification time behavior, series behavior, and post-download script paths.
+FR-29: Configuration includes port, database path, target directories, scheduler expressions, database refresh cron expression, log level, quality values, subtitle/NFO options, MKV merge behavior, file modification time behavior, series behavior, and post-download script paths.
 
 ### Deployment And UI
 
@@ -316,7 +320,7 @@ FR-32: The system serves the web frontend without requiring a separate frontend 
 
 FR-33: The UI provides controls for search, download, queue, scheduler, database update, and configuration/status workflows.
 
-FR-38: The implementation shall use a single canonical `mtv_dl` dependency source and remove duplicate vendored or submodule copies that conflict with the selected dependency path.
+FR-38: The implementation shall install and import `mtv_dl` from the exact dependency version declared in `pyproject.toml`; duplicate vendored or submodule copies shall be removed or made inactive so they cannot conflict with that declared version.
 
 FR-39: The repository shall provide a GitHub workflow that builds and publishes a container image from the main branch, plus documentation for pulling and running that image.
 
@@ -340,14 +344,6 @@ NFR-8: Error responses shall not expose secrets, environment variable values, st
 
 NFR-9: The readiness endpoint shall return HTTP 200 with `{"status": "healthy"}` when the app is ready, verified by health tests and container smoke tests.
 
-NFR-16: The health status indicator in the Web UI shall show three distinct states: "online" (green dot) when backend is healthy and not updating database, "updating" (yellow dot) when backend is refreshing the database, and "offline" (red dot) when backend is unhealthy or down.
-
-NFR-17: Health check API responses shall complete within 1 second for 95th percentile to avoid UI delays.
-
-NFR-18: The web UI and API shall remain accessible and responsive during database refresh operations, allowing users to view current status and download queue.
-
-NFR-19: Database refresh operations shall not block or interfere with concurrent health checks, status requests, or queue management operations.
-
 NFR-10: Failed downloads and scheduler jobs shall expose item/job identifier, failed state, timestamp, and human-readable error message.
 
 NFR-11: Container smoke tests shall verify startup, readiness response, mounted path availability, and persistence after restart.
@@ -359,6 +355,16 @@ NFR-13: At 360px, 768px, and 1280px viewport widths, all MVP controls shall rema
 NFR-14: Long-running actions shall show a loading or active state within 1 second and a completed or failed state when execution ends.
 
 NFR-15: Status refreshes shall not interrupt or cancel active downloads, verified by a queue/status integration test.
+
+NFR-16: The health status indicator in the Web UI shall show three distinct states: "online" (green dot) when backend is healthy and not updating database, "updating" (yellow dot) when backend is refreshing the database, and "offline" (red dot) when backend is unhealthy or down.
+
+NFR-17: Health check API responses shall complete within 1 second for 95th percentile to avoid UI delays.
+
+NFR-18: The web UI and API shall remain accessible and responsive during database refresh operations, allowing users to view current status and download queue.
+
+NFR-19: Database refresh operations shall not block or interfere with concurrent health checks, status requests, or queue management operations.
+
+NFR-20: Shared mutable application state shall be protected from race conditions during concurrent requests, background downloads, and database refresh operations, verified by concurrency tests.
 
 ## Risks And Mitigations
 
@@ -372,7 +378,7 @@ NFR-15: Status refreshes shall not interrupt or cancel active downloads, verifie
 | Container path ambiguity can cause persistence bugs. | Use `~/.mtv_dl_web/filmliste.sqlite` as canonical database path unless configuration overrides it. |
 | No-auth single-user deployment is unsafe on public networks. | Document trusted-network deployment assumptions and keep authentication out of MVP scope. |
 | Direct datastore access would duplicate `mtv_dl` logic and create behavior drift. | Enforce existing `mtv_dl` integration usage in architecture, code review, and tests. |
-| Conflicting `mtv_dl` dependency sources could make behavior depend on import path order. | Consolidate to one canonical dependency source and test imports in local and container execution. |
+| Conflicting `mtv_dl` dependency sources could make behavior depend on import path order. | Use `pyproject.toml` as the single version source and test that local, test, and container imports resolve to that declared dependency version. |
 | Published container images could drift from documented runtime configuration. | Build images from main branch through CI and keep pull/run documentation in the same delivery story. |
 
 ## Acceptance Criteria
@@ -389,13 +395,21 @@ AC-5: Given a pending queue item, when the user removes it, then it no longer ap
 
 AC-6: Given a configured manual database update action, when the user triggers it, then the system reports active, success, or failure status and subsequent searches use the updated database.
 
-AC-7: Given a scheduled query and valid cron-like expression, when the schedule fires, then the system evaluates the query and automatically enqueues new matches that are not duplicates by hash or URL fallback.
+AC-7: Given a scheduled query and valid APScheduler `CronTrigger.from_crontab()` expression, when the schedule fires, then the system evaluates the query and automatically enqueues new matches that are not duplicates by hash or URL fallback.
 
 AC-8: Given a duplicate scheduled match, when the item hash or URL fallback already exists in pending, downloading, completed, or scheduler-recorded state, then the item is not enqueued again.
 
 AC-9: Given mounted configuration, data, post-download scripts, and download volumes, when the container restarts, then configuration, database, scripts, and downloaded files remain available.
 
 AC-10: Given a running container, when the readiness endpoint is requested, then it returns HTTP 200 and `{"status": "healthy"}`.
+
+AC-11: Given supported download options, when the user starts a download, then the backend passes those options through existing `mtv_dl` behavior in the expected format.
+
+AC-12: Given post-download scripts configured on the filesystem and mounted into the container, when `mtv_dl` invokes configured hooks, then the web app does not block or replace that behavior.
+
+AC-13: Given viewport widths of 360px, 768px, and 1280px, when the user opens the UI, then search, queue, scheduler, database update, and configuration/status controls remain reachable without horizontal scrolling.
+
+AC-14: Given one active download, when five concurrent health or status requests are made, then requests complete successfully within the defined performance target.
 
 AC-15: Given the Web UI health status indicator, when the backend is healthy and not updating database, then it shows "online" with green dot.
 
@@ -413,23 +427,15 @@ AC-21: Given a database refresh operation is in progress, when queue management 
 
 AC-22: Given a completed download, when the system verifies the files, then all file names match the configured naming pattern and files are located in the configured target directory.
 
-AC-23: Given default configuration, when the service runs continuously, then database refresh is scheduled every 24 hours unless the user configures a different interval.
+AC-23: Given default configuration, when the service runs continuously, then database refresh is scheduled once every 24 hours unless the user configures a different refresh cron expression through the configuration file or environment.
 
 AC-24: Given a user performs search or download operations, when no manual or scheduled refresh is active, then those operations do not start a database refresh.
 
 AC-25: Given a database refresh runs, when it starts and completes or fails, then the UI/status API expose current or last update state and the logs record trigger source, outcome, and duration.
 
-AC-26: Given a clean checkout, when dependencies are installed and the app imports `mtv_dl`, then exactly one canonical dependency source is used and duplicate vendored/submodule copies are absent or inactive.
+AC-26: Given a clean checkout, when dependencies are installed and the app imports `mtv_dl`, then the import resolves to the exact dependency version declared in `pyproject.toml` and duplicate vendored/submodule copies are absent or inactive.
 
 AC-27: Given a successful main-branch CI run, when a user follows the container documentation, then they can pull the published image and run it with the documented mounted configuration, data, and download paths.
-
-AC-11: Given supported download options, when the user starts a download, then the backend passes those options through existing `mtv_dl` behavior in the expected format.
-
-AC-12: Given post-download scripts configured on the filesystem and mounted into the container, when `mtv_dl` invokes configured hooks, then the web app does not block or replace that behavior.
-
-AC-13: Given viewport widths of 360px, 768px, and 1280px, when the user opens the UI, then search, queue, scheduler, database update, and configuration/status controls remain reachable without horizontal scrolling.
-
-AC-14: Given one active download, when five concurrent health or status requests are made, then requests complete successfully within the defined performance target.
 
 ## Traceability Matrix
 
@@ -442,7 +448,7 @@ AC-14: Given one active download, when five concurrent health or status requests
 | SC-5 | Journey 3 | FR-23 through FR-26 | AC-7, AC-8 |
 | SC-6 | Journey 6 | FR-21, FR-27 through FR-32, FR-39, NFR-4, NFR-9, NFR-11, NFR-16, NFR-17, NFR-18, NFR-19 | AC-9, AC-10, AC-15, AC-16, AC-17, AC-18, AC-19, AC-20, AC-21, AC-27 |
 | SC-7 | Journey 1, Journey 3, Journey 4 | FR-7, FR-19, FR-20, FR-22, FR-34 through FR-38 | AC-1, AC-6, AC-11, AC-23, AC-24, AC-25, AC-26 |
-| SC-8 | All journeys | NFR-1 through NFR-19 | AC-1 through AC-27 |
+| SC-8 | All journeys | NFR-1 through NFR-20 | AC-1 through AC-27 |
 | SC-9 | Journey 1 through Journey 6 | PTR-5 through PTR-14, FR-33, NFR-13 | AC-13 |
 | SC-10 | Journey 6 | FR-30, FR-39 | AC-27 |
 
@@ -471,5 +477,3 @@ The PRD defines product scope and acceptance expectations. Implementation planni
 ## Open Questions
 
 OQ-1: Which remaining CLI options, beyond quality, target directory, subtitles, NFO, MKV merge, file modification time, series behavior, and post-download script paths, are required for MVP parity?
-
-OQ-2: What exact cron syntax subset is supported for MVP scheduling?

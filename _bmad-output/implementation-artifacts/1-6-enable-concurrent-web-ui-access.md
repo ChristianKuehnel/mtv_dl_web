@@ -58,7 +58,7 @@ So that I can monitor the system and manage downloads without interruption.
 ### Previous Learnings
 - Story 1.2 implemented basic health endpoint
 - Story 1.5 improved health status monitoring
-- Database integration uses mtv_dl.Database from src/mtv_dl/
+- Database integration uses `mtv_dl.Database` from the dependency resolved by `pyproject.toml`
 - Current implementation may block during database refresh operations
 
 ## Dev Agent Record

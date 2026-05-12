@@ -1,7 +1,7 @@
 # Story: Add thread synchronization to active_downloads dictionary access
 
 ## User Story
-As a system administrator, I want the MTV Downloader web interface to have proper thread synchronization for the active_downloads dictionary so that concurrent access from multiple threads does not cause race conditions or data corruption.
+As a self-hosting user, I want the MTV Downloader web interface to protect active download status updates so that concurrent requests and background work do not cause race conditions or data corruption (NFR-20).
 
 ## Acceptance Criteria
 

@@ -52,6 +52,9 @@ development_status:
   1-4-load-service-configuration: backlog
   1-5-improve-health-status-monitoring: review
   1-6-enable-concurrent-web-ui-access: review
+  1-7-add-thread-synchronization: ready-for-dev
+  1-8-implement-proper-locking: ready-for-dev
+  1-9-concurrency-improvements: ready-for-dev
   1-10-improve-database-refresh-cadence-status-logging: backlog
   1-11-consolidate-mtv-dl-dependency-integration: backlog
   1-12-publish-container-images-from-main-branch: backlog

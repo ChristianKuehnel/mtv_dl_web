@@ -44,7 +44,7 @@ uv sync
 Python `>=3.10` with FastAPI and Pydantic models for API validation.
 
 **Frontend:**
-Static HTML/CSS/JavaScript served by the backend from `src/frontend/`.
+Static HTML/CSS/JavaScript served by the backend from `src/mtv_dl_web/frontend/`.
 
 **Styling:**
 Plain local CSS stored with frontend assets. No Tailwind CDN and no frontend build pipeline are required for MVP.
@@ -56,7 +56,7 @@ Plain local CSS stored with frontend assets. No Tailwind CDN and no frontend bui
 `pytest`, `fastapi.testclient`, `pytest-asyncio`, and container smoke tests.
 
 **Code Organization:**
-Backend entrypoint in `src/main.py`, static frontend in `src/frontend/`, integrated `mtv_dl` source under `src/mtv_dl/`, tests under `tests/`.
+Backend entrypoint in `src/mtv_dl_web/main.py`, static frontend in `src/mtv_dl_web/frontend/`, `mtv_dl` dependency resolved through `pyproject.toml`, tests under `tests/`.
 
 **Development Experience:**
 Run app and tests through `uv`; verify quality with configured linting, type checks, frontend formatting, Dockerfile linting, ShellCheck, and container smoke tests.
@@ -84,7 +84,7 @@ Project initialization is already complete. The first implementation architectur
 
 **Project Organization:**
 - Tests: `tests/` directory (separate from source).
-- Frontend assets: `src/frontend/css/`, `src/frontend/js/`.
+- Frontend assets: `src/mtv_dl_web/frontend/`.
 
 ### Format Patterns
 
@@ -120,21 +120,16 @@ mtv_dl_web/
 ├── Dockerfile              # Alpine Linux container
 ├── docker-compose.yml      # Optional: Local dev setup
 ├── src/
-│   ├── main.py             # FastAPI entrypoint
 │   ├── config.py           # App configuration
-│   ├── frontend/           # Static frontend
-│   │   ├── index.html
-│   │   ├── css/
-│   │   │   └── styles.css
-│   │   ├── js/
-│   │   │   ├── search.js   # Search UI logic
-│   │   │   ├── queue.js    # Queue management
-│   │   │   └── downloads.js # Downloads view
-│   │   └── assets/         # Static assets (images, etc.)
-│   └── mtv_dl/            # Integrated mtv_dl modules
-│       ├── __init__.py
-│       ├── database.py    # Reused mtv_dl.Database
-│       └── downloader.py  # Reused mtv_dl.Downloader
+│   ├── mtv_dl_web/
+│   │   ├── __init__.py
+│   │   ├── main.py         # FastAPI entrypoint
+│   │   └── frontend/       # Static frontend
+│   │       ├── index.html
+│   │       └── hello.html
+│   ├── mtv_dl/             # Dependency source only when declared by pyproject.toml
+│   │   └── ...
+│   └── __init__.py
 ├── tests/
 │   ├── test_api.py        # API endpoint tests
 │   ├── test_integration.py # Integration tests
@@ -153,8 +148,8 @@ mtv_dl_web/
   - `GET /downloads`: List completed downloads.
 
 **Component Boundaries:**
-- Frontend: Vanilla JS modules (`search.js`, `queue.js`, `downloads.js`).
-- Backend: FastAPI routes in `main.py` with Pydantic validation.
+- Frontend: Vanilla HTML/CSS/JS under `src/mtv_dl_web/frontend/`.
+- Backend: FastAPI routes in `src/mtv_dl_web/main.py` with Pydantic validation.
 
 **Data Boundaries:**
 - Database: Reuse `mtv_dl.Database` (no modifications).
@@ -164,11 +159,11 @@ mtv_dl_web/
 
 | Feature               | Location                     | Files                          |
 |-----------------------|------------------------------|--------------------------------|
-| Search UI             | `src/frontend/`              | `search.js`, `index.html`      |
-| Queue Management      | `src/frontend/` + API        | `queue.js`, `main.py`          |
-| Downloads View        | `src/frontend/`              | `downloads.js`                 |
-| API Endpoints         | `src/main.py`                | FastAPI routes                 |
-| `mtv_dl` Integration  | `src/mtv_dl/`                | `database.py`, `downloader.py` |
+| Search UI             | `src/mtv_dl_web/frontend/`   | `index.html`                   |
+| Queue Management      | `src/mtv_dl_web/frontend/` + API | `index.html`, `main.py`    |
+| Downloads View        | `src/mtv_dl_web/frontend/`   | `index.html`                   |
+| API Endpoints         | `src/mtv_dl_web/main.py`     | FastAPI routes                 |
+| `mtv_dl` Integration  | `pyproject.toml` dependency  | Installed `mtv_dl` package     |
 
 ## Architecture Validation Results
 
@@ -183,7 +178,7 @@ mtv_dl_web/
 - Error handling (structured HTTP errors) is consistent across API boundaries.
 
 **Structure Alignment:**
-- Project structure supports all architectural decisions (e.g., `src/mtv_dl/` for integration).
+- Project structure supports all architectural decisions, with `mtv_dl` integration resolved through `pyproject.toml`.
 - Boundaries (API, frontend, data) are clearly defined and respected.
 
 ### Requirements Coverage Validation ✅
@@ -203,7 +198,7 @@ mtv_dl_web/
 - Technology versions verified (Python 3.10+, FastAPI).
 
 **Structure Completeness:**
-- Directory tree is fully defined (e.g., `src/frontend/js/` for UI logic).
+- Directory tree is fully defined (e.g., `src/mtv_dl_web/frontend/` for UI assets).
 - Integration points (API, `mtv_dl`) are clearly specified.
 
 **Pattern Completeness:**
@@ -222,7 +217,7 @@ mtv_dl_web/
 - Consistent patterns (naming, error handling, structure).
 
 **Implementation Handoff:**
-- **First Step**: Implement FastAPI endpoints in `src/main.py` (see API Boundaries).
+- **First Step**: Implement FastAPI endpoints in `src/mtv_dl_web/main.py` (see API Boundaries).
 - **AI Agent Guidelines**: Follow all architectural decisions, patterns, and structure exactly as documented.
 
 ### Decision Priority Analysis
