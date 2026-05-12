@@ -29,7 +29,7 @@ This document provides the complete epic and story breakdown for **mtv_dl_web**,
 - FR-11: Enable MKV merge and file modification time behavior.
 - FR-12: Support post-download scripts (filesystem-configured).
 - FR-13: Preserve `mtv_dl` naming patterns and folder structure conventions.
-- FR-14: Verify completed downloads are named and stored under the configured target directory.
+- FR-14: Verify completed downloads are named following the patterns configured for mtv_dl and stored under the configured target directory.
 
 **Queue (FR-15 to FR-18)**:
 - FR-15: Add selected shows to download queue.
