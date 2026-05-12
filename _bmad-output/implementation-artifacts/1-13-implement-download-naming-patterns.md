@@ -1,4 +1,4 @@
-# Story 3.1: Implement download naming patterns
+# Story 1.13: Implement download naming patterns
 
 Status: ready-for-dev
 
