@@ -1,8 +1,8 @@
 # Basic Configuration for MTV Downloader Web
 
-from pydantic import BaseSettings
-from pathlib import Path
 import os
+
+from pydantic.v1 import BaseSettings
 
 
 class Settings(BaseSettings):
