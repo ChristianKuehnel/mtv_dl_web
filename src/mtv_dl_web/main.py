@@ -33,6 +33,15 @@ except ImportError as e:
     print(f"Failed to import mtv_dl: {e}")
     raise
 
+# Import configuration
+import sys
+import os
+# Use portable path resolution instead of hardcoded path
+current_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.dirname(current_dir)
+sys.path.insert(0, project_root)
+from mtv_dl_web.config.settings import settings
+
 # Configure logging
 log_level = os.environ.get("LOG_LEVEL", "INFO").upper()
 logging.basicConfig(level=getattr(logging, log_level, logging.INFO))
@@ -79,10 +88,10 @@ refresh_retry_delay = 300  # 5 minute retry delay on failure
 class DownloadRequest(BaseModel):
     filters: list[str]
     quality: str = "url_http"
-    target_directory: str = "./downloads"
-    include_subtitles: bool = True
-    include_nfo: bool = True
-    merge_to_mkv: bool = False
+    target_directory: str = settings.target_directory
+    include_subtitles: bool = settings.enable_subtitles
+    include_nfo: bool = settings.enable_nfo
+    merge_to_mkv: bool = settings.enable_mkv_merge
 
 
 class DownloadStatus(BaseModel):
@@ -181,7 +190,7 @@ def validate_filters(filters: list[str]) -> None:
 
 
 # Database configuration
-DATABASE_DIR = Path(os.environ.get("DATABASE_DIR", str(Path.home() / ".mtv_dl_web"))).expanduser()
+DATABASE_DIR = Path(settings.database_path)
 DATABASE_DIR.mkdir(parents=True, exist_ok=True)
 DATABASE_FILE = DATABASE_DIR / "filmliste.sqlite"
 HISTORY_FILE = DATABASE_DIR / "history.sqlite"
