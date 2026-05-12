@@ -51,7 +51,7 @@ def test_project_structure():
         "src/mtv_dl_web/main.py",
         "src/mtv_dl_web/__init__.py",
         "src/__init__.py",
-        "src/config.py",
+        "src/mtv_dl_web/config/settings.py",
         "src/mtv_dl_web/frontend/hello.html",
         "pyproject.toml",
     ]
