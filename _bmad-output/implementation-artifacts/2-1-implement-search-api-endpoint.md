@@ -15,7 +15,7 @@ So that I can find shows to download.
 
 ## Tasks / Subtasks
 
-- [x] Implement search API endpoint in `src/main.py`
+- [x] Implement search API endpoint in `src/mtv_dl_web/main.py`
   - [x] Add route handler for POST /api/search
   - [x] Integrate with mtv_dl Database.filtered() method
   - [x] Validate filter parameters
@@ -28,7 +28,7 @@ So that I can find shows to download.
 
 ### Project Structure Notes
 
-- Follow existing FastAPI patterns in `src/main.py`
+- Follow existing FastAPI patterns in `src/mtv_dl_web/main.py`
 - Use existing mtv_dl Database integration
 - Maintain consistency with existing Pydantic models
 - Follow project's error handling patterns
@@ -38,7 +38,7 @@ So that I can find shows to download.
 - [Source: spec/sw_architecture.md#API-Design]
 - [Source: spec/implementation_plan.md#Task-3.1]
 - [Source: _bmad-output/planning-artifacts/epics.md#Story-2.1]
-- [Source: src/main.py:131-142] (existing search endpoint)
+- [Source: src/mtv_dl_web/main.py:131-142] (existing search endpoint)
 - [Source: src/mtv_dl/src/mtv_dl/mtv_dl.py:558-718] (Database.filtered method)
 
 ## Dev Agent Record
@@ -53,7 +53,7 @@ N/A
 
 ### Implementation Plan
 
-1. Analyzed existing search endpoint implementation in src/main.py:131-142
+1. Analyzed existing search endpoint implementation in src/mtv_dl_web/main.py:131-142
 2. Integrated with mtv_dl Database.filtered() method (src/mtv_dl/src/mtv_dl/mtv_dl.py:558-718)
 3. Added proper filter validation and error handling
 4. Created comprehensive test coverage for search functionality
@@ -75,6 +75,6 @@ N/A
 
 ### File List
 
-- `src/main.py` - Add search endpoint (lines 131-142)
+- `src/mtv_dl_web/main.py` - Add search endpoint (lines 131-142)
 - `tests/test_search_mock.py` - Add comprehensive search tests (7 test cases)
 - `spec/sw_architecture.md` - API documentation updated (lines 53, 60-64)

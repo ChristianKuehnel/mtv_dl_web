@@ -54,7 +54,7 @@ Before each task is considered complete, the following criteria must be met:
 
 ### Language-Specific Rules (Python)
 
-- **mtv_dl import**: Always use `sys.path.insert(0, str(Path(__file__).parent / "mtv_dl" / "src"))` then `from mtv_dl.mtv_dl import Database, Downloader`
+- **mtv_dl import**: Use `from mtv_dl.mtv_dl import Database, Downloader` from the dependency resolved by `pyproject.toml`; do not use path injection to select a different local copy
 - **Type annotations**: All functions must have type hints (mypy strict mode enforced)
 - **Error handling**: Use `HTTPException` with specific status codes; log failures with `logger.error()` before raising
 - **Async pattern**: FastAPI route handlers are `async def`; blocking I/O uses `ThreadPoolExecutor` or `BackgroundTasks`
@@ -102,10 +102,10 @@ Before each task is considered complete, the following criteria must be met:
 ### Critical Don't-Miss Rules
 
 - **Never reimplement mtv_dl logic**: Always delegate to mtv_dl's `Database.filtered()` and `Downloader.download()` — no direct SQLite queries
-- **sys.path hack**: The mtv_dl import requires `sys.path.insert(0, ...)` BEFORE the import statement
+- **mtv_dl dependency source**: `pyproject.toml` is the single source of truth for the `mtv_dl` dependency; imports must resolve to that declared dependency, not a vendored or path-injected copy
 - **Downloader args**: `Downloader.download()` takes `quality` as a tuple of URL types, not a single string
 - **Database file**: Lives at `~/.mtv_dl_web/filmliste.sqlite` — ensure directory exists before init
-- **Frontend path**: Static files are served from `src/frontend/` mounted at `/static`
+- **Frontend path**: Static files are served from `src/mtv_dl_web/frontend/` mounted at `/static`
 - **No ruff config**: Currently no ruff in pyproject.toml; don't assume it's available
 
 ---
@@ -126,4 +126,4 @@ Before each task is considered complete, the following criteria must be met:
 - Review quarterly for outdated rules
 - Remove rules that become obvious over time
 
-Last Updated: 2026-05-07
+Last Updated: 2026-05-12

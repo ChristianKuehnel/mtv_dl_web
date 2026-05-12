@@ -32,7 +32,7 @@ So that I can refine my searches.
 
 ### Project Structure Notes
 
-- Follow existing FastAPI patterns in `src/main.py`
+- Follow existing FastAPI patterns in `src/mtv_dl_web/main.py`
 - Use existing mtv_dl Database integration
 - Maintain consistency with existing Pydantic models
 - Follow project's error handling patterns
@@ -68,7 +68,7 @@ So that I can refine my searches.
 - [Source: spec/sw_architecture.md#API-Design]
 - [Source: spec/implementation_plan.md#Task-3.2]
 - [Source: _bmad-output/planning-artifacts/epics.md#Story-2.2]
-- [Source: src/main.py:131-142] (existing search endpoint)
+- [Source: src/mtv_dl_web/main.py:131-142] (existing search endpoint)
 - [Source: src/mtv_dl/src/mtv_dl/mtv_dl.py:558-718] (Database.filtered method)
 
 ## Dev Agent Record
@@ -83,7 +83,7 @@ N/A
 
 ### Implementation Plan
 
-1. Analyze existing search endpoint implementation in src/main.py:131-142
+1. Analyze existing search endpoint implementation in src/mtv_dl_web/main.py:131-142
 2. Add filter validation logic for operators and fields
 3. Implement proper error handling for invalid filters
 4. Create comprehensive test coverage for validation

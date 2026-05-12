@@ -1,7 +1,7 @@
 # Story: Implement proper locking for all shared mutable state
 
 ## User Story
-As a system administrator, I want the MTV Downloader web interface to have proper locking mechanisms for all shared mutable state so that the application remains stable and data integrity is maintained under concurrent usage.
+As a self-hosting user, I want the MTV Downloader web interface to protect all shared mutable state so that the application remains stable and data integrity is maintained under concurrent usage (NFR-20).
 
 ## Acceptance Criteria
 
@@ -43,7 +43,7 @@ While some state is partially protected, the overall design lacks comprehensive 
 
 ### Code Changes Required
 1. Add lock for `download_queue` operations (when needed)
-2. Add comprehensive lock for `active_downloads` operations (already covered in story 1-1)
+2. Add comprehensive lock for `active_downloads` operations (already covered in Story 1.7)
 3. Ensure all global state access follows consistent locking patterns
 4. Review and potentially consolidate locking mechanisms
 

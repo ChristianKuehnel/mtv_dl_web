@@ -11,13 +11,13 @@ So that I can extend it for search, queue, and scheduler functionality.
 ## Acceptance Criteria
 
 1. **Given** the existing repository, **when** I run `uv sync`, **then** dependencies are installed successfully.
-2. **Given** `src/main.py`, **when** I start the FastAPI app, **then** it runs without errors on the configured port.
-3. **Given** the project structure, **when** I inspect `src/`, **then** it matches the architecture (`main.py`, `config.py`, `frontend/`, `mtv_dl/`).
+2. **Given** `src/mtv_dl_web/main.py`, **when** I start the FastAPI app, **then** it runs without errors on the configured port.
+3. **Given** the project structure, **when** I inspect `src/`, **then** it matches the architecture (`mtv_dl_web/main.py`, `config.py`, `mtv_dl_web/frontend/`, and dependency-managed `mtv_dl` integration).
 
 ## Tasks / Subtasks
 
 - [x] Set up basic FastAPI application structure
-  - [x] Create `src/main.py` with FastAPI app initialization
+  - [x] Create `src/mtv_dl_web/main.py` with FastAPI app initialization
   - [x] Add basic configuration loading
   - [x] Set up project dependencies with uv
 - [x] Verify project structure matches architecture
@@ -30,14 +30,14 @@ So that I can extend it for search, queue, and scheduler functionality.
 ### Review Findings
 
 - [x] [Review][Decision] Missing `config.py` in `src/` — Added basic `config.py` to satisfy AC3
-- [x] [Review][Patch] Broken `mtv_dl` import path [src/main.py:24]
-- [x] [Review][Patch] Incorrect HTML file served [src/main.py:118]
-- [x] [Review][Patch] Removed version mocking for `mtv_dl` [src/main.py:28-36]
+- [x] [Review][Patch] Broken `mtv_dl` import path [src/mtv_dl_web/main.py:24]
+- [x] [Review][Patch] Incorrect HTML file served [src/mtv_dl_web/main.py:118]
+- [x] [Review][Patch] Removed version mocking for `mtv_dl` [src/mtv_dl_web/main.py:28-36]
 - [x] [Review][Patch] Deleted critical test files [tests/test_fastapi_backend.py, tests/test_search*.py]
 - [x] [Review][Patch] Broken Python package structure [src/__init__.py, src/mtv_dl_web/__init__.py]
 - [x] [Review][Patch] Removed dependency lock file from `.gitignore` [.gitignore:11]
 - [x] [Review][Patch] Hardcoded test paths in `test_smoke.py` [tests/test_smoke.py:17]
-- [x] [Review][Patch] Inconsistent frontend file handling [src/main.py:118, src/frontend/]
+- [x] [Review][Patch] Inconsistent frontend file handling [src/mtv_dl_web/main.py:118, src/mtv_dl_web/frontend/]
 - [x] [Review][Defer] Deleted sprint status file [_bmad-output/implementation-artifacts/] — deferred, pre-existing
 - [x] [Review][Defer] Deleted implementation artifacts [_bmad-output/implementation-artifacts/] — deferred, pre-existing
 
