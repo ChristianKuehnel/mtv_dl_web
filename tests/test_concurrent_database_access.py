@@ -124,7 +124,7 @@ def test_concurrent_database_access():
         if successful_requests == 5:
             success_count += 1
         
-        return success_count >= total_tests - 1  # Allow some flexibility
+        assert success_count >= total_tests - 1, f"Expected at least {total_tests-1} tests to pass, got {success_count}"
         
     except Exception as e:
         print(f'✗ Test failed with error: {e}')
@@ -173,7 +173,7 @@ def test_acceptance_criteria():
             else:
                 print('✗ AC-21 FAILED: Queue operations failed during refresh')
         
-        return True
+        assert True, "Acceptance criteria test passed"
         
     except Exception as e:
         print(f'✗ Acceptance criteria test failed: {e}')

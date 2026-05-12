@@ -99,12 +99,46 @@ Supported operators:
 
 Supported fields include `description`, `region`, `size`, `channel`, `topic`, `title`, `hash`, `url`, `duration`, `age`, `start`, `dow`, `hour`, `minute`, `season`, and `episode`.
 
-Useful patterns:
+ Useful patterns:
 
 - `duration+20m` finds shows longer than 20 minutes.
 - `age-1w` finds shows newer than one week.
 - `channel=ZDF topic=heute-show` finds ZDF shows whose topic contains `heute-show`.
 - `topic=Tatort dow=0 hour=20` finds Sunday evening Tatort-style matches.
+
+## Configuration
+
+### Environment Variables
+
+| Variable       | Default         | Description        |
+| -------------- | --------------- | ------------------ |
+| `PORT`         | `8000`          | Service port       |
+| `DATABASE_DIR` | `~/.mtv_dl_web` | Database directory |
+| `LOG_LEVEL`    | `INFO`          | Logging level      |
+
+### Configuration File (config.yaml)
+
+The application also supports configuration through a `config.yaml` file located in the config directory (mounted at `/config` in Docker). This file allows for more detailed configuration of the service:
+
+```yaml
+port: 8000
+host: 0.0.0.0
+database_path: ~/.mtv_dl_web
+download_quality: best
+target_directory: ~/Downloads/mtv_dl
+enable_subtitles: true
+enable_nfo: true
+enable_mkv_merge: false
+```
+
+#### Configuration Priority
+
+Configuration values are loaded in the following priority order (highest to lowest):
+1. Environment variables (e.g., `PORT=8080`)
+2. `config.yaml` file values
+3. Default values
+
+Values in `config.yaml` should be set to the directory path where database files are stored (not the full file paths). The mtv_dl package will determine the appropriate file names internally.
 
 ## API Endpoints
 
@@ -123,16 +157,6 @@ curl -X POST http://localhost:8000/api/search \
   -d '{"filters":["channel=ARD","topic='\''extra 3'\''","duration+20m"]}'
 ```
 
-## Configuration
-
-Environment variables:
-
-| Variable       | Default         | Description        |
-| -------------- | --------------- | ------------------ |
-| `PORT`         | `8000`          | Service port       |
-| `DATABASE_DIR` | `~/.mtv_dl_web` | Database directory |
-| `LOG_LEVEL`    | `INFO`          | Logging level      |
-
 ## Development
 
 ```bash
@@ -140,6 +164,17 @@ pytest tests/
 black src/ tests/
 mypy src/ tests/
 npx prettier --check "src/mtv_dl_web/frontend/**/*.html"
+```
+
+## Running Locally
+
+For local development, you can use the provided run script which will:
+1. Install dependencies using uv
+2. Activate the project environment
+3. Run the service with uvicorn using the config.yaml in the current directory
+
+```bash
+./scripts/run.sh
 ```
 
 ## Credits
