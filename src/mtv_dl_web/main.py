@@ -7,6 +7,7 @@ supporting concurrent web requests and downloads.
 
 import logging
 import os
+import re
 import sys
 import threading
 from concurrent.futures import ThreadPoolExecutor
@@ -133,6 +134,8 @@ SUPPORTED_FIELDS = {
     "episode",
 }
 
+FILTER_PATTERN = re.compile(r"^(?P<field>\w+)\s*(?P<operator>!=|=|\+|-)\s*(?P<pattern>.+)$")
+
 
 def validate_filters(filters: list[str]) -> None:
     """
@@ -144,11 +147,9 @@ def validate_filters(filters: list[str]) -> None:
     Raises:
         HTTPException: 400 Bad Request if invalid operators or fields are found
     """
-    import re
-
     if not filters:
         logger.error("Filter validation failed: empty filter list")
-        raise HTTPException(status_code=400, detail="At least one filter is required")
+        raise HTTPException(status_code=400, detail="At least one filter is required in filters[]")
 
     for filter_str in filters:
         normalized_filter = filter_str.strip()
@@ -157,10 +158,7 @@ def validate_filters(filters: list[str]) -> None:
             raise HTTPException(status_code=400, detail="Filter entries must not be empty")
 
         # Parse filter string using the same regex as mtv_dl
-        match = re.match(
-            r"^(?P<field>\w+)\s*(?P<operator>!=|=|\+|-)\s*(?P<pattern>.+)$",
-            normalized_filter,
-        )
+        match = FILTER_PATTERN.match(normalized_filter)
         if not match:
             logger.error(f"Filter validation failed: invalid format '{filter_str}'")
             raise HTTPException(
@@ -390,11 +388,11 @@ async def health_check() -> dict[str, Any]:
     """
     start_time = perf_counter()
     refresh_status = get_database_refresh_status()
-    status = "updating" if (is_database_update_in_progress() or refresh_status["is_refreshing"]) else "healthy"
+    is_updating = is_database_update_in_progress() or refresh_status["is_refreshing"]
+    status = "updating" if is_updating else "healthy"
 
     try:
-        if status == "healthy":
-            check_database_connectivity()
+        check_database_connectivity()
     except Exception as e:
         logger.error(f"Health check failed: {e}")
         status = "unhealthy"

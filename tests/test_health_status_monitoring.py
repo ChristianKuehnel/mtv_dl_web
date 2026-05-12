@@ -65,7 +65,9 @@ def test_health_reports_healthy_when_database_is_not_updating() -> None:
     response = client.get("/health")
 
     assert response.status_code == 200
-    assert response.json() == {"status": "healthy"}
+    payload = response.json()
+    assert payload["status"] == "healthy"
+    assert "database" in payload
 
 
 def test_health_reports_updating_while_database_refresh_is_running() -> None:
@@ -74,7 +76,9 @@ def test_health_reports_updating_while_database_refresh_is_running() -> None:
     response = client.get("/health")
 
     assert response.status_code == 200
-    assert response.json() == {"status": "updating"}
+    payload = response.json()
+    assert payload["status"] == "updating"
+    assert "database" in payload
 
     main_module.set_database_update_in_progress(False)
 
@@ -125,7 +129,9 @@ def test_database_refresh_state_tracks_overlapping_updates() -> None:
     response = client.get("/health")
 
     assert response.status_code == 200
-    assert response.json() == {"status": "updating"}
+    payload = response.json()
+    assert payload["status"] == "updating"
+    assert "database" in payload
 
     main_module.set_database_update_in_progress(False)
 
@@ -163,7 +169,9 @@ def test_health_reports_unhealthy_when_database_query_fails(monkeypatch) -> None
     response = client.get("/health")
 
     assert response.status_code == 200
-    assert response.json() == {"status": "unhealthy"}
+    payload = response.json()
+    assert payload["status"] == "unhealthy"
+    assert "database" in payload
 
 
 def test_frontend_contains_three_state_health_indicator() -> None:

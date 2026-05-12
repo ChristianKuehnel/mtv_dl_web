@@ -81,3 +81,18 @@ def test_health_endpoint_functionality(monkeypatch):
     assert response_data["status"] == "healthy"
     assert "database" in response_data
     assert "is_refreshing" in response_data["database"]
+
+
+def test_health_endpoint_reports_unhealthy_on_connectivity_failure_during_refresh(monkeypatch):
+    """Connectivity failure should win over updating state."""
+    monkeypatch.setattr(main, "is_database_refreshing", True)
+
+    def fail_connectivity() -> None:
+        raise RuntimeError("db unavailable")
+
+    monkeypatch.setattr(main, "check_database_connectivity", fail_connectivity)
+    client = TestClient(app)
+
+    response = client.get("/health")
+    assert response.status_code == 200
+    assert response.json()["status"] == "unhealthy"

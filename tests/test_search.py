@@ -132,7 +132,25 @@ def test_search_endpoint_empty_filters_rejected():
     assert response.status_code == 400
     data = response.json()
     assert "detail" in data
-    assert "At least one filter" in data["detail"]
+    assert "At least one filter is required in filters[]" == data["detail"]
+
+
+def test_search_endpoint_blank_filter_entry_rejected():
+    """Test blank filter entries are rejected."""
+    response = client.post("/api/search", json={"filters": ["   "]})
+
+    assert response.status_code == 400
+    data = response.json()
+    assert data["detail"] == "Filter entries must not be empty"
+
+
+def test_search_endpoint_filter_allows_operator_whitespace(fake_db):
+    """Test filter parsing tolerates whitespace around operator."""
+    fake_db.filtered.return_value = []
+    response = client.post("/api/search", json={"filters": ["channel   =   ARD"]})
+
+    assert response.status_code == 200
+    fake_db.filtered.assert_called_once_with(["channel   =   ARD"])
 
 
 def test_search_endpoint_malformed_filter_rejected():
