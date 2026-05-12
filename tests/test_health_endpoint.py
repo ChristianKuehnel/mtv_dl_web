@@ -5,6 +5,7 @@ Test for enhanced health endpoint (Story 1.2)
 
 import sys
 import time
+from datetime import timedelta
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -34,9 +35,39 @@ from mtv_dl_web.main import app
 importlib.metadata.version = original_version
 
 
+class FakeCursor:
+    def execute(self, query: str) -> None:
+        assert query == "SELECT 1"
+
+    def fetchone(self) -> tuple[int]:
+        return (1,)
+
+
+class FakeConnection:
+    def __enter__(self) -> "FakeConnection":
+        return self
+
+    def __exit__(self, exc_type: object, exc_value: object, traceback: object) -> None:
+        pass
+
+    def cursor(self) -> FakeCursor:
+        return FakeCursor()
+
+
+class FakeDatabase:
+    connection = FakeConnection()
+    
+    # Add attributes needed for health endpoint
+    filmliste_version = 1234567890  # Mock timestamp
+    filmliste_refresh_after = timedelta(hours=24)  # Mock refresh interval
+
+
 def test_health_endpoint_functionality(monkeypatch):
     """Test that health endpoint returns proper response"""
-    monkeypatch.setattr(main, "check_database_connectivity", lambda: None)
+    # Mock get_db_connection to support check_for_refresh parameter
+    def mock_get_db_connection(check_for_refresh=True):
+        return FakeDatabase()
+    monkeypatch.setattr(main, "get_db_connection", mock_get_db_connection)
     client = TestClient(app)
 
     start_time = time.time()
@@ -45,4 +76,6 @@ def test_health_endpoint_functionality(monkeypatch):
 
     assert response.status_code == 200
     assert response_time <= 500
-    assert response.json() == {"status": "healthy"}
+    
+    response_data = response.json()
+    assert response_data == {"status": "healthy"}

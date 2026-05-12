@@ -7,20 +7,32 @@ Tests all search functionality including success cases, error handling, and edge
 import sys
 import os
 import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock
 from fastapi.testclient import TestClient
 
 # Add the src directory to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
+import mtv_dl_web.main as main
 from mtv_dl_web.main import app
-from mtv_dl.mtv_dl import Database
 
 # Create test client
 client = TestClient(app)
 
 
-def test_search_endpoint_success():
+class FakeDb:
+    def __init__(self):
+        self.filtered = MagicMock(return_value=[])
+
+
+@pytest.fixture
+def fake_db(monkeypatch):
+    db = FakeDb()
+    monkeypatch.setattr(main, "get_db_connection", lambda *args, **kwargs: db)
+    return db
+
+
+def test_search_endpoint_success(fake_db):
     """Test successful search with valid filters"""
     # Mock the database filtered method
     mock_shows = [
@@ -50,43 +62,37 @@ def test_search_endpoint_success():
         }
     ]
     
-    with patch.object(Database, 'filtered') as mock_filtered:
-        mock_filtered.return_value = mock_shows
-        
-        response = client.post("/api/search", json={"filters": ["channel=ARD"]})
-        
-        assert response.status_code == 200
-        data = response.json()
-        assert "results" in data
-        assert len(data["results"]) == 2
-        assert data["results"][0]["channel"] == "ARD"
-        assert data["results"][1]["channel"] == "ZDF"
+    fake_db.filtered.return_value = mock_shows
+    response = client.post("/api/search", json={"filters": ["channel=ARD"]})
+
+    assert response.status_code == 200
+    data = response.json()
+    assert "results" in data
+    assert len(data["results"]) == 2
+    assert data["results"][0]["channel"] == "ARD"
+    assert data["results"][1]["channel"] == "ZDF"
 
 
-def test_search_endpoint_empty_results():
+def test_search_endpoint_empty_results(fake_db):
     """Test behavior when no shows match filters"""
-    with patch.object(Database, 'filtered') as mock_filtered:
-        mock_filtered.return_value = []
-        
-        response = client.post("/api/search", json={"filters": ["channel=NonExistent"]})
-        
-        assert response.status_code == 200
-        data = response.json()
-        assert "results" in data
-        assert len(data["results"]) == 0
+    fake_db.filtered.return_value = []
+    response = client.post("/api/search", json={"filters": ["channel=NonExistent"]})
+
+    assert response.status_code == 200
+    data = response.json()
+    assert "results" in data
+    assert len(data["results"]) == 0
 
 
-def test_search_endpoint_invalid_filters():
+def test_search_endpoint_invalid_filters(fake_db):
     """Test error handling for invalid filters"""
-    with patch.object(Database, 'filtered') as mock_filtered:
-        mock_filtered.side_effect = Exception("Invalid filter field")
+    fake_db.filtered.side_effect = Exception("Invalid filter field")
+    response = client.post("/api/search", json={"filters": ["invalid_field=value"]})
 
-        response = client.post("/api/search", json={"filters": ["invalid_field=value"]})
-
-        assert response.status_code == 400
-        data = response.json()
-        assert "detail" in data
-        assert "Unsupported field" in data["detail"]
+    assert response.status_code == 400
+    data = response.json()
+    assert "detail" in data
+    assert "Unsupported field" in data["detail"]
 
 
 def test_search_endpoint_missing_filters():
@@ -98,20 +104,18 @@ def test_search_endpoint_missing_filters():
     assert "detail" in data
 
 
-def test_search_endpoint_database_error():
+def test_search_endpoint_database_error(fake_db):
     """Test error handling for database errors"""
-    with patch.object(Database, 'filtered') as mock_filtered:
-        mock_filtered.side_effect = Exception("Database connection failed")
-        
-        response = client.post("/api/search", json={"filters": ["channel=ARD"]})
-        
-        assert response.status_code == 500
-        data = response.json()
-        assert "detail" in data
-        assert "Database connection failed" in data["detail"]
+    fake_db.filtered.side_effect = Exception("Database connection failed")
+    response = client.post("/api/search", json={"filters": ["channel=ARD"]})
+
+    assert response.status_code == 500
+    data = response.json()
+    assert "detail" in data
+    assert "Database connection failed" in data["detail"]
 
 
-def test_search_endpoint_complex_filters():
+def test_search_endpoint_complex_filters(fake_db):
     """Test search with multiple complex filters"""
     mock_shows = [
         {
@@ -128,21 +132,19 @@ def test_search_endpoint_complex_filters():
         }
     ]
     
-    with patch.object(Database, 'filtered') as mock_filtered:
-        mock_filtered.return_value = mock_shows
-        
-        # Test with multiple filters
-        response = client.post("/api/search", json={
-            "filters": ["channel=ARD", "topic='extra 3'", "duration+20m"]
-        })
-        
-        assert response.status_code == 200
-        data = response.json()
-        assert len(data["results"]) == 1
-        assert data["results"][0]["title"] == "Extra 3"
+    fake_db.filtered.return_value = mock_shows
+    # Test with multiple filters
+    response = client.post("/api/search", json={
+        "filters": ["channel=ARD", "topic='extra 3'", "duration+20m"]
+    })
+
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data["results"]) == 1
+    assert data["results"][0]["title"] == "Extra 3"
 
 
-def test_search_endpoint_special_characters():
+def test_search_endpoint_special_characters(fake_db):
     """Test filters with special characters and spaces"""
     mock_shows = [
         {
@@ -159,19 +161,17 @@ def test_search_endpoint_special_characters():
         }
     ]
     
-    with patch.object(Database, 'filtered') as mock_filtered:
-        mock_filtered.return_value = mock_shows
-        
-        response = client.post("/api/search", json={
-            "filters": ["title='Show with \\'quotes\\' and spaces'"]
-        })
-        
-        assert response.status_code == 200
-        data = response.json()
-        assert len(data["results"]) == 1
+    fake_db.filtered.return_value = mock_shows
+    response = client.post("/api/search", json={
+        "filters": ["title='Show with \\'quotes\\' and spaces'"]
+    })
+
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data["results"]) == 1
 
 
-def test_search_response_structure():
+def test_search_response_structure(fake_db):
     """Test that response has correct structure"""
     mock_shows = [
         {
@@ -188,20 +188,18 @@ def test_search_response_structure():
         }
     ]
     
-    with patch.object(Database, 'filtered') as mock_filtered:
-        mock_filtered.return_value = mock_shows
-        
-        response = client.post("/api/search", json={"filters": ["channel=ARD"]})
-        data = response.json()
-        
-        # Check response structure
-        assert "results" in data
-        result = data["results"][0]
-        
-        # Verify all expected fields are present
-        required_fields = ["hash", "channel", "title", "topic", "size", "start", "duration", "age", "region"]
-        for field in required_fields:
-            assert field in result, f"Missing required field: {field}"
+    fake_db.filtered.return_value = mock_shows
+    response = client.post("/api/search", json={"filters": ["channel=ARD"]})
+    data = response.json()
+
+    # Check response structure
+    assert "results" in data
+    result = data["results"][0]
+
+    # Verify all expected fields are present
+    required_fields = ["hash", "channel", "title", "topic", "size", "start", "duration", "age", "region"]
+    for field in required_fields:
+        assert field in result, f"Missing required field: {field}"
 
 
 if __name__ == "__main__":
