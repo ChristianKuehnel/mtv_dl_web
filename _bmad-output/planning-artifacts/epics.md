@@ -141,6 +141,7 @@ None (UI requirements covered by PRD).
 | NFR-17 | 1    | Health check performance             |
 | NFR-18 | 1    | Concurrent web UI access             |
 | NFR-19 | 1    | Non-blocking database operations     |
+| NFR-20 | 1    | Thread-safe shared state operations  |
 
 ## Epic List
 
@@ -273,6 +274,83 @@ So that I can monitor the system and manage downloads without interruption.
 **Given** concurrent database refresh and user operations,
 **When** both are executing,
 **Then** the system maintains data consistency and operational integrity.
+
+---
+
+### Story 1.7: Add thread synchronization to active_downloads dictionary access
+
+As a system administrator,
+I want the MTV Downloader web interface to have proper thread synchronization for the active_downloads dictionary so that concurrent access from multiple threads does not cause race conditions or data corruption.
+
+**Acceptance Criteria:**
+
+**Given** multiple background download tasks are running simultaneously,
+**And** each task tries to update the status of a download,
+**When** the tasks execute concurrently,
+**Then** the application should not crash or corrupt data,
+**And** all download statuses should be properly recorded.
+
+**Given** the web interface has active downloads,
+**And** multiple users are viewing download status simultaneously,
+**And** background download tasks are updating statuses,
+**When** requests are processed concurrently,
+**Then** all status queries should return consistent data,
+**And** no race conditions should occur.
+
+**Given** there are active downloads running,
+**When** the application is shut down gracefully,
+**Then** all active downloads should be safely managed,
+**And** no data corruption should occur during shutdown.
+
+---
+
+### Story 1.8: Implement proper locking for all shared mutable state
+
+As a system administrator,
+I want the MTV Downloader web interface to have proper locking mechanisms for all shared mutable state so that the application remains stable and data integrity is maintained under concurrent usage.
+
+**Acceptance Criteria:**
+
+**Given** the application has multiple shared mutable state variables,
+**When** multiple threads access these variables simultaneously,
+**Then** all shared state should be protected from race conditions,
+**And** data integrity should be maintained.
+
+**Given** database refresh is happening in background,
+**And** download operations are running simultaneously,
+**When** both operations access shared resources,
+**Then** no conflicts should occur,
+**And** both operations should complete successfully.
+
+**Given** global variables that store application state,
+**When** multiple threads modify these variables,
+**Then** all modifications should be atomic and consistent,
+**And** no partial updates should occur.
+
+---
+
+### Story 1.9: Implement comprehensive concurrency improvements for shared state
+
+As a system administrator,
+I want the MTV Downloader web interface to have comprehensive thread safety measures so that the application remains stable, reliable, and performs well under concurrent usage with multiple simultaneous downloads and requests.
+
+**Acceptance Criteria:**
+
+**Given** the application handles multiple concurrent download operations,
+**When** various threads access shared state simultaneously,
+**Then** all operations should complete successfully without race conditions,
+**And** data integrity should be maintained throughout.
+
+**Given** a database refresh is in progress,
+**And** download operations are running simultaneously,
+**When** both operations access shared resources,
+**Then** neither operation should interfere with the other,
+**And** both should complete successfully.
+
+**Given** multiple threads are operating concurrently,
+**When** unexpected errors occur during shared state access,
+**Then** the application should handle errors gracefully,
+**And** should not crash or leave shared state in inconsistent state.
 
 ### Epic 2: Search Functionality
 
