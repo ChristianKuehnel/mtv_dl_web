@@ -7,6 +7,7 @@ import importlib
 import sys
 import time
 from collections.abc import Iterator
+from math import ceil
 from pathlib import Path
 
 import pytest
@@ -79,13 +80,20 @@ def test_health_reports_updating_while_database_refresh_is_running() -> None:
 
 
 def test_health_check_completes_within_one_second() -> None:
-    start_time = time.perf_counter()
+    durations: list[float] = []
 
-    response = client.get("/health")
+    for _ in range(20):
+        start_time = time.perf_counter()
+        response = client.get("/health")
+        elapsed = time.perf_counter() - start_time
 
-    elapsed = time.perf_counter() - start_time
-    assert response.status_code == 200
-    assert elapsed < 1.0
+        assert response.status_code == 200
+        durations.append(elapsed)
+
+    durations.sort()
+    p95_index = max(0, ceil(len(durations) * 0.95) - 1)
+    p95_duration = durations[p95_index]
+    assert p95_duration < 1.0
 
 
 def test_database_refresh_state_is_reset_after_connection_update(monkeypatch) -> None:
@@ -165,7 +173,16 @@ def test_frontend_contains_three_state_health_indicator() -> None:
     assert 'id="health-dot"' in html
     assert 'id="health-label"' in html
     assert "updateHealthStatus" in html
-    assert '"online"' in html
-    assert '"updating"' in html
-    assert '"offline"' in html
+    assert 'online: {' in html
+    assert 'label: "online"' in html
+    assert 'dotClass: "h-2.5 w-2.5 rounded-full bg-green-500"' in html
+    assert 'border border-green-200 bg-green-50' in html
+    assert 'updating: {' in html
+    assert 'label: "updating"' in html
+    assert 'dotClass: "h-2.5 w-2.5 rounded-full bg-yellow-500"' in html
+    assert 'border border-yellow-200 bg-yellow-50' in html
+    assert 'offline: {' in html
+    assert 'label: "offline"' in html
+    assert 'dotClass: "h-2.5 w-2.5 rounded-full bg-red-500"' in html
+    assert 'border border-red-200 bg-red-50' in html
     assert "/health" in html

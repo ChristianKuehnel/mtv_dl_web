@@ -377,7 +377,6 @@ async def health_check() -> dict[str, str]:
     status = "updating" if is_database_update_in_progress() else "healthy"
 
     try:
-        DATABASE_DIR.mkdir(parents=True, exist_ok=True)
         if status == "healthy":
             check_database_connectivity()
     except Exception as e:
