@@ -8,7 +8,6 @@ supporting concurrent web requests and downloads.
 import asyncio
 import logging
 import os
-import sys
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
@@ -22,9 +21,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-
-# Add the bundled mtv_dl directory to Python path to import mtv_dl module
-sys.path.insert(0, str(Path(__file__).parent.parent / "mtv_dl" / "src"))
 
 # Import the mtv_dl functionality
 try:

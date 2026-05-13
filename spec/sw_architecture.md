@@ -33,7 +33,7 @@ This document describes the software architecture for a lightweight web interfac
   - REST API endpoints for frontend communication
   - queries and downloads are handled by the mtv_dl functionality
 
-- **Database Integration**: `mtv_dl/src/mtv_dl/mtv_dl.py`
+- **Database Integration**: `mtv_dl` (via pip install)
   - Existing mtv_dl Database class for querying shows
   - Downloader class for downloading content
   - re-use existing business logic, do *not* talk directly to the database
