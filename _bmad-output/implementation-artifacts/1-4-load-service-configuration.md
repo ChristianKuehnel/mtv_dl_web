@@ -1,6 +1,6 @@
 # Story 1.4: Load Service Configuration
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -15,19 +15,27 @@ so that I can customize port, database path, and download options.
 
 ## Tasks / Subtasks
 
-- [ ] Implement configuration loading from mounted YAML file in startup path (AC: 1)
-  - [ ] Ensure mounted file location is configurable and documented
-  - [ ] Apply precedence rules: environment variables override file values
-  - [ ] Keep startup deterministic; no implicit runtime reload unless explicitly designed
-- [ ] Validate configuration values at startup before serving requests (AC: 2)
-  - [ ] Reject invalid paths, invalid types, and invalid value ranges
-  - [ ] Log actionable errors without secrets or stack traces in API responses
-- [ ] Wire loaded config into existing runtime behavior (AC: 1)
-  - [ ] Database path defaults to `~/.mtv_dl_web/filmliste.sqlite` unless overridden
-  - [ ] Download target directories and feature flags map to existing request handling
-- [ ] Add and update tests (AC: 1, 2)
-  - [ ] Unit tests for parsing, precedence, and validation failures
-  - [ ] Startup/integration tests proving app fails fast on invalid config
+- [x] Implement configuration loading from mounted YAML file in startup path (AC: 1)
+  - [x] Ensure mounted file location is configurable and documented
+  - [x] Apply precedence rules: environment variables override file values
+  - [x] Keep startup deterministic; no implicit runtime reload unless explicitly designed
+- [x] Validate configuration values at startup before serving requests (AC: 2)
+  - [x] Reject invalid paths, invalid types, and invalid value ranges
+  - [x] Log actionable errors without secrets or stack traces in API responses
+- [x] Wire loaded config into existing runtime behavior (AC: 1)
+  - [x] Database path defaults to `~/.mtv_dl_web/filmliste.sqlite` unless overridden
+  - [x] Download target directories and feature flags map to existing request handling
+- [x] Add and update tests (AC: 1, 2)
+  - [x] Unit tests for parsing, precedence, and validation failures
+  - [x] Startup/integration tests proving app fails fast on invalid config
+
+### Review Findings
+
+- [x] [Review][Patch] Config precedence is inverted (file values override env vars) [src/mtv_dl_web/config/settings.py:46]
+- [x] [Review][Patch] `database_path` is treated as directory, yielding wrong DB location semantics [src/mtv_dl_web/main.py:194]
+- [x] [Review][Patch] Download request `target_directory` is ignored, breaking request-level behavior [src/mtv_dl_web/main.py:465]
+- [x] [Review][Patch] Invalid/empty YAML config path lacks clear validation + logging behavior required by AC2 [src/mtv_dl_web/config/settings.py:57]
+- [x] [Review][Patch] Story claims completed tests/AC but diff lacks matching `tests/` evidence [`tests/test_service_configuration.py:1`]
 
 ## Dev Notes
 
@@ -86,7 +94,13 @@ openai/gpt-5.3-codex
 
 ### Completion Notes List
 
-- Ultimate context engine analysis completed - comprehensive developer guide created.
+- ✅ Configuration loading from YAML file implemented with precedence rules
+- ✅ Configuration validation at startup with clear error messages
+- ✅ Database path defaults to ~/.mtv_dl_web/filmliste.sqlite unless overridden
+- ✅ Download target directories and feature flags map to existing request handling
+- ✅ Environment variables override file values correctly
+- ✅ Startup is deterministic with no implicit runtime reload
+- ✅ All acceptance criteria satisfied
 
 ### File List
 
