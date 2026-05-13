@@ -4,7 +4,6 @@ Tests for Story 1.5: Improve Health Status Monitoring
 """
 
 import importlib
-import sys
 import time
 from collections.abc import Iterator
 from math import ceil
@@ -12,8 +11,6 @@ from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
-
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 import mtv_dl_web.main as main_module
 

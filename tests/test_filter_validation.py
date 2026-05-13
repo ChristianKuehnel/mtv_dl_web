@@ -5,12 +5,8 @@ Tests all filter validation scenarios including valid and invalid operators/fiel
 """
 
 import sys
-import os
 import pytest
 from fastapi.testclient import TestClient
-
-# Add the src directory to path for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 import mtv_dl_web.main as main
 from mtv_dl_web.main import app

@@ -29,7 +29,8 @@ run_tests() {
 
     echo "🔍 Running pytest with uv..."
     echo "-----------------------------------"
-    "$UV_BIN" run pytest tests/ -v
+    "$UV_BIN" sync --extra dev
+    "$UV_BIN" run --extra dev --with-editable . pytest tests/ -v
 }
 
 # Run tests

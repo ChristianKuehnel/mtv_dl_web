@@ -3,18 +3,11 @@
 Simple smoke test ensuring core functionality works
 """
 
-import os
-import sys
 from pathlib import Path
-
-# Add the src directory to path for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 
 def test_basic_imports():
     """Test that we can import the main module without major issues"""
-    sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
-
     import mtv_dl_web.main as main
 
     assert hasattr(main, "app")
@@ -31,8 +24,6 @@ def test_hello_html_exists():
 
 def test_simple_functionality():
     """Test the basic functionality we've implemented"""
-    sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
-
     import mtv_dl_web.main as main
 
     assert main.app.title == "MTV Downloader Web Interface"
