@@ -15,6 +15,51 @@ This project is mostly AI generated using the BMAD method for vibe coding: produ
 
 ## Quick Start
 
+### Prebuilt Image from GHCR (Main Branch)
+
+The main branch automatically publishes a container image to GitHub Container Registry:
+
+- `ghcr.io/<username-or-org>/mtv_dl_web:latest`
+- `ghcr.io/<username-or-org>/mtv_dl_web:main-<commit-sha>`
+
+Replace `<username-or-org>` with the GitHub organization or user that owns this repository.
+
+```bash
+mkdir -p ./data ./downloads ./config ./.mtv_dl_web
+
+docker run -d -p 8000:8000 \
+  -v "$(pwd)/data:/data" \
+  -v "$(pwd)/downloads:/downloads" \
+  -v "$(pwd)/config:/config" \
+  -v "$(pwd)/.mtv_dl_web:/home/appuser/.mtv_dl_web" \
+  --name mtv-dl-web \
+  ghcr.io/<owner>/mtv_dl_web:latest
+```
+
+Equivalent Podman command:
+
+```bash
+mkdir -p ./data ./downloads ./config ./.mtv_dl_web
+
+podman run -d -p 8000:8000 \
+  -v "$(pwd)/data:/data" \
+  -v "$(pwd)/downloads:/downloads" \
+  -v "$(pwd)/config:/config" \
+  -v "$(pwd)/.mtv_dl_web:/home/appuser/.mtv_dl_web" \
+  --name mtv-dl-web \
+  ghcr.io/<owner>/mtv_dl_web:latest
+```
+
+Readiness and persistence verification:
+
+```bash
+curl http://localhost:8000/health
+podman restart mtv-dl-web
+curl http://localhost:8000/health
+```
+
+`GET /health` should remain healthy and mounted content persists across restart because `/data`, `/downloads`, `/config`, and `/home/appuser/.mtv_dl_web` are external mounts.
+
 ### Docker Compose
 
 ```bash
