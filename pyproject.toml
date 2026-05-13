@@ -17,9 +17,6 @@ dependencies = [
     "mtv-dl",
 ]
 
-[tool.uv.sources]
-mtv-dl = { path = "src/mtv_dl", editable = true }
-
 [project.optional-dependencies]
 dev = [
     "pytest>=8.4,<9.0",

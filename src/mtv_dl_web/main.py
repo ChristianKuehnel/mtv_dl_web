@@ -8,7 +8,6 @@ supporting concurrent web requests and downloads.
 import asyncio
 import logging
 import os
-import sys
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
@@ -22,9 +21,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-
-# Add the bundled mtv_dl directory to Python path to import mtv_dl module
-sys.path.insert(0, str(Path(__file__).parent.parent / "mtv_dl" / "src"))
 
 # Import the mtv_dl functionality
 try:
@@ -63,6 +59,7 @@ if frontend_dir.exists():
 download_queue: list[dict[str, Any]] = []
 executor = ThreadPoolExecutor(max_workers=4)
 active_downloads: dict[str, dict[str, Any]] = {}
+active_downloads_lock = threading.RLock()
 database_update_lock = Lock()
 _database_update_count = 0
 
@@ -460,12 +457,13 @@ async def start_download(download_request: DownloadRequest, background_tasks: Ba
             download_ids.append(show_id)
 
             # Add to active downloads
-            active_downloads[show_id] = {
-                "status": "queued",
-                "progress": 0.0,
-                "message": "Queued for download",
-                "file_path": None,
-            }
+            with active_downloads_lock:
+                active_downloads[show_id] = {
+                    "status": "queued",
+                    "progress": 0.0,
+                    "message": "Queued for download",
+                    "file_path": None,
+                }
 
             # Submit download task to background
             background_tasks.add_task(download_show_background, show, download_request)
@@ -488,8 +486,9 @@ async def download_show_background(show_data: dict[str, Any], download_request: 
 
     try:
         # Update status
-        active_downloads[show_id]["status"] = "downloading"
-        active_downloads[show_id]["message"] = "Starting download..."
+        with active_downloads_lock:
+            active_downloads[show_id]["status"] = "downloading"
+            active_downloads[show_id]["message"] = "Starting download..."
 
         # Create downloader instance
         downloader = Downloader(show_data)
@@ -512,19 +511,21 @@ async def download_show_background(show_data: dict[str, Any], download_request: 
         )
 
         # Update status
-        if path:
-            active_downloads[show_id]["status"] = "completed"
-            active_downloads[show_id]["message"] = "Download completed"
-            active_downloads[show_id]["file_path"] = str(path)
-        else:
-            active_downloads[show_id]["status"] = "failed"
-            active_downloads[show_id]["message"] = "Download failed"
+        with active_downloads_lock:
+            if path:
+                active_downloads[show_id]["status"] = "completed"
+                active_downloads[show_id]["message"] = "Download completed"
+                active_downloads[show_id]["file_path"] = str(path)
+            else:
+                active_downloads[show_id]["status"] = "failed"
+                active_downloads[show_id]["message"] = "Download failed"
 
     except Exception as e:
         logger.error(f"Background download failed for {show_id}: {e}")
-        if show_id in active_downloads:
-            active_downloads[show_id]["status"] = "failed"
-            active_downloads[show_id]["message"] = f"Download failed: {str(e)}"
+        with active_downloads_lock:
+            if show_id in active_downloads:
+                active_downloads[show_id]["status"] = "failed"
+                active_downloads[show_id]["message"] = f"Download failed: {str(e)}"
 
 
 @app.get("/api/download/status/{download_id}")
@@ -532,10 +533,11 @@ async def get_download_status(download_id: str) -> dict[str, Any]:
     """
     Get the status of a specific download
     """
-    if download_id not in active_downloads:
-        raise HTTPException(status_code=404, detail="Download not found")
+    with active_downloads_lock:
+        if download_id not in active_downloads:
+            raise HTTPException(status_code=404, detail="Download not found")
 
-    return active_downloads[download_id]
+        return active_downloads[download_id]
 
 
 @app.get("/api/download/status")
@@ -543,7 +545,8 @@ async def get_all_download_statuses() -> dict[str, dict[str, Any]]:
     """
     Get statuses of all active downloads
     """
-    return active_downloads
+    with active_downloads_lock:
+        return active_downloads
 
 
 @app.get("/api/database/status")
