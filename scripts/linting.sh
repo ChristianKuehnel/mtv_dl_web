@@ -8,9 +8,6 @@ set -euo pipefail  # Exit on any error, undefined vars, pipe failures
 
 # Set root directory to the parent directory of this script
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-# Set virtual environment directory
-VENV_DIR="$ROOT_DIR/venv"
-UV_VENV_DIR="$ROOT_DIR/.venv"
 CHECK_MODE=false
 
 usage() {
@@ -54,19 +51,13 @@ command_exists() {
 }
 
 run_python_module() {
-    if [ -n "${VIRTUAL_ENV:-}" ] && [ -x "$VIRTUAL_ENV/bin/python" ]; then
-        "$VIRTUAL_ENV/bin/python" -m "$@"
-    elif [ -x "$VENV_DIR/bin/python" ]; then
-        "$VENV_DIR/bin/python" -m "$@"
-    elif [ -x "$UV_VENV_DIR/bin/python" ]; then
-        "$UV_VENV_DIR/bin/python" -m "$@"
-    elif command_exists uv; then
+    if command_exists uv; then
         (
             cd "$ROOT_DIR"
             uv run "$@"
         )
     else
-        echo "Error: No Python environment found. Please run setup script first: ./scripts/setup.sh"
+        echo "Error: uv not found. Please install uv to run Python tools."
         exit 1
     fi
 }
@@ -76,11 +67,9 @@ run_prettier_command() {
         "$ROOT_DIR/node_modules/.bin/prettier" "$@"
     elif command_exists prettier; then
         prettier "$@"
-    elif [ "$CHECK_MODE" = true ]; then
+    else
         echo "Error: Prettier not found. Run npm install before linting."
         exit 1
-    else
-        echo "Warning: Prettier not found. Skipping HTML/JS formatting."
     fi
 }
 
@@ -122,11 +111,17 @@ run_hadolint() {
             echo "Warning: Dockerfile not found. Skipping Dockerfile linting."
         fi
         echo "Dockerfile linting complete."
-    elif [ "$CHECK_MODE" = true ]; then
+    elif command_exists podman; then
+        if [ -f "$ROOT_DIR/Dockerfile" ]; then
+            echo "Using podman to run hadolint..."
+            podman run --rm -i ghcr.io/hadolint/hadolint < "$ROOT_DIR/Dockerfile"
+        else
+            echo "Warning: Dockerfile not found. Skipping Dockerfile linting."
+        fi
+        echo "Dockerfile linting complete."
+    else
         echo "Error: hadolint not found. Install hadolint before linting."
         exit 1
-    else
-        echo "Warning: hadolint not found. Skipping Dockerfile linting."
     fi
 }
 
