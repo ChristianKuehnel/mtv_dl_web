@@ -8,6 +8,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from unittest.mock import patch
 
+import mtv_dl_web.main as main_module
 from fastapi.testclient import TestClient
 from mtv_dl_web.main import app, active_downloads, database_refresh_lock, active_downloads_lock, database_update_lock
 
@@ -97,38 +98,40 @@ def test_concurrent_database_refresh_access():
 
 def test_concurrent_database_update_access():
     """Test concurrent access to database update counter"""
-    # Reset counter
+    # Reset counter and ensure cleanup to avoid leaking state across tests
     with database_update_lock:
-        from mtv_dl_web.main import _database_update_count
-        _database_update_count = 0
+        main_module._database_update_count = 0
     
     # Function to simulate concurrent access to update counter
     def access_update_counter(iteration: int, results: list) -> None:
         try:
             with database_update_lock:
-                from mtv_dl_web.main import _database_update_count
-                count = _database_update_count
-                _database_update_count += 1  # Increment
+                count = main_module._database_update_count
+                main_module._database_update_count += 1  # Increment
                 results.append((iteration, count))
         except Exception as e:
             results.append((iteration, f"error: {e}"))
     
-    # Run concurrent access
-    results = []
-    threads = []
-    for i in range(10):
-        thread = threading.Thread(target=access_update_counter, args=(i, results))
-        threads.append(thread)
-        thread.start()
-    
-    for thread in threads:
-        thread.join()
-    
-    # Verify all accesses occurred and counter incremented correctly
-    assert len(results) == 10
-    for iteration, count in results:
-        assert count >= 0 and count <= 9
-    assert _database_update_count == 10  # Should be incremented 10 times
+    try:
+        # Run concurrent access
+        results = []
+        threads = []
+        for i in range(10):
+            thread = threading.Thread(target=access_update_counter, args=(i, results))
+            threads.append(thread)
+            thread.start()
+
+        for thread in threads:
+            thread.join()
+
+        # Verify all accesses occurred and counter incremented correctly
+        assert len(results) == 10
+        for iteration, count in results:
+            assert count >= 0 and count <= 9
+        assert main_module._database_update_count == 10  # Should be incremented 10 times
+    finally:
+        with database_update_lock:
+            main_module._database_update_count = 0
 
 
 def test_mixed_workload_stress():
