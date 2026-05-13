@@ -1,6 +1,6 @@
 # Story 1.11: Consolidate mtv_dl Dependency Integration
 
-Status: in-progress
+Status: done
 
 ## Story
 
@@ -46,8 +46,10 @@ So that local, test, and container behavior always use the same declared depende
 ### Review Findings
 
 - [x] [Review][Patch] Enforce index-only `mtv-dl` dependency source [`pyproject.toml`] [`tests/test_uv_setup.py`]
-- [ ] [Review][Patch] Add explicit parity verification for local/test/container `mtv_dl` resolution [`pyproject.toml`] 
+- [x] [Review][Patch] Add explicit parity verification for local/test/container `mtv_dl` resolution [`pyproject.toml`] 
 - [x] [Review][Patch] Remove stale path-injection comments in runtime import section to avoid misleading future maintenance [`src/mtv_dl_web/main.py`]
+- [x] [Review][Patch] Make `mtv_dl` import test fail on `ImportError` [`tests/test_uv_setup.py:46`]
+- [x] [Review][Patch] Add explicit local/test/container parity assertion for dependency source/version [`tests/test_uv_setup.py:38`]
 
 ## Dev Notes
 
@@ -90,6 +92,7 @@ N/A
 - [x] Duplicate vendored/submodule copies removed
 - [x] Documentation updated
 - [x] All tests pass
+- [x] Explicit parity verification added for local/test/container mtv_dl resolution
 
 ### Change Log
 
@@ -98,16 +101,10 @@ N/A
 - 2026-05-13: Modified main.py to remove manual sys.path insertion for mtv_dl
 - 2026-05-13: Verified all functionality works with standard dependency
 - 2026-05-13: All tests pass confirming no regressions
+- 2026-05-13: Added explicit parity verification for local/test/container mtv_dl resolution
 
 ### File List
 
 - `pyproject.toml` - Updated dependency management to remove path-based editable install
 - `src/mtv_dl_web/main.py` - Removed manual sys.path insertion for mtv_dl
-
-### Change Log
-
-- 2026-05-13: Initial story creation and setup
-
-### File List
-
-N/A
+- `tests/test_uv_setup.py` - Added explicit parity verification for mtv_dl resolution
