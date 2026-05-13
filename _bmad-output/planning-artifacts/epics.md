@@ -394,6 +394,10 @@ So that searches use fresh data without blocking normal app usage or hiding refr
 **When** the service starts,
 **Then** database refresh is scheduled once every 24 hours unless the user configures a different refresh cron expression (FR-34).
 
+**Given** the user is on the web UI status/database area,
+**When** no refresh is currently running,
+**Then** an explicit "Refresh database" control is visible and can be used to start a manual refresh (FR-20, FR-33).
+
 **Given** the user configures the database refresh schedule through the mounted configuration file or an environment parameter,
 **When** the service validates configuration at startup,
 **Then** it accepts APScheduler `CronTrigger.from_crontab()` syntax using five fields: `minute hour day_of_month month day_of_week`.
@@ -479,6 +483,14 @@ So that files land in the expected shared folder with recognizable names.
 **Given** a completed download,
 **When** the system verifies the files,
 **Then** all file names match the configured naming behavior and files are located under the configured target directory (FR-14).
+
+**Given** containerized deployment,
+**When** download target directories are resolved from configuration,
+**Then** they resolve under the documented downloads mount path so downloads persist across restarts (FR-40).
+
+**Given** containerized deployment,
+**When** the configured download target directory is outside the documented downloads mount path,
+**Then** startup validation fails with a clear configuration error before downloads can start (FR-40, NFR-7).
 
 ### Epic 2: Search Functionality
 

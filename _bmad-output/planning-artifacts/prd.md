@@ -13,7 +13,7 @@ stepsCompleted:
   - 'step-e-01-discovery'
   - 'step-e-02-review'
   - 'step-e-03-edit'
-lastEdited: '2026-05-12'
+lastEdited: '2026-05-13'
 editHistory:
   - date: '2026-05-08'
     changes: 'Normalized legacy PRD into BMAD structure with measurable success criteria, scope, user journeys, numbered FRs, numbered NFRs, risks, acceptance criteria, and open questions.'
@@ -29,6 +29,8 @@ editHistory:
     changes: 'Clarified pyproject.toml as the single source of truth for the mtv_dl dependency version and required all imports to resolve to that exact declared version.'
   - date: '2026-05-12'
     changes: 'Cleaned planning consistency: defined APScheduler crontab syntax, aligned database path wording, added thread-safe shared-state NFR, and removed resolved cron open question.'
+  - date: '2026-05-13'
+    changes: 'Made manual database refresh UI trigger explicit in requirements and tied download target directory contract to documented container download mounts, including validation/error acceptance criteria.'
 ---
 
 # MTV Downloader Web Interface - Product Requirements Document
@@ -76,7 +78,7 @@ SC-10: Users can install from a project-published container image built from the
 - Queue status display for pending, active, completed, and failed downloads.
 - Queue controls for adding downloads and removing pending items.
 - No pause/resume controls in MVP.
-- Manual database update action.
+- Manual database update action via an explicit "Refresh database" UI control.
 - Automatic database refresh once every 24 hours by default, configurable through a service refresh cron expression.
 - Database refresh status, last successful update time, and database age displayed where available.
 - Scheduled monitoring/query execution with automatic enqueue of non-duplicate matches.
@@ -264,6 +266,8 @@ FR-13: Downloads must follow mtv_dl's naming patterns and folder structure conve
 
 FR-14: Completed downloads are written under the configured target directory and do not fall back to the project root or a generic `download.mp4`.
 
+FR-40: In container deployments, the configured download target directory shall resolve to the documented downloads mount path so downloaded files persist across restarts.
+
 ### Queue
 
 FR-15: Users can add one or more selected shows to a download queue.
@@ -278,7 +282,7 @@ FR-18: Users can remove pending queue items.
 
 FR-19: The system initializes and uses the existing `mtv_dl` database integration.
 
-FR-20: Users can trigger a manual database update action through the web interface.
+FR-20: Users can trigger a manual database update action through an explicit "Refresh database" control in the web interface.
 
 FR-21: The database persists at `~/.mtv_dl_web/filmliste.sqlite` inside the container unless explicitly overridden by configuration.
 
@@ -393,7 +397,7 @@ AC-4: Given an active or completed queue, when the user opens the queue view, th
 
 AC-5: Given a pending queue item, when the user removes it, then it no longer appears in the queue and is not downloaded.
 
-AC-6: Given a configured manual database update action, when the user triggers it, then the system reports active, success, or failure status and subsequent searches use the updated database.
+AC-6: Given the database/status view in the web UI, when the user clicks the explicit "Refresh database" control, then the system starts a manual refresh, reports active/success/failure status, and subsequent searches use the updated database.
 
 AC-7: Given a scheduled query and valid APScheduler `CronTrigger.from_crontab()` expression, when the schedule fires, then the system evaluates the query and automatically enqueues new matches that are not duplicates by hash or URL fallback.
 
@@ -425,7 +429,7 @@ AC-20: Given a database refresh operation is in progress, when health check or s
 
 AC-21: Given a database refresh operation is in progress, when queue management operations are performed, then they execute normally without being blocked by the refresh operation.
 
-AC-22: Given a completed download, when the system verifies the files, then all file names match the configured naming pattern and files are located in the configured target directory.
+AC-22: Given a completed download, when the system verifies the files, then all file names match the configured naming pattern and files are located in the configured target directory under the documented downloads mount path.
 
 AC-23: Given default configuration, when the service runs continuously, then database refresh is scheduled once every 24 hours unless the user configures a different refresh cron expression through the configuration file or environment.
 
@@ -437,18 +441,20 @@ AC-26: Given a clean checkout, when dependencies are installed and the app impor
 
 AC-27: Given a successful main-branch CI run, when a user follows the container documentation, then they can pull the published image and run it with the documented mounted configuration, data, and download paths.
 
+AC-28: Given a containerized deployment, when the configured target directory is outside the documented downloads mount path, then startup validation fails with a clear configuration error.
+
 ## Traceability Matrix
 
 | Success Criterion | Journeys | Related FRs | Related ACs |
 | --- | --- | --- | --- |
 | SC-1 | Journey 1, Journey 3 | FR-1, FR-2 | AC-1, AC-2 |
 | SC-2 | Journey 1, Journey 3 | FR-3, FR-4, FR-5 | AC-1 |
-| SC-3 | Journey 1, Journey 5 | FR-6 through FR-14, FR-29 | AC-3, AC-11, AC-12, AC-22 |
+| SC-3 | Journey 1, Journey 5 | FR-6 through FR-14, FR-29, FR-40 | AC-3, AC-11, AC-12, AC-22, AC-28 |
 | SC-4 | Journey 2 | FR-15 through FR-18 | AC-3, AC-4, AC-5 |
 | SC-5 | Journey 3 | FR-23 through FR-26 | AC-7, AC-8 |
 | SC-6 | Journey 6 | FR-21, FR-27 through FR-32, FR-39, NFR-4, NFR-9, NFR-11, NFR-16, NFR-17, NFR-18, NFR-19 | AC-9, AC-10, AC-15, AC-16, AC-17, AC-18, AC-19, AC-20, AC-21, AC-27 |
 | SC-7 | Journey 1, Journey 3, Journey 4 | FR-7, FR-19, FR-20, FR-22, FR-34 through FR-38 | AC-1, AC-6, AC-11, AC-23, AC-24, AC-25, AC-26 |
-| SC-8 | All journeys | NFR-1 through NFR-20 | AC-1 through AC-27 |
+| SC-8 | All journeys | NFR-1 through NFR-20 | AC-1 through AC-28 |
 | SC-9 | Journey 1 through Journey 6 | PTR-5 through PTR-14, FR-33, NFR-13 | AC-13 |
 | SC-10 | Journey 6 | FR-30, FR-39 | AC-27 |
 
@@ -463,9 +469,9 @@ Reviewed from GitHub milestone 1, "MVP: search and download", on 2026-05-12.
 | #9 Can't access web UI while refreshing the database | Covered by NFR-18, NFR-19, AC-19 through AC-21, and backlog Story 1.6. No new requirement added. |
 | #10 Log output should show database updates | Added FR-37, AC-25, and backlog Story 1.10. |
 | #12 Revisit integration of mtv_dl binaries | Added PTR-15, FR-38, AC-26, and backlog Story 1.11. |
-| #16 Download ends up in root folder with download.mp4 | Covered by FR-13, FR-14, AC-22, and backlog Story 1.13. No new requirement added. |
+| #16 Download ends up in root folder with download.mp4 | Covered by FR-13, FR-14, FR-40, AC-22, AC-28, and backlog Story 1.13. No new requirement added. |
 | #17 Tests report warnings | Covered by NFR-12 and existing implementation quality gate. Closed issue; no new requirement added. |
-| #21 Improve database refreshes | Added FR-34 through FR-36, AC-23 through AC-25, and backlog Story 1.10. |
+| #21 Improve database refreshes | Added FR-20, FR-34 through FR-36, AC-6, AC-23 through AC-25, and backlog Story 1.10. |
 | #24 Tests are broken | Covered by NFR-12 and existing implementation quality gate. Closed issue; no new requirement added. |
 
 ## Delivery Notes
