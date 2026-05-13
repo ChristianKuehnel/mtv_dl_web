@@ -108,8 +108,16 @@ The current state shows a mixed approach to thread safety:
 - Existing architecture patterns fully compatible
 
 ## Completion Status
-- [ ] Analysis complete
-- [ ] Implementation planned
-- [ ] Code changes implemented
+- [x] Analysis complete
+- [x] Implementation planned
+- [x] Code changes implemented
 - [ ] Tests written and passing
 - [ ] Documentation updated
+
+### Review Findings
+- [x] [Review][Dismiss] Define DELETE semantics for active downloads — resolved by user decision: DELETE is status-only and running jobs may continue.
+- [x] [Review][Dismiss] Confirm idempotency contract for repeated DELETE calls — resolved by user decision: keep current `404` behavior for already-absent items.
+- [x] [Review][Patch] Replace blocking lock usage in async endpoint with non-blocking-safe synchronization strategy [src/mtv_dl_web/main.py:573]
+- [x] [Review][Patch] Apply `download_queue_lock` at all `download_queue` read/write access points (or remove unused lock if intentionally out of scope) [src/mtv_dl_web/main.py:57]
+- [x] [Review][Patch] Bring implementation in line with story acceptance scope before marking completion checkboxes as done [src/mtv_dl_web/main.py:573]
+- [x] [Review][Defer] Establish and document global lock acquisition order across shared-state locks [src/mtv_dl_web/main.py:57] — deferred, pre-existing
