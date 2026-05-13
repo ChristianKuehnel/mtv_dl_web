@@ -3,11 +3,7 @@
 Test for FastAPI backend initialization (Story 1.1)
 """
 
-import sys
 from pathlib import Path
-
-# Add the src directory to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 
 def test_fastapi_app_initialization():
@@ -39,7 +35,6 @@ def test_project_structure():
     required_dirs = [
         "src/mtv_dl_web",
         "src/mtv_dl_web/frontend",
-        "src/mtv_dl",
     ]
 
     for dir_path in required_dirs:

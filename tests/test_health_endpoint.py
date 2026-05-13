@@ -3,16 +3,10 @@
 Test for enhanced health endpoint (Story 1.2)
 """
 
-import sys
 import time
 from datetime import timedelta
-from pathlib import Path
 
 from fastapi.testclient import TestClient
-
-# Add the src directory to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
-# Removed redundant path for mtv_dl as it's now handled via standard dependency
 
 # Mock the version function to avoid import issues
 import importlib.metadata

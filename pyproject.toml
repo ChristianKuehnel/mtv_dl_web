@@ -36,14 +36,17 @@ build-backend = "uv_build"
 [tool.mypy]
 strict = true
 warn_unused_ignores = true
-ignore_missing_imports = true
 
 [tool.black]
 line-length = 120
 target-version = ["py310"]
 
 [tool.pytest.ini_options]
-addopts = "--doctest-modules"
+addopts = [
+    "--doctest-modules",
+    "--import-mode=importlib"
+]
+
 xfail_strict = true
 filterwarnings = [
     "ignore:Please use `import python_multipart` instead\\.:PendingDeprecationWarning",

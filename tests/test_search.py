@@ -4,14 +4,9 @@ Comprehensive test suite for the search API endpoint
 Tests all search functionality including success cases, error handling, and edge cases
 """
 
-import sys
-import os
 import pytest
 from unittest.mock import MagicMock
 from fastapi.testclient import TestClient
-
-# Add the src directory to path for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 import mtv_dl_web.main as main
 from mtv_dl_web.main import app

@@ -3,16 +3,9 @@
 Test for concurrent database access during refresh (Story 1.6)
 """
 
-import os
 import time
 import threading
-import sys
-from pathlib import Path
 from unittest.mock import patch
-
-# Add the src directory to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent / 'src'))
-# Removed redundant path for mtv_dl as it's now handled via standard dependency
 
 from fastapi.testclient import TestClient
 from mtv_dl_web.main import app, get_database_refresh_status

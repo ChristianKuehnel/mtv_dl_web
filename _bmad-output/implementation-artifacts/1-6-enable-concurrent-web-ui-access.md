@@ -2,7 +2,7 @@
 story_id: "1.6"
 story_key: "1-6-enable-concurrent-web-ui-access"
 epic: "Epic 1: Project Foundation & Configuration"
-status: "ready-for-dev"
+status: "done"
 ---
 
 # Story 1.6: Enable Concurrent Web UI Access During Database Refresh
