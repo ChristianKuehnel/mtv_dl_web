@@ -17,6 +17,7 @@ from time import perf_counter
 from typing import Any
 
 from fastapi import BackgroundTasks, FastAPI, HTTPException
+from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
@@ -572,11 +573,16 @@ async def get_all_download_statuses() -> dict[str, dict[str, Any]]:
 @app.delete("/api/download/status/{download_id}")
 async def remove_download_status(download_id: str) -> dict[str, str]:
     """Remove a download entry from the in-memory queue/status list."""
-    if download_id not in active_downloads:
-        raise HTTPException(status_code=404, detail="Download not found")
-
-    del active_downloads[download_id]
+    await run_in_threadpool(_remove_download_status_locked, download_id)
     return {"message": "Download removed", "download_id": download_id}
+
+
+def _remove_download_status_locked(download_id: str) -> None:
+    """Remove a download status entry while holding the shared-state lock."""
+    with active_downloads_lock:
+        if download_id not in active_downloads:
+            raise HTTPException(status_code=404, detail="Download not found")
+        del active_downloads[download_id]
 
 
 @app.get("/api/database/status")
