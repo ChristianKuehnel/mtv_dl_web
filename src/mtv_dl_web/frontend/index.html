@@ -538,6 +538,12 @@
 
       // Event Listeners
       searchBtn.addEventListener("click", searchShows);
+      searchBar.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          searchShows();
+        }
+      });
       downloadBtn.addEventListener("click", downloadSelected);
       selectAllBtn.addEventListener("click", () => {
         const checkboxes = document.querySelectorAll(
