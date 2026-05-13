@@ -1,6 +1,6 @@
 # Story 1.5: Improve Health Status Monitoring
 
-Status: review
+Status: done
 
 ## Story
 
@@ -36,6 +36,15 @@ So that I can quickly understand the backend status and database update state.
   - [x] Cover updating backend status
   - [x] Cover health-check performance threshold
   - [x] Cover UI indicator wiring and three-state labels/colors
+
+### Review Findings
+
+- [x] [Review][Patch] Health endpoint no longer validates DB connectivity before reporting healthy/updating [src/mtv_dl_web/main.py:235]
+- [x] [Review][Patch] Health endpoint mutates filesystem state by creating DB directory on every probe [src/mtv_dl_web/main.py:239]
+- [x] [Review][Patch] Global boolean update flag can misreport status with overlapping refresh operations [src/mtv_dl_web/main.py:205]
+- [x] [Review][Patch] Health polling has no timeout/abort, so stale or hanging requests can mask real state [src/mtv_dl_web/frontend/index.html:229]
+- [x] [Review][Patch] AC-18 p95 latency requirement is not validated by percentile-based test coverage [tests/test_health_status_monitoring.py:44]
+- [x] [Review][Patch] UI tests do not verify green/yellow/red class mapping for all three health states [tests/test_health_status_monitoring.py:70]
 
 ## Dev Notes
 

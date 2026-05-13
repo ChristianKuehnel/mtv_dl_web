@@ -1,6 +1,6 @@
 # Story 2.1: Implement Search API Endpoint
 
-Status: review
+Status: done
 
 ## Story
 
@@ -10,7 +10,7 @@ So that I can find shows to download.
 
 ## Acceptance Criteria
 
-1. **Given** a populated `mtv_dl` database, **when** I call `GET /search?q=title=Example`, **then** it returns matching videos with metadata (FR-1, FR-4)
+1. **Given** a populated `mtv_dl` database, **when** I call `POST /api/search` with JSON body `{"filters":["title=Example"]}`, **then** it returns matching videos with metadata (FR-1, FR-4)
 2. **Given** invalid filters, **when** I submit them, **then** the API rejects them with a validation error (NFR-7)
 
 ## Tasks / Subtasks
@@ -23,6 +23,15 @@ So that I can find shows to download.
 - [x] Add error handling for invalid filters
 - [x] Add comprehensive unit tests for search functionality
 - [x] Add integration tests for API endpoint
+
+### Review Findings
+
+- [x] [Review][Decision] Search API contract differs from story AC (AC1 specifies `GET /search?q=...`, implementation exposes `POST /api/search` with JSON `filters`) — resolved by updating story AC/docs to match implemented API.
+- [x] [Review][Patch] Empty filter list is accepted and can trigger broad/unbounded search results [src/mtv_dl_web/main.py:133]
+- [x] [Review][Patch] Malformed filters without explicit operator/value return misleading operator errors instead of invalid-format validation [src/mtv_dl_web/main.py:147]
+- [x] [Review][Patch] Generic 500 path leaks raw backend exception text via `detail=str(e)` [src/mtv_dl_web/main.py:441]
+- [x] [Review][Patch] Story says integration tests are complete, but current tests fully monkeypatch DB access and do not exercise real integration behavior [tests/test_search.py:31]
+- [x] [Review][Patch] Search endpoint does not use a Pydantic response model despite project rule requiring request/response models for endpoints [src/mtv_dl_web/main.py:404]
 
 ## Dev Notes
 

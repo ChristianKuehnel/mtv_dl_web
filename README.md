@@ -181,6 +181,12 @@ For local development, you can use the provided run script which will:
 
 This web interface stands on top of [mtv_dl](https://github.com/fnep/mtv_dl). Thank you to the `mtv_dl` maintainers for doing the hard part: integrating with the MediathekView data and downloader workflow so this project can stay focused on a small self-hosted UI.
 
+## Security
+
+This service is intended to be run behind a reverse proxy that handles user authentication. It does not have a built-in authentication mechanism. 
+
+⚠️ **This service is NOT meant to be exposed directly to the public internet** and is not hardened against any attacks. It should only be accessed from trusted networks or behind proper authentication and authorization controls.
+
 ## License
 
 MIT License.

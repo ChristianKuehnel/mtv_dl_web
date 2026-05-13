@@ -5,9 +5,9 @@ A lightweight web interface for the MediathekView Downloader with Python backend
 supporting concurrent web requests and downloads.
 """
 
-import asyncio
 import logging
 import os
+import re
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
@@ -67,9 +67,8 @@ _database_update_count = 0
 database_refresh_lock = threading.Lock()
 is_database_refreshing = False
 database_last_refresh_time = 0.0
-database_refresh_task = None  # Track the current refresh task
+database_refresh_task: threading.Thread | None = None
 refresh_cooldown_seconds = 3600  # 1 hour cooldown
-refresh_retry_delay = 300  # 5 minute retry delay on failure
 
 
 # Pydantic models for API requests and responses
@@ -107,6 +106,10 @@ class SearchFilters(BaseModel):
     filters: list[str]
 
 
+class SearchResponse(BaseModel):
+    results: list[ShowItem]
+
+
 # Supported filter operators and fields for validation
 SUPPORTED_OPERATORS = {"=", "!=", "+", "-"}
 SUPPORTED_FIELDS = {
@@ -128,6 +131,8 @@ SUPPORTED_FIELDS = {
     "episode",
 }
 
+FILTER_PATTERN = re.compile(r"^(?P<field>\w+)\s*(?P<operator>!=|=|\+|-)\s*(?P<pattern>.+)$")
+
 
 def validate_filters(filters: list[str]) -> None:
     """
@@ -139,15 +144,20 @@ def validate_filters(filters: list[str]) -> None:
     Raises:
         HTTPException: 400 Bad Request if invalid operators or fields are found
     """
-    import re
+    if not filters:
+        logger.error("Filter validation failed: empty filter list")
+        raise HTTPException(status_code=400, detail="At least one filter is required in filters[]")
 
     for filter_str in filters:
+        normalized_filter = filter_str.strip()
+        if not normalized_filter:
+            logger.error("Filter validation failed: blank filter")
+            raise HTTPException(status_code=400, detail="Filter entries must not be empty")
+
         # Parse filter string using the same regex as mtv_dl
-        match = re.match(
-            r"^(?P<field>\w+)(?P<operator>(?:=|!=|\+|-|\W+))(?P<pattern>.*)$",
-            filter_str,
-        )
+        match = FILTER_PATTERN.match(normalized_filter)
         if not match:
+            logger.error(f"Filter validation failed: invalid format '{filter_str}'")
             raise HTTPException(
                 status_code=400,
                 detail=f"Invalid filter format: '{filter_str}'. Expected format: field<operator>value (e.g., channel=ARD, title+News)",
@@ -162,6 +172,7 @@ def validate_filters(filters: list[str]) -> None:
 
         # Validate operator
         if operator not in SUPPORTED_OPERATORS:
+            logger.error(f"Filter validation failed: unsupported operator '{operator}' in '{filter_str}'")
             raise HTTPException(
                 status_code=400,
                 detail=f"Unsupported operator '{operator}' in filter: '{filter_str}'. "
@@ -170,6 +181,7 @@ def validate_filters(filters: list[str]) -> None:
 
         # Validate field
         if field not in SUPPORTED_FIELDS:
+            logger.error(f"Filter validation failed: unsupported field '{field}' in '{filter_str}'")
             raise HTTPException(
                 status_code=400,
                 detail=f"Unsupported field '{field}' in filter: '{filter_str}'. "
@@ -210,7 +222,7 @@ def check_database_connectivity() -> None:
         cursor.fetchone()
 
 
-def get_db_connection(check_for_refresh: bool = True) -> Database:
+def get_db_connection(check_for_refresh: bool = True, background_tasks: BackgroundTasks | None = None) -> Database:
     """
     Create a new database connection for each request to avoid thread-safety issues
 
@@ -223,7 +235,7 @@ def get_db_connection(check_for_refresh: bool = True) -> Database:
     try:
         db = Database(DATABASE_FILE, HISTORY_FILE)
         if os.environ.get("MTV_DL_WEB_SKIP_DB_UPDATE") != "1" and check_for_refresh:
-            check_and_refresh_database_if_needed(db)
+            check_and_refresh_database_if_needed(db, background_tasks)
         logger.debug("Database connection created successfully")
         return db
     except Exception as e:
@@ -231,7 +243,26 @@ def get_db_connection(check_for_refresh: bool = True) -> Database:
         raise
 
 
-def check_and_refresh_database_if_needed(db: Database) -> None:
+def _schedule_refresh_job(background_tasks: BackgroundTasks | None) -> bool:
+    """Schedule a database refresh job without blocking request handling."""
+    global database_refresh_task
+
+    if background_tasks is not None:
+        background_tasks.add_task(refresh_database_background)
+        database_refresh_task = None
+        return True
+
+    try:
+        refresh_thread = threading.Thread(target=refresh_database_background, daemon=True)
+        refresh_thread.start()
+        database_refresh_task = refresh_thread
+        return True
+    except Exception as e:
+        logger.error(f"Failed to schedule database refresh job: {e}")
+        return False
+
+
+def check_and_refresh_database_if_needed(db: Database, background_tasks: BackgroundTasks | None = None) -> None:
     """
     Check if database needs refresh and trigger it in background if needed
 
@@ -247,16 +278,14 @@ def check_and_refresh_database_if_needed(db: Database) -> None:
     try:
         # Check database age properly - compare actual age with refresh threshold
         # If filmliste_version is not available, we can't determine age safely
-        needs_refresh = False
+        needs_refresh = True
         if hasattr(db, "filmliste_version") and hasattr(db, "filmliste_refresh_after"):
             database_age = current_time - db.filmliste_version
             refresh_threshold = db.filmliste_refresh_after.total_seconds()
             needs_refresh = database_age > refresh_threshold
-        # If we can't determine age, we'll skip refresh for safety
     except Exception as e:
-        # If any error occurs in age checking, assume no refresh is needed
-        logger.debug(f"Could not determine if refresh needed: {e}")
-        needs_refresh = False
+        logger.warning(f"Could not determine if refresh needed, scheduling refresh conservatively: {e}")
+        needs_refresh = True
 
     with database_refresh_lock:
         # If database needs refresh and no refresh is currently in progress
@@ -264,25 +293,16 @@ def check_and_refresh_database_if_needed(db: Database) -> None:
             # Check if enough time has passed since last refresh attempt
             if current_time - database_last_refresh_time > refresh_cooldown_seconds:
                 # Try to ensure we don't queue multiple refreshes
-                if database_refresh_task and not database_refresh_task.done():
+                if database_refresh_task and database_refresh_task.is_alive():
                     logger.debug("Database refresh already queued, skipping")
                     return
 
                 is_database_refreshing = True
-                database_last_refresh_time = current_time
                 logger.info("Database refresh needed, starting background refresh...")
-                # Start background refresh
-                try:
-                    database_refresh_task = asyncio.create_task(refresh_database_background(db))
-                except RuntimeError:
-                    # No running event loop (e.g., in test environment)
-                    logger.debug("No async event loop available, database refresh will be deferred")
-                    is_database_refreshing = False  # Reset flag since we can't start refresh
-                    # Schedule retry after delay
-                    try:
-                        retry_task = asyncio.create_task(_retry_database_refresh(db))
-                    except RuntimeError:
-                        pass  # Can't schedule retry, that's okay
+                if _schedule_refresh_job(background_tasks):
+                    database_last_refresh_time = current_time
+                else:
+                    is_database_refreshing = False
             else:
                 logger.debug("Database refresh needed but cooldown period active, skipping for now")
         elif is_database_refreshing:
@@ -291,18 +311,7 @@ def check_and_refresh_database_if_needed(db: Database) -> None:
             logger.debug("Database is up to date, no refresh needed")
 
 
-async def _retry_database_refresh(db: Database) -> None:
-    """Retry database refresh after a delay if initial attempt failed."""
-    await asyncio.sleep(refresh_retry_delay)
-    # Attempt to retry refresh after delay
-    with database_refresh_lock:
-        if not is_database_refreshing:
-            # Retry can happen when the cooldown period has passed
-            # This is called in case initial attempt failed due to event loop issues
-            pass
-
-
-async def refresh_database_background(db: Database) -> None:
+def refresh_database_background() -> None:
     """
     Background task to refresh the database without blocking web requests
 
@@ -317,8 +326,12 @@ async def refresh_database_background(db: Database) -> None:
         # Perform the actual database refresh
         # Note: We create a new database instance for the refresh to avoid
         # conflicts with the main connection
-        refresh_db = Database(DATABASE_FILE, HISTORY_FILE)
-        refresh_db.update_filmliste()
+        set_database_update_in_progress(True)
+        try:
+            refresh_db = Database(DATABASE_FILE, HISTORY_FILE)
+            refresh_db.update_if_old()
+        finally:
+            set_database_update_in_progress(False)
 
         logger.info("Database refresh completed successfully")
 
@@ -331,7 +344,7 @@ async def refresh_database_background(db: Database) -> None:
         # Ensure we release the lock even if refresh fails
         with database_refresh_lock:
             is_database_refreshing = False
-            database_refresh_task = None  # Clear task reference
+            database_refresh_task = None
             logger.info("Database refresh task completed")
 
 
@@ -363,7 +376,7 @@ async def read_root() -> str:
 
 
 @app.get("/health")
-async def health_check() -> dict[str, str]:
+async def health_check() -> dict[str, Any]:
     """
     Health check endpoint that verifies service readiness
 
@@ -371,12 +384,12 @@ async def health_check() -> dict[str, str]:
         JSON: { "status": "healthy" } or { "status": "unhealthy" } with database info
     """
     start_time = perf_counter()
-    status = "updating" if is_database_update_in_progress() else "healthy"
+    refresh_status = get_database_refresh_status()
+    is_updating = is_database_update_in_progress() or refresh_status["is_refreshing"]
+    status = "updating" if is_updating else "healthy"
 
     try:
-        DATABASE_DIR.mkdir(parents=True, exist_ok=True)
-        if status == "healthy":
-            check_database_connectivity()
+        check_database_connectivity()
     except Exception as e:
         logger.error(f"Health check failed: {e}")
         status = "unhealthy"
@@ -388,11 +401,18 @@ async def health_check() -> dict[str, str]:
         logger.warning(f"Health check response time {response_time_ms}ms exceeds 1000ms threshold")
         status = "unhealthy"
 
-    return {"status": status}
+    return {
+        "status": status,
+        "database": {
+            "is_refreshing": refresh_status["is_refreshing"],
+            "last_refresh_time": refresh_status["last_refresh_time"],
+            "refresh_status": refresh_status["status"],
+        },
+    }
 
 
-@app.post("/api/search")
-async def search_shows(filters: SearchFilters) -> dict[str, list[ShowItem]]:
+@app.post("/api/search", response_model=SearchResponse)
+async def search_shows(filters: SearchFilters, background_tasks: BackgroundTasks) -> SearchResponse:
     """
     Search for shows based on filters
 
@@ -404,7 +424,7 @@ async def search_shows(filters: SearchFilters) -> dict[str, list[ShowItem]]:
 
         # Perform the search using a fresh database connection
         # This will trigger background refresh if needed, but won't block
-        db_conn = get_db_connection()
+        db_conn = get_db_connection(background_tasks=background_tasks)
         shows = list(db_conn.filtered(filters.filters))
 
         # Convert datetime and timedelta objects to strings for Pydantic validation
@@ -423,13 +443,13 @@ async def search_shows(filters: SearchFilters) -> dict[str, list[ShowItem]]:
                 show_dict["age"] = str(show_dict["age"])
             results.append(ShowItem(**show_dict))
 
-        return {"results": results}
+        return SearchResponse(results=results)
     except HTTPException:
         # Re-raise HTTPExceptions (validation errors)
         raise
     except Exception as e:
         logger.error(f"Search failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Search operation failed")
 
 
 @app.post("/api/download")
@@ -444,7 +464,7 @@ async def start_download(download_request: DownloadRequest, background_tasks: Ba
 
         # Get filtered shows using a fresh database connection
         # This will trigger background refresh if needed, but won't block
-        db_conn = get_db_connection()
+        db_conn = get_db_connection(background_tasks=background_tasks)
         shows = list(db_conn.filtered(download_request.filters))
 
         if not shows:
@@ -547,6 +567,16 @@ async def get_all_download_statuses() -> dict[str, dict[str, Any]]:
     """
     with active_downloads_lock:
         return active_downloads
+
+
+@app.delete("/api/download/status/{download_id}")
+async def remove_download_status(download_id: str) -> dict[str, str]:
+    """Remove a download entry from the in-memory queue/status list."""
+    if download_id not in active_downloads:
+        raise HTTPException(status_code=404, detail="Download not found")
+
+    del active_downloads[download_id]
+    return {"message": "Download removed", "download_id": download_id}
 
 
 @app.get("/api/database/status")

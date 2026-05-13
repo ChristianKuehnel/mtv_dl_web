@@ -192,6 +192,7 @@
       const healthIndicator = document.getElementById("health-indicator");
       const healthDot = document.getElementById("health-dot");
       const healthLabel = document.getElementById("health-label");
+      const HEALTH_REQUEST_TIMEOUT_MS = 4000;
 
       const HEALTH_STATES = {
         online: {
@@ -223,8 +224,17 @@
       }
 
       async function refreshHealthStatus() {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(
+          () => controller.abort(),
+          HEALTH_REQUEST_TIMEOUT_MS,
+        );
+
         try {
-          const response = await fetch("/health", { cache: "no-store" });
+          const response = await fetch("/health", {
+            cache: "no-store",
+            signal: controller.signal,
+          });
 
           if (!response.ok) {
             throw new Error("Health check failed");
@@ -239,6 +249,8 @@
           updateHealthStatus(data.status === "healthy" ? "online" : "offline");
         } catch (error) {
           updateHealthStatus("offline");
+        } finally {
+          clearTimeout(timeoutId);
         }
       }
 

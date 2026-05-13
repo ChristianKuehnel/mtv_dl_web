@@ -77,7 +77,7 @@ def test_invalid_operators():
         assert response.status_code == 400
         data = response.json()
         assert "detail" in data
-        assert "Unsupported operator" in data["detail"]
+        assert "Invalid filter format" in data["detail"]
         assert operator in data["detail"]
 
 
@@ -145,7 +145,10 @@ def test_invalid_filter_format():
         assert response.status_code == 400
         data = response.json()
         assert "detail" in data
-        assert "Invalid filter format" in data["detail"]
+        if invalid_filter == "":
+            assert "Filter entries must not be empty" in data["detail"]
+        else:
+            assert "Invalid filter format" in data["detail"]
 
 
 def test_all_supported_operator_field_combinations():
@@ -182,9 +185,8 @@ def test_empty_filters_list():
     """Test that empty filters list is handled correctly"""
     response = client.post("/api/search", json={"filters": []})
 
-    # Empty filters should be valid (no validation error)
-    # Should return 200 because validation passes and mock database returns empty list
-    assert response.status_code == 200
+    assert response.status_code == 400
+    assert response.json()["detail"] == "At least one filter is required in filters[]"
 
 
 def test_validation_error_message_format():
