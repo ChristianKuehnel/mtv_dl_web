@@ -104,9 +104,33 @@ The existing codebase has several global variables that are not thread-safe:
 - Built-in Python `threading` module sufficient
 - Existing architecture patterns fully compatible
 
+## Dev Agent Record
+
+### Implementation Plan
+
+1. Added `threading.RLock()` for protecting `active_downloads` dictionary access
+2. Modified all functions accessing `active_downloads` to use the lock:
+   - `start_download` (sets initial status)
+   - `download_show_background` (updates status)
+   - `get_download_status` (reads status)
+   - `get_all_download_statuses` (reads all statuses)
+3. Ensured all access points synchronize properly before accessing shared state
+4. Maintained backward compatibility with existing API contract
+
+### Completion Notes List
+
+- [x] Added threading.RLock() for protecting active_downloads dictionary access
+- [x] Modified start_download function to use the lock when setting initial status
+- [x] Modified download_show_background function to use the lock when updating status
+- [x] Modified get_download_status function to use the lock when reading status
+- [x] Modified get_all_download_statuses function to use the lock when reading all statuses
+- [x] All functions protect access to active_downloads with the new lock
+- [x] Preserved all existing functionality and API contracts
+- [x] Followed established patterns already in the codebase (similar to database_update_lock)
+
 ## Completion Status
-- [ ] Analysis complete
-- [ ] Implementation planned
-- [ ] Code changes implemented
+- [x] Analysis complete
+- [x] Implementation planned
+- [x] Code changes implemented
 - [ ] Tests written and passing
 - [ ] Documentation updated
