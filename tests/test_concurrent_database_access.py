@@ -12,7 +12,7 @@ from unittest.mock import patch
 
 # Add the src directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent / 'src'))
-sys.path.insert(0, str(Path(__file__).parent.parent / 'src' / 'mtv_dl' / 'src'))
+# Removed redundant path for mtv_dl as it's now handled via standard dependency
 
 from fastapi.testclient import TestClient
 from mtv_dl_web.main import app, get_database_refresh_status
