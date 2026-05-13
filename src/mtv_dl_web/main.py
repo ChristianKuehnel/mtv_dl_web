@@ -559,7 +559,7 @@ async def get_download_status(download_id: str) -> dict[str, Any]:
 
         return active_downloads[download_id]
 
- 
+
 @app.get("/api/download/status")
 async def get_all_download_statuses() -> dict[str, dict[str, Any]]:
     """
