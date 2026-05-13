@@ -20,7 +20,7 @@ This document provides the complete epic and story breakdown for **mtv_dl_web**,
 - FR-4: Search results include hash, channel, title, topic, size, start, duration, age, region, URL, and downloaded state.
 - FR-5: Display season/episode metadata where available.
 
-**Downloads (FR-6 to FR-12)**:
+**Downloads (FR-6 to FR-14)**:
 - FR-6: Initiate downloads from search results.
 - FR-7: Preserve `mtv_dl` downloader behavior.
 - FR-8: Configure download quality.
@@ -28,35 +28,43 @@ This document provides the complete epic and story breakdown for **mtv_dl_web**,
 - FR-10: Enable subtitles/NFO output.
 - FR-11: Enable MKV merge and file modification time behavior.
 - FR-12: Support post-download scripts (filesystem-configured).
+- FR-13: Preserve `mtv_dl` naming patterns and folder structure conventions.
+- FR-14: Verify completed downloads are named following the patterns configured for mtv_dl and stored under the configured target directory.
 
-**Queue (FR-13 to FR-16)**:
-- FR-13: Add selected shows to download queue.
-- FR-14: Single active download at a time.
-- FR-15: View queue states (`pending`, `downloading`, `completed`, `failed`).
-- FR-16: Remove pending queue items.
+**Queue (FR-15 to FR-18)**:
+- FR-15: Add selected shows to download queue.
+- FR-16: Single active download at a time.
+- FR-17: View queue states (`pending`, `downloading`, `completed`, `failed`).
+- FR-18: Remove pending queue items.
 
-**Database (FR-18 to FR-21)**:
-- FR-18: Reuse `mtv_dl` database integration.
-- FR-19: Manual database update action.
-- FR-20: Persist database at `~/.mtv_dl_web/filmliste.sqlite`.
-- FR-21: No direct datastore querying.
+**Database (FR-19 to FR-22, FR-34 to FR-37)**:
+- FR-19: Reuse `mtv_dl` database integration.
+- FR-20: Manual database update action.
+- FR-21: Persist database at `~/.mtv_dl_web/filmliste.sqlite`.
+- FR-22: No direct datastore querying.
+- FR-34: Automatic database refresh once every 24 hours by default, configurable by refresh cron expression.
+- FR-35: Database refreshes start only from manual action or schedule, not search/download operations.
+- FR-36: UI/status API exposes last successful database update time and database age when available.
+- FR-37: Log database refresh start, success, failure, trigger source, and duration.
 
-**Scheduler (FR-22 to FR-25)**:
-- FR-22: Create/edit/remove scheduled monitoring queries.
-- FR-23: Configure cron-like schedules.
-- FR-24: Auto-enqueue non-duplicate matches (hash/URL fallback).
-- FR-25: View scheduler status, auto-enqueued items, and errors.
+**Scheduler (FR-23 to FR-26)**:
+- FR-23: Create/edit/remove scheduled monitoring queries.
+- FR-24: Configure APScheduler five-field crontab schedules.
+- FR-25: Auto-enqueue non-duplicate matches (hash/URL fallback).
+- FR-26: View scheduler status, auto-enqueued items, and errors.
 
-**Configuration (FR-26 to FR-28)**:
-- FR-26: Load configuration from mounted file.
-- FR-27: Apply config changes on restart.
-- FR-28: Configure port, database path, target directories, scheduler, log level, quality, subtitles/NFO, MKV merge, series behavior, and post-download scripts.
+**Configuration (FR-27 to FR-29, FR-38)**:
+- FR-27: Load configuration from mounted file.
+- FR-28: Apply config changes on restart.
+- FR-29: Configure port, database path, target directories, scheduler expressions, database refresh cron expression, log level, quality, subtitles/NFO, MKV merge, series behavior, and post-download scripts.
+- FR-38: Use the `pyproject.toml`-declared `mtv_dl` version for installation and imports; remove or disable conflicting vendored/submodule sources.
 
-**Deployment/UI (FR-29 to FR-32)**:
-- FR-29: Container deployment with mounted volumes.
-- FR-30: Readiness endpoint for health checks.
-- FR-31: Serve static frontend.
-- FR-32: UI controls for search, download, queue, scheduler, database update, and configuration.
+**Deployment/UI (FR-30 to FR-33, FR-39)**:
+- FR-30: Container deployment with mounted volumes.
+- FR-31: Readiness endpoint for health checks.
+- FR-32: Serve static frontend.
+- FR-33: UI controls for search, download, queue, scheduler, database update, and configuration.
+- FR-39: Publish a main-branch container image through GitHub workflow and document how to pull/run it.
 
 ### NonFunctional Requirements
 
@@ -67,8 +75,11 @@ This document provides the complete epic and story breakdown for **mtv_dl_web**,
 **Persistence (NFR-4)**:
 - NFR-4: Mounted volumes survive container restart.
 
-**Security (NFR-6, NFR-8)**:
-- NFR-6: No external services (trusted single-user deployment).
+**Deployment Constraints (NFR-5, NFR-6)**:
+- NFR-5: No external services beyond local filesystem storage and `mtv_dl` network access.
+- NFR-6: Trusted single-user deployment on localhost or private networks.
+
+**Security (NFR-8)**:
 - NFR-8: Error responses do not expose secrets/stack traces.
 
 **Validation (NFR-7)**:
@@ -77,6 +88,11 @@ This document provides the complete epic and story breakdown for **mtv_dl_web**,
 **UI/UX (NFR-13, NFR-14)**:
 - NFR-13: Responsive design (360px, 768px, 1280px).
 - NFR-14: Loading states within 1 second.
+
+**Concurrency (NFR-18 to NFR-20)**:
+- NFR-18: UI/API remain accessible during database refresh.
+- NFR-19: Database refresh does not block health, status, or queue operations.
+- NFR-20: Shared mutable state is protected from race conditions.
 
 ### Additional Requirements
 
@@ -89,12 +105,13 @@ This document provides the complete epic and story breakdown for **mtv_dl_web**,
 - Structured error responses (`{ error: { code, message } }`).
 
 **Project Structure**:
-- Backend: `src/main.py` (FastAPI).
-- Frontend: `src/frontend/js/` (vanilla JS modules).
+- Backend: `src/mtv_dl_web/main.py` (FastAPI).
+- Frontend: `src/mtv_dl_web/frontend/` (vanilla HTML/CSS/JS).
 - Tests: `tests/` (separate from source).
 
 **Integration**:
-- Reuse `mtv_dl.Database` and `mtv_dl.Downloader` from `src/mtv_dl/`.
+- Reuse `mtv_dl.Database` and `mtv_dl.Downloader` from the dependency version declared in `pyproject.toml`.
+- Do not keep duplicate vendored/submodule copies or path-injected imports that can conflict with the declared dependency version.
 
 ### UX Design Requirements
 
@@ -116,25 +133,33 @@ None (UI requirements covered by PRD).
 | FR-10  | 3    | Subtitles/NFO output                 |
 | FR-11  | 3    | MKV merge behavior                   |
 | FR-12  | 3    | Post-download scripts                |
-| FR-13  | 3    | Add to queue                         |
-| FR-14  | 3    | Single active download               |
-| FR-15  | 3    | View queue states                    |
-| FR-16  | 3    | Remove pending items                 |
-| FR-18  | 1    | Reuse `mtv_dl` database              |
-| FR-19  | 1    | Manual database update               |
-| FR-20  | 1    | Database persistence                 |
-| FR-21  | 1    | No direct datastore querying         |
-| FR-22  | 4    | Create/edit scheduled queries        |
-| FR-23  | 4    | Cron-like schedules                  |
-| FR-24  | 4    | Auto-enqueue non-duplicates          |
-| FR-25  | 4    | View scheduler status                |
-| FR-26  | 1    | Load configuration                    |
-| FR-27  | 1    | Apply config changes on restart      |
-| FR-28  | 1    | Configure service settings           |
-| FR-29  | 1    | Container deployment                 |
-| FR-30  | 1    | Readiness endpoint                   |
-| FR-31  | 1    | Serve static frontend                |
-| FR-32  | 5    | UI controls                          |
+| FR-13  | 1    | Download naming/folder behavior      |
+| FR-14  | 1    | Download target verification         |
+| FR-15  | 3    | Add to queue                         |
+| FR-16  | 3    | Single active download               |
+| FR-17  | 3    | View queue states                    |
+| FR-18  | 3    | Remove pending items                 |
+| FR-19  | 1    | Reuse `mtv_dl` database              |
+| FR-20  | 1    | Manual database update               |
+| FR-21  | 1    | Database persistence                 |
+| FR-22  | 1    | No direct datastore querying         |
+| FR-23  | 4    | Create/edit scheduled queries        |
+| FR-24  | 4    | APScheduler crontab schedules        |
+| FR-25  | 4    | Auto-enqueue non-duplicates          |
+| FR-26  | 4    | View scheduler status                |
+| FR-27  | 1    | Load configuration                    |
+| FR-28  | 1    | Apply config changes on restart      |
+| FR-29  | 1    | Configure service settings           |
+| FR-30  | 1    | Container deployment                 |
+| FR-31  | 1    | Readiness endpoint                   |
+| FR-32  | 1    | Serve static frontend                |
+| FR-33  | 5    | UI controls                          |
+| FR-34  | 1    | Automatic database refresh cadence   |
+| FR-35  | 1    | Refresh trigger boundaries           |
+| FR-36  | 1    | Database update timestamp/age status |
+| FR-37  | 1    | Database refresh logging             |
+| FR-38  | 1    | pyproject.toml mtv_dl version source |
+| FR-39  | 1    | Published container image workflow   |
 | NFR-13 | 5    | Responsive design                    |
 | NFR-14 | 5    | Loading states                       |
 | NFR-16 | 1    | Health status indicator              |
@@ -161,13 +186,13 @@ So that I can extend it for search, queue, and scheduler functionality.
 **When** I run `uv sync`,
 **Then** dependencies are installed successfully.
 
-**Given** `src/main.py`,
+**Given** `src/mtv_dl_web/main.py`,
 **When** I start the FastAPI app,
 **Then** it runs without errors on the configured port.
 
 **Given** the project structure,
 **When** I inspect `src/`,
-**Then** it matches the architecture (`main.py`, `config.py`, `frontend/`, `mtv_dl/`).
+**Then** it matches the architecture (`mtv_dl_web/main.py`, `config.py`, `mtv_dl_web/frontend/`, and dependency-managed `mtv_dl` integration).
 
 ---
 
@@ -217,7 +242,7 @@ So that I can customize port, database path, and download options.
 
 **Given** a configuration file (e.g., `config.yaml`),
 **When** I start the service,
-**Then** it loads settings (port, database path, target directories) from the file (FR-26, FR-27).
+**Then** it loads settings (port, database path, target directories) from the file (FR-27, FR-28).
 
 **Given** invalid configuration,
 **When** I start the service,
@@ -279,8 +304,9 @@ So that I can monitor the system and manage downloads without interruption.
 
 ### Story 1.7: Add thread synchronization to active_downloads dictionary access
 
-As a system administrator,
-I want the MTV Downloader web interface to have proper thread synchronization for the active_downloads dictionary so that concurrent access from multiple threads does not cause race conditions or data corruption.
+As a self-hosting user,
+I want the MTV Downloader web interface to protect active download status updates,
+So that concurrent requests and background work do not cause race conditions or data corruption (NFR-20).
 
 **Acceptance Criteria:**
 
@@ -306,8 +332,9 @@ I want the MTV Downloader web interface to have proper thread synchronization fo
 
 ### Story 1.8: Implement proper locking for all shared mutable state
 
-As a system administrator,
-I want the MTV Downloader web interface to have proper locking mechanisms for all shared mutable state so that the application remains stable and data integrity is maintained under concurrent usage.
+As a self-hosting user,
+I want the MTV Downloader web interface to protect all shared mutable state,
+So that the application remains stable and data integrity is maintained under concurrent usage (NFR-20).
 
 **Acceptance Criteria:**
 
@@ -331,8 +358,9 @@ I want the MTV Downloader web interface to have proper locking mechanisms for al
 
 ### Story 1.9: Implement comprehensive concurrency improvements for shared state
 
-As a system administrator,
-I want the MTV Downloader web interface to have comprehensive thread safety measures so that the application remains stable, reliable, and performs well under concurrent usage with multiple simultaneous downloads and requests.
+As a self-hosting user,
+I want the MTV Downloader web interface to have comprehensive thread safety measures,
+So that the application remains stable, reliable, and performs well under concurrent requests, background downloads, and database refresh operations (NFR-20).
 
 **Acceptance Criteria:**
 
@@ -351,6 +379,106 @@ I want the MTV Downloader web interface to have comprehensive thread safety meas
 **When** unexpected errors occur during shared state access,
 **Then** the application should handle errors gracefully,
 **And** should not crash or leave shared state in inconsistent state.
+
+---
+
+### Story 1.10: Improve Database Refresh Cadence, Status, and Logging
+
+As a self-hosting user,
+I want database refreshes to run on an explicit cadence with clear UI status and logs,
+So that searches use fresh data without blocking normal app usage or hiding refresh failures.
+
+**Acceptance Criteria:**
+
+**Given** default configuration,
+**When** the service starts,
+**Then** database refresh is scheduled once every 24 hours unless the user configures a different refresh cron expression (FR-34).
+
+**Given** the user configures the database refresh schedule through the mounted configuration file or an environment parameter,
+**When** the service validates configuration at startup,
+**Then** it accepts APScheduler `CronTrigger.from_crontab()` syntax using five fields: `minute hour day_of_month month day_of_week`.
+
+**Given** the configured database refresh cron expression contains unsupported syntax,
+**When** the service validates configuration (config file or environment variables) at startup,
+**Then** it rejects the configuration before scheduling the refresh and logs a clear validation error (NFR-7).
+
+**Given** a user performs a search or starts a download,
+**When** no manual or scheduled refresh is active,
+**Then** the operation does not implicitly trigger a database refresh (FR-35).
+
+**Given** a database refresh has completed successfully,
+**When** the user views status in the UI or calls the status API,
+**Then** the last successful update time and database age are shown when available (FR-36).
+
+**Given** a database refresh starts, succeeds, or fails,
+**When** logs are inspected,
+**Then** refresh trigger source, outcome, and duration are recorded (FR-37).
+
+---
+
+### Story 1.11: Consolidate mtv_dl Dependency Integration
+
+As a maintainer,
+I want `pyproject.toml` to be the single source of truth for the `mtv_dl` version,
+So that local, test, and container behavior always use the same declared dependency version.
+
+**Acceptance Criteria:**
+
+**Given** the project dependency configuration,
+**When** dependencies are installed,
+**Then** `mtv_dl` is installed from the version declared in `pyproject.toml`, with no alternate dependency declaration overriding it (FR-38).
+
+**Given** application code imports `mtv_dl`,
+**When** the import resolves in local, test, or container execution,
+**Then** it resolves to the installed dependency version declared in `pyproject.toml`, not to a different vendored, submodule, or path-injected copy (FR-38).
+
+**Given** the repository is inspected,
+**When** duplicate vendored or submodule `mtv_dl` copies are found,
+**Then** they are removed or made inactive so they cannot conflict with the `pyproject.toml` dependency version (FR-38).
+
+**Given** local tests and container startup run,
+**When** `mtv_dl` is imported,
+**Then** both environments import the same `pyproject.toml`-declared dependency version.
+
+---
+
+### Story 1.12: Publish Container Images from Main Branch
+
+As a self-hosting user,
+I want a project-published container image built from main,
+So that installation does not require building the image locally.
+
+**Acceptance Criteria:**
+
+**Given** changes land on the main branch,
+**When** the GitHub workflow runs successfully,
+**Then** it builds and publishes a container image for the project (FR-39).
+
+**Given** the image is published,
+**When** I read the documentation,
+**Then** I can find the image location and run it with documented configuration, data, and download mounts (FR-30, FR-39).
+
+**Given** the documented image is run with the required mounts,
+**When** I call the readiness endpoint,
+**Then** it reports ready and persists mounted data across restart (FR-30, FR-31).
+
+---
+
+### Story 1.13: Implement Download Naming Patterns
+
+As a user,
+I want downloads to use the same naming and folder behavior as `mtv_dl`,
+So that files land in the expected shared folder with recognizable names.
+
+**Acceptance Criteria:**
+
+**Given** a queued item starts downloading,
+**When** the backend delegates to `mtv_dl.Downloader`,
+**Then** it uses `mtv_dl` naming and folder structure behavior rather than writing `download.mp4` in the project root (FR-13).
+
+**Given** a completed download,
+**When** the system verifies the files,
+**Then** all file names match the configured naming behavior and files are located under the configured target directory (FR-14).
 
 ### Epic 2: Search Functionality
 
@@ -412,7 +540,7 @@ So that I can search without using the API directly.
 
 **Goal**: Users can queue, monitor, and manage downloads.
 
-### Story 3.1: Implement Queue API Endpoints
+### Story 3.2: Implement Queue API Endpoints
 
 As a user,
 I want to add/remove downloads via API,
@@ -422,15 +550,15 @@ So that I can manage my download queue.
 
 **Given** a video ID,
 **When** I call `POST /queue` with `{ "video_id": "123" }`,
-**Then** it adds the video to the queue (FR-13).
+**Then** it adds the video to the queue (FR-15).
 
 **Given** a pending queue item,
 **When** I call `DELETE /queue/{id}`,
-**Then** it removes the item (FR-16).
+**Then** it removes the item (FR-18).
 
 ---
 
-### Story 3.2: Enforce Single Active Download
+### Story 3.3: Enforce Single Active Download
 
 As a user,
 I want only one download to run at a time,
@@ -440,11 +568,11 @@ So that my system resources aren’t overwhelmed.
 
 **Given** an active download,
 **When** I add another item to the queue,
-**Then** it remains `pending` until the active download completes (FR-14).
+**Then** it remains `pending` until the active download completes (FR-16).
 
 ---
 
-### Story 3.3: Build Queue UI
+### Story 3.4: Build Queue UI
 
 As a user,
 I want to view and manage the queue in the UI,
@@ -454,15 +582,15 @@ So that I can monitor download status.
 
 **Given** the queue page,
 **When** I view it,
-**Then** it shows `pending`, `downloading`, `completed`, and `failed` items (FR-15).
+**Then** it shows `pending`, `downloading`, `completed`, and `failed` items (FR-17).
 
 **Given** a pending item,
 **When** I click "Remove",
-**Then** it disappears from the queue (FR-16).
+**Then** it disappears from the queue (FR-18).
 
 ---
 
-### Story 3.4: Integrate `mtv_dl.Downloader`
+### Story 3.5: Integrate `mtv_dl.Downloader`
 
 As a user,
 I want downloads to use existing `mtv_dl` behavior,
@@ -481,16 +609,16 @@ So that my files are saved correctly.
 ### Story 4.1: Implement Scheduler Backend
 
 As a user,
-I want to create/edit scheduled queries with cron-like syntax,
+I want to create/edit scheduled queries with APScheduler crontab syntax,
 So that I can auto-download new matches.
 
 **Acceptance Criteria:**
 
-**Given** a valid cron expression,
+**Given** a valid APScheduler `CronTrigger.from_crontab()` expression,
 **When** I schedule a query,
-**Then** it runs at the specified time (FR-23).
+**Then** it runs at the specified time (FR-24).
 
-**Given** an invalid cron expression,
+**Given** an invalid or unsupported cron expression,
 **When** I submit it,
 **Then** the scheduler rejects it (NFR-7).
 
@@ -506,11 +634,11 @@ So that I don’t download duplicates.
 
 **Given** a scheduled query match,
 **When** its hash/URL isn’t in the queue,
-**Then** it’s added to `pending` (FR-24).
+**Then** it’s added to `pending` (FR-25).
 
 **Given** a duplicate match,
 **When** the scheduler runs,
-**Then** it’s ignored (FR-24).
+**Then** it’s ignored (FR-25).
 
 ---
 
@@ -524,7 +652,7 @@ So that I can monitor auto-downloads.
 
 **Given** the scheduler page,
 **When** I view it,
-**Then** it shows job status, last run result, and auto-enqueued count (FR-25).
+**Then** it shows job status, last run result, and auto-enqueued count (FR-26).
 
 ### Epic 5: Responsive UI & UX
 

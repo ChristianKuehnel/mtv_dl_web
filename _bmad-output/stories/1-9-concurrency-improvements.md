@@ -1,7 +1,7 @@
 # Story: Implement comprehensive concurrency improvements for shared state
 
 ## User Story
-As a system administrator, I want the MTV Downloader web interface to have comprehensive thread safety measures so that the application remains stable, reliable, and performs well under concurrent usage with multiple simultaneous downloads and requests.
+As a self-hosting user, I want the MTV Downloader web interface to have comprehensive thread safety measures so that the application remains stable, reliable, and performs well under concurrent requests, background downloads, and database refresh operations (NFR-20).
 
 ## Acceptance Criteria
 
@@ -28,7 +28,7 @@ And should not crash or leave shared state in inconsistent state
 
 ### Problem Statement
 The MTV Downloader web interface has multiple concurrency issues:
-1. `active_downloads` dictionary lacks thread safety (requires fix from story 1-1)
+1. `active_downloads` dictionary lacks thread safety (requires fix from Story 1.7)
 2. `download_queue` may need thread protection
 3. Other global state variables may not be properly synchronized
 4. Potential race conditions in database refresh operations
