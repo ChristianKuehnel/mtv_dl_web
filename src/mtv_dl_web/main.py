@@ -8,6 +8,7 @@ supporting concurrent web requests and downloads.
 import logging
 import os
 import re
+import shutil
 import sys
 import threading
 from concurrent.futures import ThreadPoolExecutor
@@ -135,6 +136,70 @@ SUPPORTED_FIELDS = {
 }
 
 FILTER_PATTERN = re.compile(r"^(?P<field>\w+)\s*(?P<operator>!=|=|\+|-)\s*(?P<pattern>.+)$")
+INVALID_FILENAME_COMPONENT = re.compile(r"[^A-Za-z0-9._-]+")
+
+
+def sanitize_filename_component(value: str) -> str:
+    """Normalize a filename component to safe ASCII-like characters."""
+    normalized = INVALID_FILENAME_COMPONENT.sub("_", value.strip().replace(" ", "_"))
+    normalized = re.sub(r"_+", "_", normalized).strip("._")
+    return normalized or "untitled"
+
+
+def is_series_content(show_data: dict[str, Any]) -> bool:
+    """Best-effort detection for series-like metadata."""
+    season = show_data.get("season")
+    episode = show_data.get("episode")
+    if season is not None or episode is not None:
+        return True
+
+    title = str(show_data.get("title") or "").strip()
+    topic = str(show_data.get("topic") or "").strip()
+    return bool(topic and title and topic.casefold() != title.casefold())
+
+
+def generate_download_filename(show_data: dict[str, Any], extension: str) -> str:
+    """Generate file name using story naming rules."""
+    safe_ext = extension if extension.startswith(".") else f".{extension}"
+    title = sanitize_filename_component(str(show_data.get("title") or "untitled"))
+    episode_title = sanitize_filename_component(str(show_data.get("episode_title") or show_data.get("title") or "untitled"))
+    series_title = sanitize_filename_component(str(show_data.get("topic") or show_data.get("title") or "untitled"))
+
+    if is_series_content(show_data):
+        return f"{series_title}_-_{episode_title}{safe_ext}"
+
+    return f"{title}{safe_ext}"
+
+
+def ensure_flat_target_path(download_path: Path, target_directory: Path, show_data: dict[str, Any]) -> Path:
+    """Move completed download into flat target directory with expected name."""
+    expected_name = generate_download_filename(show_data, download_path.suffix)
+    target_directory.mkdir(parents=True, exist_ok=True)
+    destination_path = target_directory / expected_name
+
+    if download_path.resolve() == destination_path.resolve():
+        return destination_path
+
+    if destination_path.exists():
+        destination_path.unlink()
+
+    shutil.move(download_path.as_posix(), destination_path.as_posix())
+    return destination_path
+
+
+def validate_download_naming(download_path: Path, target_directory: Path, show_data: dict[str, Any]) -> bool:
+    """Verify naming pattern and location after download completion."""
+    try:
+        resolved_path = download_path.resolve()
+        resolved_target = target_directory.resolve()
+    except OSError:
+        return False
+
+    expected_name = generate_download_filename(show_data, download_path.suffix)
+    if resolved_path.name != expected_name:
+        return False
+
+    return resolved_target == resolved_path.parent
 
 
 def validate_filters(filters: list[str]) -> None:
@@ -533,9 +598,13 @@ async def download_show_background(show_data: dict[str, Any], download_request: 
 
         # Update status
         if path:
+            normalized_path = ensure_flat_target_path(Path(path), Path(download_request.target_directory), show_data)
+            if not validate_download_naming(normalized_path, Path(download_request.target_directory), show_data):
+                raise ValueError("Downloaded file does not match naming rules or target directory")
+
             active_downloads[show_id]["status"] = "completed"
             active_downloads[show_id]["message"] = "Download completed"
-            active_downloads[show_id]["file_path"] = str(path)
+            active_downloads[show_id]["file_path"] = str(normalized_path)
         else:
             active_downloads[show_id]["status"] = "failed"
             active_downloads[show_id]["message"] = "Download failed"
