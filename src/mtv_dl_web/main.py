@@ -522,6 +522,7 @@ async def download_show_background(
 
         # Determine quality
         quality_map = {
+            "best": ("url_http_hd", "url_http", "url_http_small"),
             "low": ("url_http_small", "url_http", "url_http_hd"),
             "medium": ("url_http", "url_http_small", "url_http_hd"),
             "high": ("url_http_hd", "url_http", "url_http_small"),
