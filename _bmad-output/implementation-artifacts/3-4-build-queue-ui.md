@@ -1,6 +1,6 @@
 # Story 3.4: Build Queue UI
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -17,19 +17,19 @@ So that I can monitor download status.
 
 ## Tasks / Subtasks
 
-- [ ] Extend queue UI in `src/mtv_dl_web/frontend/index.html`
-  - [ ] Add queue section with grouped or labeled item states
-  - [ ] Add per-item remove action for pending entries only
-- [ ] Extend frontend JS queue client logic
-  - [ ] Poll `GET /queue` and render live states
-  - [ ] Call `DELETE /queue/{id}` and refresh UI state
-  - [ ] Reuse existing status banner patterns for success/errors
-- [ ] Preserve accessibility and responsiveness
-  - [ ] Keyboard reachable controls with visible state text
-  - [ ] Layout validation at 360px, 768px, 1280px
-- [ ] Add tests/manual verification notes
-  - [ ] UI behavior check for each state
-  - [ ] Remove action only available for pending entries
+- [x] Extend queue UI in `src/mtv_dl_web/frontend/index.html`
+  - [x] Add queue section with grouped or labeled item states
+  - [x] Add per-item remove action for pending entries only
+- [x] Extend frontend JS queue client logic
+  - [x] Poll `GET /queue` and render live states
+  - [x] Call `DELETE /queue/{id}` and refresh UI state
+  - [x] Reuse existing status banner patterns for success/errors
+- [x] Preserve accessibility and responsiveness
+  - [x] Keyboard reachable controls with visible state text
+  - [x] Layout validation at 360px, 768px, 1280px
+- [x] Add tests/manual verification notes
+  - [x] UI behavior check for each state
+  - [x] Remove action only available for pending entries
 
 ## Retrospective Guardrails
 
@@ -75,17 +75,23 @@ So that I can monitor download status.
 
 ### Agent Model Used
 
-TBD
+openai/gpt-5.3-codex
 
 ### Debug Log References
 
-TBD
+- `pytest tests/test_search_ui.py`
 
 ### Completion Notes List
 
-- [ ] Ultimate context engine analysis completed - comprehensive developer guide created
+- [x] Added queue UI section with explicit state text and pending-only remove controls.
+- [x] Added queue polling (`1s`) and remove action with success/error status banner updates.
+- [x] Added UI contract tests validating queue state/remove semantics and feedback interval.
 
 ### File List
 
-- `src/mtv_dl_web/frontend/index.html` (planned)
-- `tests/` (planned)
+- `src/mtv_dl_web/frontend/index.html`
+- `tests/test_search_ui.py`
+
+## Change Log
+
+- 2026-05-14: Added queue management UI and polling/remove client behavior with regression coverage.

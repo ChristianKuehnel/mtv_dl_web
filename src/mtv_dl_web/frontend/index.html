@@ -200,6 +200,16 @@
           </div>
         </div>
       </div>
+
+      <div id="queue-section" class="mt-8">
+        <h2 class="text-xl font-semibold mb-4 text-gray-800">Queue</h2>
+        <div id="queue-container" class="bg-white rounded-lg shadow-md p-6">
+          <div id="no-queue-items" class="text-center py-6 text-gray-500">
+            <p>No queue items</p>
+          </div>
+          <div id="queue-list" class="hidden"></div>
+        </div>
+      </div>
     </div>
 
     <script>
@@ -235,6 +245,10 @@
       const lastRefreshTime = document.getElementById("last-refresh-time");
       const databaseAge = document.getElementById("database-age");
       const noResultsMessage = document.getElementById("no-results-message");
+      const queueList = document.getElementById("queue-list");
+      const noQueueItems = document.getElementById("no-queue-items");
+      let queueRefreshRequestId = 0;
+      let latestQueueRenderRequestId = 0;
       const HEALTH_REQUEST_TIMEOUT_MS = 4000;
       let lastRefreshInProgress = null;
       let manualRefreshPending = false;
@@ -681,8 +695,8 @@
           showStatus(`Started downloading ${selectedShows.size} shows`);
           selectedShows.clear();
           updateDownloadButton();
-          // Refresh downloads list
           refreshDownloads();
+          refreshQueue();
         } catch (error) {
           showStatus(`Download error: ${error.message}`, "error");
           console.error("Download error:", error);
@@ -713,6 +727,109 @@
         } catch (error) {
           console.error("Error refreshing downloads:", error);
         }
+      }
+
+      async function refreshQueue() {
+        queueRefreshRequestId += 1;
+        const requestId = queueRefreshRequestId;
+        try {
+          const response = await fetch(`${API_BASE}/queue`, {
+            cache: "no-store",
+          });
+          const data = await response.json();
+
+          if (!response.ok) {
+            throw new Error(data.detail || "Failed to fetch queue");
+          }
+
+          if (requestId >= latestQueueRenderRequestId) {
+            latestQueueRenderRequestId = requestId;
+            renderQueue(data.items || []);
+          }
+        } catch (error) {
+          console.error("Error refreshing queue:", error);
+        }
+      }
+
+      async function removeQueueItem(id) {
+        try {
+          showStatus("Removing queue item...");
+          const response = await fetch(`${API_BASE}/queue/${id}`, {
+            method: "DELETE",
+          });
+          const data = await response.json();
+
+          if (!response.ok) {
+            throw new Error(data.detail || "Failed to remove queue item");
+          }
+
+          showStatus("Queue item removed");
+          await refreshQueue();
+        } catch (error) {
+          showStatus(`Queue remove error: ${error.message}`, "error");
+        }
+      }
+
+      function renderQueue(items) {
+        queueList.innerHTML = "";
+
+        if (items.length === 0) {
+          noQueueItems.classList.remove("hidden");
+          queueList.classList.add("hidden");
+          return;
+        }
+
+        noQueueItems.classList.add("hidden");
+        queueList.classList.remove("hidden");
+
+        items.forEach((item) => {
+          const card = document.createElement("div");
+          card.className = "mb-3 rounded-lg border border-gray-200 p-3";
+          const canRemove = item.status === "pending";
+
+          const row = document.createElement("div");
+          row.className =
+            "flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between";
+
+          const info = document.createElement("div");
+
+          const idText = document.createElement("p");
+          idText.className = "text-sm font-semibold text-gray-800 break-all";
+          idText.textContent = String(item.id || "");
+
+          const stateLine = document.createElement("p");
+          stateLine.className = "text-sm text-gray-600";
+          stateLine.textContent = "State: ";
+
+          const stateValue = document.createElement("span");
+          stateValue.className = "font-medium";
+          stateValue.textContent = String(item.status || "unknown");
+          stateLine.appendChild(stateValue);
+
+          const messageText = document.createElement("p");
+          messageText.className = "text-xs text-gray-500";
+          messageText.textContent = String(item.message || "");
+
+          info.appendChild(idText);
+          info.appendChild(stateLine);
+          info.appendChild(messageText);
+
+          const button = document.createElement("button");
+          button.className = canRemove
+            ? "rounded-md px-3 py-1.5 text-sm font-medium bg-red-100 text-red-700 hover:bg-red-200"
+            : "rounded-md px-3 py-1.5 text-sm font-medium bg-gray-100 text-gray-500 cursor-not-allowed";
+          button.textContent = "Remove";
+          button.disabled = !canRemove;
+
+          row.appendChild(info);
+          row.appendChild(button);
+          card.appendChild(row);
+
+          if (canRemove) {
+            button.addEventListener("click", () => removeQueueItem(item.id));
+          }
+          queueList.appendChild(card);
+        });
       }
 
       // Display active downloads
@@ -799,6 +916,8 @@
         setInterval(refreshDatabaseStatus, 5000);
         // Periodically refresh downloads
         setInterval(refreshDownloads, 5000);
+        setInterval(refreshQueue, 1000);
+        refreshQueue();
       });
     </script>
   </body>

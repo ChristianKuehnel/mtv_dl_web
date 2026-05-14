@@ -1,6 +1,6 @@
 # Story 3.5: Integrate mtv_dl.Downloader
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -16,18 +16,18 @@ So that my files are saved correctly.
 
 ## Tasks / Subtasks
 
-- [ ] Align queue worker execution with `mtv_dl.Downloader` usage
-  - [ ] Ensure queued item payload contains all downloader-required metadata
-  - [ ] Reuse existing quality tuple mapping and option flags
-- [ ] Validate path and target-directory handling
-  - [ ] Ensure configured target path is resolved/created safely
-  - [ ] Confirm no fallback to unintended project-root outputs
-- [ ] Harden failure handling and status reporting
-  - [ ] Record failed state with useful non-sensitive message
-  - [ ] Ensure retries are not implicit in MVP
-- [ ] Add tests and smoke checks
-  - [ ] Integration-style check for downloader invocation contract
-  - [ ] Container/path persistence check hooks in smoke test flow
+- [x] Align queue worker execution with `mtv_dl.Downloader` usage
+  - [x] Ensure queued item payload contains all downloader-required metadata
+  - [x] Reuse existing quality tuple mapping and option flags
+- [x] Validate path and target-directory handling
+  - [x] Ensure configured target path is resolved/created safely
+  - [x] Confirm no fallback to unintended project-root outputs
+- [x] Harden failure handling and status reporting
+  - [x] Record failed state with useful non-sensitive message
+  - [x] Ensure retries are not implicit in MVP
+- [x] Add tests and smoke checks
+  - [x] Integration-style check for downloader invocation contract
+  - [x] Container/path persistence check hooks in smoke test flow
 
 ## Retrospective Guardrails
 
@@ -72,18 +72,24 @@ So that my files are saved correctly.
 
 ### Agent Model Used
 
-TBD
+openai/gpt-5.3-codex
 
 ### Debug Log References
 
-TBD
+- `pytest tests/test_download_selected.py tests/test_queue_api.py`
 
 ### Completion Notes List
 
-- [ ] Ultimate context engine analysis completed - comprehensive developer guide created
+- [x] Queue worker now starts from queued payload metadata and preserves downloader option pass-through.
+- [x] Preserved quality mapping and target path safety checks in queue-driven download flow.
+- [x] Verified failure reporting and non-retry behavior in queue progression tests.
 
 ### File List
 
-- `src/mtv_dl_web/main.py` (planned)
-- `tests/test_integration.py` (planned)
-- `tests/test_api.py` (planned)
+- `src/mtv_dl_web/main.py`
+- `tests/test_download_selected.py`
+- `tests/test_queue_api.py`
+
+## Change Log
+
+- 2026-05-14: Integrated queue processing with canonical `mtv_dl.Downloader` invocation contract and status hardening.
