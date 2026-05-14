@@ -37,7 +37,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-08T00:00:00Z
-last_updated: 2026-05-14T13:00:00Z
+last_updated: 2026-05-14T15:10:00Z
 project: mtv_dl_web
 project_key: NOKEY
 tracking_system: file-system
@@ -88,3 +88,10 @@ development_status:
   5-1-build-responsive-search-queue-ui: backlog
   5-2-style-frontend-with-css: backlog
   epic-5-retrospective: optional
+
+  # Epic 6: Milestone 1 Open-Issue Closure
+  epic-6: in-progress
+  6-1-download-only-selected-search-results: ready-for-dev
+  6-2-enforce-download-target-and-naming-outcome: ready-for-dev
+  6-3-align-container-mount-point-contract: ready-for-dev
+  epic-6-retrospective: optional

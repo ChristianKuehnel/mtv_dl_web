@@ -730,3 +730,83 @@ So that I can navigate easily.
 **Given** the UI,
 **When** I interact with it,
 **Then** controls have visible focus states (accessibility).
+
+### Epic 6: Milestone 1 Open-Issue Closure
+
+**Goal**: Resolve the remaining Milestone 1 bugs from GitHub issues #39, #16, and #41 with implementation and regression tests.
+
+### Story 6.1: Download Only Selected Search Results
+
+As a user,
+I want "Download Selected Shows" to download only the shows I checked,
+So that the app does not start unintended downloads.
+
+**Acceptance Criteria:**
+
+**Given** search results are displayed,
+**When** I select one show and click "Download Selected Shows",
+**Then** exactly that selected show is queued/downloaded and non-selected results are ignored (#39, FR-6, FR-15).
+
+**Given** I select multiple shows,
+**When** I click "Download Selected Shows",
+**Then** only those selected shows are queued/downloaded and each selected hash is processed once.
+
+**Given** selected IDs are sent from the UI,
+**When** backend validates the request,
+**Then** it rejects empty or unknown selections with a clear 4xx error and does not start any download.
+
+**Given** this behavior is implemented,
+**When** tests run,
+**Then** an automated test proves selected-only download behavior and prevents regression (#39 acceptance).
+
+---
+
+### Story 6.2: Enforce Correct Download Target and mtv_dl Naming Outcome
+
+As a self-hosting user,
+I want completed downloads to land in the configured shared target directory with `mtv_dl` naming,
+So that files never fall back to repository root `download.mp4` outputs.
+
+**Acceptance Criteria:**
+
+**Given** a download starts,
+**When** backend delegates to `mtv_dl.Downloader.download(...)`,
+**Then** resulting files follow `mtv_dl` naming behavior and output is under configured target directory (#16, FR-7, FR-13, FR-14).
+
+**Given** a configured target directory,
+**When** download completes,
+**Then** backend verifies and records a path inside that target boundary (including symlink-safe path checks), otherwise marks the download as failed.
+
+**Given** containerized runtime,
+**When** user keeps default settings,
+**Then** default target is compatible with mounted shared storage (for example `/downloads`) and does not write to project root.
+
+**Given** this behavior is implemented,
+**When** tests run,
+**Then** regression tests cover successful placement and failure paths for out-of-target outputs.
+
+---
+
+### Story 6.3: Align Container Mount-Point Contract and Documentation
+
+As a self-hosting user,
+I want a clear, correct, and consistent mount-point contract,
+So that container setup matches documented expectations without ambiguity.
+
+**Acceptance Criteria:**
+
+**Given** issue #41 expects `/data`, `/downloads`, and `/config`,
+**When** I read deployment docs and compose examples,
+**Then** mount points are either exactly those three or explicitly justified with matching implementation and tests.
+
+**Given** Dockerfile, compose configuration, and README,
+**When** I compare mount guidance,
+**Then** they are consistent and refer to the same runtime storage model (#41, FR-30, NFR-4).
+
+**Given** database persistence requirements,
+**When** mount strategy is finalized,
+**Then** database path configuration remains valid and persistent across restarts.
+
+**Given** this story is completed,
+**When** container/persistence checks run,
+**Then** tests validate the documented mount-point contract.
