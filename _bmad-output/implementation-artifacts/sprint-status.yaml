@@ -58,7 +58,7 @@ development_status:
   1-10-improve-database-refresh-cadence-status-logging: done
   1-11-consolidate-mtv-dl-dependency-integration: done
   1-12-publish-container-images-from-main-branch: done
-  1-13-implement-download-naming-patterns: ready-for-dev
+  1-13-implement-download-naming-patterns: done
   epic-1-retrospective: optional
 
   # Epic 2: Search Functionality

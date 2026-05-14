@@ -101,7 +101,7 @@ database_refresh_schedule_config: str = "0 0 * * *"  # Default 24h cadence (midn
 class DownloadRequest(BaseModel):
     filters: list[str]
     quality: str = "url_http"
-    target_directory: str = "./downloads"
+    target_directory: str = settings.target_directory
     include_subtitles: bool = True
     include_nfo: bool = True
     merge_to_mkv: bool = False
@@ -638,6 +638,7 @@ async def download_show_background(
 
         # Determine quality
         quality_map = {
+            "best": ("url_http_hd", "url_http", "url_http_small"),
             "low": ("url_http_small", "url_http", "url_http_hd"),
             "medium": ("url_http", "url_http_small", "url_http_hd"),
             "high": ("url_http_hd", "url_http", "url_http_small"),
