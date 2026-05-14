@@ -21,9 +21,6 @@ class Settings(BaseSettings):
 
     # Download configuration
     download_quality: str = "best"
-    target_directory: str = os.path.expanduser("~/Downloads/mtv_dl")
-
-    # Feature flags
     enable_subtitles: bool = True
     enable_nfo: bool = True
     enable_mkv_merge: bool = False

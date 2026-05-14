@@ -101,7 +101,6 @@ database_refresh_schedule_config: str = "0 0 * * *"  # Default 24h cadence (midn
 class DownloadRequest(BaseModel):
     filters: list[str]
     quality: str = "url_http"
-    target_directory: str = settings.target_directory
     include_subtitles: bool = True
     include_nfo: bool = True
     merge_to_mkv: bool = False
@@ -534,6 +533,18 @@ async def health_check() -> dict[str, Any]:
         },
     }
 
+@app.get("/api/config")
+async def get_config() -> dict[str, Any]:
+    """
+    Get current application configuration
+    """
+    return {
+        "download_quality": settings.download_quality,
+        "enable_subtitles": settings.enable_subtitles,
+        "enable_nfo": settings.enable_nfo,
+        "enable_mkv_merge": settings.enable_mkv_merge,
+    }
+
 
 @app.post("/api/search", response_model=SearchResponse)
 async def search_shows(filters: SearchFilters, background_tasks: BackgroundTasks) -> SearchResponse:
@@ -588,8 +599,8 @@ async def start_download(download_request: DownloadRequest, background_tasks: Ba
     Start downloading shows based on filters
     """
     try:
-        # Validate target directory
-        target_path = Path(download_request.target_directory).expanduser()
+        # Validate target directory from settings
+        target_path = Path(settings.target_directory).expanduser()
         target_path.mkdir(parents=True, exist_ok=True)
 
         # Get filtered shows using a fresh database connection

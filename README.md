@@ -159,18 +159,16 @@ Supported fields include `description`, `region`, `size`, `channel`, `topic`, `t
 | -------------- | --------------- | ------------------ |
 | `PORT`         | `8000`          | Service port       |
 | `DATABASE_DIR` | `~/.mtv_dl_web` | Database directory |
-| `LOG_LEVEL`    | `INFO`          | Logging level      |
+| `TARGET_DIR`   | `/downloads`    | Target directory for downloads |
 
 ### Configuration File (config.yaml)
 
 The application also supports configuration through a `config.yaml` file located in the config directory (mounted at `/config` in Docker). This file allows for more detailed configuration of the service:
-
 ```yaml
 port: 8000
 host: 0.0.0.0
 database_path: ~/.mtv_dl_web
 download_quality: best
-target_directory: ~/Downloads/mtv_dl
 enable_subtitles: true
 enable_nfo: true
 enable_mkv_merge: false
@@ -179,11 +177,21 @@ enable_mkv_merge: false
 #### Configuration Priority
 
 Configuration values are loaded in the following priority order (highest to lowest):
-1. Environment variables (e.g., `PORT=8080`)
+1. Environment variables (e.g., `TARGET_DIR=/my/downloads`)
 2. `config.yaml` file values
 3. Default values
 
 Values in `config.yaml` should be set to the directory path where database files are stored (not the full file paths). The mtv_dl package will determine the appropriate file names internally.
+
+## Using The Web UI
+
+1. Enter one or more filters in the **Filters** field.
+2. Click **Search Shows**.
+3. Select the results you want.
+4. Choose quality and subtitle options.
+5. Click **Download Selected Shows**.
+
+The first start may take longer because `mtv_dl` needs a local copy of the MediathekView film list.
 
 ## API Endpoints
 
