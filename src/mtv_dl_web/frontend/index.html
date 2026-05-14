@@ -16,16 +16,29 @@
       <header class="mb-8 text-center">
         <div class="flex flex-col items-center gap-3">
           <h1 class="text-3xl font-bold text-gray-800">MTV Downloader</h1>
-          <div
-            id="health-indicator"
-            class="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-3 py-1 text-sm font-medium text-gray-700 shadow-sm"
-          >
-            <span
-              id="health-dot"
-              class="h-2.5 w-2.5 rounded-full bg-red-500"
-              aria-hidden="true"
-            ></span>
-            <span id="health-label">offline</span>
+          <div class="flex flex-wrap items-center justify-center gap-2">
+            <div
+              id="health-indicator"
+              class="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-3 py-1 text-sm font-medium text-gray-700 shadow-sm"
+            >
+              <span
+                id="health-dot"
+                class="h-2.5 w-2.5 rounded-full bg-red-500"
+                aria-hidden="true"
+              ></span>
+              <span id="health-label">offline</span>
+            </div>
+            <button
+              id="refresh-db-btn"
+              class="inline-flex items-center gap-2 rounded-md border border-blue-200 bg-blue-50 px-3 py-1.5 text-sm font-medium text-blue-700 transition duration-200 hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <i
+                id="refresh-db-icon"
+                class="fas fa-rotate-right"
+                aria-hidden="true"
+              ></i>
+              <span id="refresh-db-label">Refresh Database</span>
+            </button>
           </div>
         </div>
         <p class="text-gray-600">
@@ -192,7 +205,13 @@
       const healthIndicator = document.getElementById("health-indicator");
       const healthDot = document.getElementById("health-dot");
       const healthLabel = document.getElementById("health-label");
+      const refreshDatabaseButton = document.getElementById("refresh-db-btn");
+      const refreshDatabaseLabel = document.getElementById("refresh-db-label");
+      const refreshDatabaseIcon = document.getElementById("refresh-db-icon");
       const HEALTH_REQUEST_TIMEOUT_MS = 4000;
+      let lastRefreshInProgress = null;
+      let manualRefreshPending = false;
+      let lastStatusPollErrorAt = 0;
 
       const HEALTH_STATES = {
         online: {
@@ -251,6 +270,89 @@
           updateHealthStatus("offline");
         } finally {
           clearTimeout(timeoutId);
+        }
+      }
+
+      function setRefreshButtonState(isRefreshing) {
+        refreshDatabaseButton.disabled = isRefreshing;
+        refreshDatabaseLabel.textContent = isRefreshing
+          ? "Refreshing..."
+          : "Refresh Database";
+        refreshDatabaseIcon.className = isRefreshing
+          ? "fas fa-spinner fa-spin"
+          : "fas fa-rotate-right";
+      }
+
+      async function refreshDatabaseStatus() {
+        try {
+          const response = await fetch(`${API_BASE}/database/status`, {
+            cache: "no-store",
+          });
+
+          if (!response.ok) {
+            throw new Error("Failed to fetch database status");
+          }
+
+          const data = await response.json();
+          if (typeof data.is_refreshing !== "boolean") {
+            throw new Error("Database status payload is incomplete");
+          }
+          const isRefreshing = data.is_refreshing === true;
+          if (manualRefreshPending && !isRefreshing) {
+            return;
+          }
+
+          if (manualRefreshPending && isRefreshing) {
+            manualRefreshPending = false;
+          }
+
+          setRefreshButtonState(isRefreshing);
+
+          if (lastRefreshInProgress === true && !isRefreshing) {
+            showStatus("Database refresh completed");
+          }
+          lastRefreshInProgress = isRefreshing;
+        } catch (error) {
+          const now = Date.now();
+          if (now - lastStatusPollErrorAt > 10000) {
+            showStatus(
+              "Unable to check database refresh status. Please retry shortly.",
+              "error",
+            );
+            lastStatusPollErrorAt = now;
+          }
+          console.error("Error refreshing database status:", error);
+        }
+      }
+
+      async function triggerDatabaseRefresh() {
+        try {
+          manualRefreshPending = true;
+          setRefreshButtonState(true);
+          const response = await fetch(`${API_BASE}/database/refresh`, {
+            method: "POST",
+          });
+          const contentType = response.headers.get("content-type") || "";
+          const isJson = contentType.includes("application/json");
+          const data = isJson
+            ? await response.json()
+            : { detail: await response.text() };
+
+          if (!response.ok) {
+            throw new Error(
+              data.detail ||
+                data.message ||
+                "Failed to trigger database refresh",
+            );
+          }
+
+          showStatus(data.message || "Manual refresh started");
+          await refreshDatabaseStatus();
+        } catch (error) {
+          manualRefreshPending = false;
+          setRefreshButtonState(false);
+          showStatus(`Database refresh error: ${error.message}`, "error");
+          console.error("Database refresh error:", error);
         }
       }
 
@@ -565,11 +667,14 @@
         });
         updateDownloadButton();
       });
+      refreshDatabaseButton.addEventListener("click", triggerDatabaseRefresh);
 
       // Initialize
       document.addEventListener("DOMContentLoaded", () => {
         refreshHealthStatus();
+        refreshDatabaseStatus();
         setInterval(refreshHealthStatus, 5000);
+        setInterval(refreshDatabaseStatus, 5000);
         // Periodically refresh downloads
         setInterval(refreshDownloads, 5000);
       });
