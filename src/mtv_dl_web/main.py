@@ -79,7 +79,7 @@ refresh_cooldown_seconds = 3600  # 1 hour cooldown
 class DownloadRequest(BaseModel):
     filters: list[str]
     quality: str = "url_http"
-    target_directory: str = "./downloads"
+    target_directory: str = settings.target_directory
     include_subtitles: bool = True
     include_nfo: bool = True
     merge_to_mkv: bool = False
