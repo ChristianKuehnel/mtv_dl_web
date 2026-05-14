@@ -82,19 +82,47 @@ def test_database_status_endpoint():
         assert "is_refreshing" in data
         assert "status" in data
         assert "last_refresh_time" in data
+        assert "last_refresh_duration" in data
+        assert "last_refresh_source" in data
         assert "database_age_seconds" in data
         assert "database_age_readable" in data
 
 
 def test_manual_refresh_endpoint():
     """Test manual refresh endpoint"""
-    with patch('mtv_dl_web.main.Database', return_value=FakeDatabase()):
+    with patch('mtv_dl_web.main.Database', return_value=FakeDatabase()), patch(
+        'mtv_dl_web.main._schedule_refresh_job', return_value=True
+    ):
         client = TestClient(app)
-        
+
         # Test manual refresh trigger
         response = client.post("/api/database/refresh")
         assert response.status_code == 200
-        # Note: Actual behavior depends on scheduler state, so just check response structure
+        assert response.json() == {"message": "Manual refresh started"}
+
+
+def test_manual_refresh_endpoint_already_in_progress():
+    """Test manual refresh endpoint while refresh is already running"""
+    with patch('mtv_dl_web.main.Database', return_value=FakeDatabase()), patch(
+        'mtv_dl_web.main._schedule_refresh_job', return_value=False
+    ), patch('mtv_dl_web.main.is_database_refreshing', True):
+        client = TestClient(app)
+
+        response = client.post("/api/database/refresh")
+        assert response.status_code == 200
+        assert response.json() == {"message": "Refresh already in progress"}
+
+
+def test_manual_refresh_endpoint_failed_to_start():
+    """Test manual refresh endpoint when start fails"""
+    with patch('mtv_dl_web.main.Database', return_value=FakeDatabase()), patch(
+        'mtv_dl_web.main._schedule_refresh_job', return_value=False
+    ), patch('mtv_dl_web.main.is_database_refreshing', False):
+        client = TestClient(app)
+
+        response = client.post("/api/database/refresh")
+        assert response.status_code == 200
+        assert response.json() == {"message": "Failed to start manual refresh"}
 
 
 if __name__ == "__main__":
