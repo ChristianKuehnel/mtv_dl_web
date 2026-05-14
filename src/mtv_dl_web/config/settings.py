@@ -74,17 +74,4 @@ if config_file_path:
 else:
     settings = Settings()
 
-# Validate that target directory exists (only if it's not overridden by environment or config)
-# We need to handle the case where the YAML file might override the default
-# Get the original default value for comparison
-original_target_directory = os.path.expanduser("~/Downloads/mtv_dl")
-if (
-    not os.environ.get("TARGET_DIRECTORY")
-    and not os.environ.get("CONFIG_FILE")
-    and settings.target_directory == original_target_directory
-    and not Path(settings.target_directory).exists()
-):
-    # If it's the default and doesn't exist, create it or raise error
-    raise SystemExit(
-        f"Error: Target directory '{settings.target_directory}' does not exist. Please create it or update the configuration."
-    )
+
