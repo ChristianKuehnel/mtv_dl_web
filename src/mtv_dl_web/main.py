@@ -9,13 +9,16 @@ import logging
 import os
 import re
 import threading
+from contextlib import asynccontextmanager
 from concurrent.futures import ThreadPoolExecutor
+from collections.abc import AsyncIterator
 from datetime import datetime, timedelta
 from pathlib import Path
 from threading import Lock
 from time import perf_counter
 from typing import Any
 
+from apscheduler.schedulers.background import BackgroundScheduler
 from fastapi import BackgroundTasks, FastAPI, HTTPException
 from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
@@ -38,11 +41,27 @@ log_level = os.environ.get("LOG_LEVEL", "INFO").upper()
 logging.basicConfig(level=getattr(logging, log_level, logging.INFO))
 logger = logging.getLogger(__name__)
 
+
+@asynccontextmanager
+async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+    """Initialize and cleanup background scheduler for app lifecycle."""
+    initialize_database_refresh_scheduler()
+    try:
+        yield
+    finally:
+        global database_refresh_scheduler
+
+        if database_refresh_scheduler is not None:
+            database_refresh_scheduler.shutdown(wait=False)
+            database_refresh_scheduler = None
+
+
 # Initialize FastAPI app
 app = FastAPI(
     title="MTV Downloader Web Interface",
     description="A lightweight web interface for downloading videos from German public broadcasting services",
     version="1.0.0",
+    lifespan=lifespan,
 )
 
 # Add CORS middleware for development
@@ -71,8 +90,11 @@ _database_update_count = 0
 database_refresh_lock = threading.Lock()
 is_database_refreshing = False
 database_last_refresh_time = 0.0
+database_last_refresh_duration_seconds: float | None = None
+database_last_refresh_source = "none"
 database_refresh_task: threading.Thread | None = None
-refresh_cooldown_seconds = 3600  # 1 hour cooldown
+database_refresh_scheduler: BackgroundScheduler | None = None
+database_refresh_schedule_config: str = "0 0 * * *"  # Default 24h cadence (midnight)
 
 
 # Pydantic models for API requests and responses
@@ -136,6 +158,67 @@ SUPPORTED_FIELDS = {
 }
 
 FILTER_PATTERN = re.compile(r"^(?P<field>\w+)\s*(?P<operator>!=|=|\+|-)\s*(?P<pattern>.+)$")
+
+
+def validate_cron_expression(cron_expr: str) -> bool:
+    """
+    Validate a cron expression using APScheduler's CronTrigger
+
+    Args:
+        cron_expr: Cron expression to validate
+
+    Returns:
+        bool: True if valid, False otherwise
+    """
+    try:
+        from apscheduler.triggers.cron import CronTrigger
+
+        CronTrigger.from_crontab(cron_expr)
+        return True
+    except Exception:
+        return False
+
+
+def initialize_database_refresh_scheduler() -> None:
+    """Initialize the database refresh scheduler with configured schedule."""
+    global database_refresh_schedule_config, database_refresh_scheduler
+
+    # Read configuration for refresh schedule
+    refresh_schedule = getattr(settings, "database_refresh_schedule", None)
+
+    if refresh_schedule:
+        # Validate the cron expression
+        if not validate_cron_expression(refresh_schedule):
+            logger.error(f"Invalid database refresh schedule configuration: {refresh_schedule}")
+            raise ValueError(f"Invalid cron expression: {refresh_schedule}")
+        database_refresh_schedule_config = refresh_schedule
+        logger.info(f"Using configured database refresh schedule: {refresh_schedule}")
+    else:
+        database_refresh_schedule_config = "0 0 * * *"  # Default 24h cadence (midnight)
+        logger.info("Using default database refresh schedule: 0 0 * * * (daily at midnight)")
+
+    # Create background scheduler
+    database_refresh_scheduler = BackgroundScheduler()
+
+    # Schedule the refresh job
+    database_refresh_scheduler.add_job(
+        refresh_database_background,
+        "cron",
+        minute=database_refresh_schedule_config.split()[0],
+        hour=database_refresh_schedule_config.split()[1],
+        day=database_refresh_schedule_config.split()[2],
+        month=database_refresh_schedule_config.split()[3],
+        day_of_week=database_refresh_schedule_config.split()[4],
+        kwargs={"trigger_source": "scheduled"},
+        name="database_refresh_job",
+        misfire_grace_time=300,  # 5 minute grace period
+        coalesce=True,
+        max_instances=1,
+    )
+
+    # Start the scheduler
+    database_refresh_scheduler.start()
+    logger.info("Database refresh scheduler started")
 
 
 def validate_filters(filters: list[str]) -> None:
@@ -227,20 +310,27 @@ def check_database_connectivity() -> None:
         cursor.fetchone()
 
 
-def get_db_connection(check_for_refresh: bool = True, background_tasks: BackgroundTasks | None = None) -> Database:
+def get_db_connection(
+    check_for_refresh: bool = True, background_tasks: BackgroundTasks | None = None, is_refresh_operation: bool = False
+) -> Database:
     """
     Create a new database connection for each request to avoid thread-safety issues
 
     Args:
         check_for_refresh: Whether to check if database needs refresh (default True)
+        background_tasks: Background tasks to add refresh job to if needed
+        is_refresh_operation: Whether this is a refresh operation (should not trigger refreshes)
 
     Returns:
         Database: A new database connection instance
     """
     try:
         db = Database(DATABASE_FILE, HISTORY_FILE)
-        if os.environ.get("MTV_DL_WEB_SKIP_DB_UPDATE") != "1" and check_for_refresh:
-            check_and_refresh_database_if_needed(db, background_tasks)
+        # Only check for refresh if this is not a refresh operation
+        if os.environ.get("MTV_DL_WEB_SKIP_DB_UPDATE") != "1" and check_for_refresh and not is_refresh_operation:
+            # This is a standard request, so we don't want to trigger refresh from here
+            # The scheduler will handle refreshes
+            pass  # Skip refresh trigger during regular request handling
         logger.debug("Database connection created successfully")
         return db
     except Exception as e:
@@ -248,28 +338,39 @@ def get_db_connection(check_for_refresh: bool = True, background_tasks: Backgrou
         raise
 
 
-def _schedule_refresh_job(background_tasks: BackgroundTasks | None) -> bool:
+def _schedule_refresh_job(background_tasks: BackgroundTasks | None, trigger_source: str) -> bool:
     """Schedule a database refresh job without blocking request handling."""
-    global database_refresh_task
+    global database_refresh_task, is_database_refreshing
+
+    with database_refresh_lock:
+        if is_database_refreshing:
+            return False
+        is_database_refreshing = True
 
     if background_tasks is not None:
-        background_tasks.add_task(refresh_database_background)
+        background_tasks.add_task(refresh_database_background, trigger_source)
         database_refresh_task = None
         return True
 
     try:
-        refresh_thread = threading.Thread(target=refresh_database_background, daemon=True)
+        refresh_thread = threading.Thread(
+            target=refresh_database_background, kwargs={"trigger_source": trigger_source}, daemon=True
+        )
         refresh_thread.start()
         database_refresh_task = refresh_thread
         return True
     except Exception as e:
+        with database_refresh_lock:
+            is_database_refreshing = False
         logger.error(f"Failed to schedule database refresh job: {e}")
         return False
 
 
 def check_and_refresh_database_if_needed(db: Database, background_tasks: BackgroundTasks | None = None) -> None:
     """
-    Check if database needs refresh and trigger it in background if needed
+    Check if database needs refresh and trigger it in background if needed.
+    This function should not be called from search/download request paths.
+    Instead, search/download requests should only check database connectivity.
 
     Args:
         db: Database instance to check
@@ -279,55 +380,24 @@ def check_and_refresh_database_if_needed(db: Database, background_tasks: Backgro
     # Get current timestamp for tracking
     current_time = datetime.now().timestamp()
 
-    # Check if we need to refresh (properly evaluate age)
-    try:
-        # Check database age properly - compare actual age with refresh threshold
-        # If filmliste_version is not available, we can't determine age safely
-        needs_refresh = True
-        if hasattr(db, "filmliste_version") and hasattr(db, "filmliste_refresh_after"):
-            database_age = current_time - db.filmliste_version
-            refresh_threshold = db.filmliste_refresh_after.total_seconds()
-            needs_refresh = database_age > refresh_threshold
-    except Exception as e:
-        logger.warning(f"Could not determine if refresh needed, scheduling refresh conservatively: {e}")
-        needs_refresh = True
-
-    with database_refresh_lock:
-        # If database needs refresh and no refresh is currently in progress
-        if needs_refresh and not is_database_refreshing:
-            # Check if enough time has passed since last refresh attempt
-            if current_time - database_last_refresh_time > refresh_cooldown_seconds:
-                # Try to ensure we don't queue multiple refreshes
-                if database_refresh_task and database_refresh_task.is_alive():
-                    logger.debug("Database refresh already queued, skipping")
-                    return
-
-                is_database_refreshing = True
-                logger.info("Database refresh needed, starting background refresh...")
-                if _schedule_refresh_job(background_tasks):
-                    database_last_refresh_time = current_time
-                else:
-                    is_database_refreshing = False
-            else:
-                logger.debug("Database refresh needed but cooldown period active, skipping for now")
-        elif is_database_refreshing:
-            logger.debug("Database refresh already in progress, using existing connection")
-        else:
-            logger.debug("Database is up to date, no refresh needed")
+    # For search/download requests, we shouldn't trigger refreshes - just check connectivity
+    # This is handled by the caller, not this function
+    logger.debug("Database refresh check bypassed for request-based access")
 
 
-def refresh_database_background() -> None:
+def refresh_database_background(trigger_source: str = "scheduled") -> None:
     """
     Background task to refresh the database without blocking web requests
 
-    Args:
-        db: Database instance to refresh
+    This function implements logging for refresh start/success/failure/duration/source
     """
-    global is_database_refreshing, database_refresh_task
+    global database_last_refresh_duration_seconds, database_last_refresh_source
+    global database_last_refresh_time, is_database_refreshing, database_refresh_task
+
+    start_time = perf_counter()
+    logger.info(f"Starting database refresh (source={trigger_source})")
 
     try:
-        logger.info("Starting database refresh in background...")
-
         # Perform the actual database refresh
         # Note: We create a new database instance for the refresh to avoid
         # conflicts with the main connection
@@ -338,33 +408,79 @@ def refresh_database_background() -> None:
         finally:
             set_database_update_in_progress(False)
 
-        logger.info("Database refresh completed successfully")
+        duration = perf_counter() - start_time
+        with database_refresh_lock:
+            database_last_refresh_time = datetime.now().timestamp()
+            database_last_refresh_duration_seconds = duration
+            database_last_refresh_source = trigger_source
+        logger.info(
+            f"Database refresh completed (source={trigger_source}, outcome=success, duration_seconds={duration:.2f})"
+        )
 
     except Exception as e:
-        logger.error(f"Background database refresh failed: {e}")
-        # Even on failure, we still want to mark the refresh as complete
-        # to allow future refresh attempts
-        logger.info("Database refresh failed but marking as complete to allow retries")
+        duration = perf_counter() - start_time
+        with database_refresh_lock:
+            database_last_refresh_duration_seconds = duration
+            database_last_refresh_source = trigger_source
+        logger.error(
+            f"Database refresh failed (source={trigger_source}, outcome=failure, duration_seconds={duration:.2f}): {e}"
+        )
     finally:
-        # Ensure we release the lock even if refresh fails
         with database_refresh_lock:
             is_database_refreshing = False
             database_refresh_task = None
-            logger.info("Database refresh task completed")
+            logger.info(f"Database refresh task completed (source={trigger_source})")
 
 
 def get_database_refresh_status() -> dict[str, Any]:
     """
-    Get current database refresh status
+    Get current database refresh status including metadata for UI/API
 
     Returns:
-        Dictionary containing refresh status information
+        Dictionary containing refresh status information including timestamps
     """
     with database_refresh_lock:
         return {
             "is_refreshing": is_database_refreshing,
             "last_refresh_time": database_last_refresh_time,
             "status": "refreshing" if is_database_refreshing else "idle",
+            "last_refresh_duration": database_last_refresh_duration_seconds,
+            "last_refresh_source": database_last_refresh_source,
+        }
+
+
+def get_database_metadata() -> dict[str, Any]:
+    """
+    Get metadata about the database including age and refresh information
+
+    Returns:
+        Dictionary containing database metadata
+    """
+    try:
+        db = Database(DATABASE_FILE, HISTORY_FILE)
+        # Try to get database age information
+        current_time = datetime.now().timestamp()
+        database_age = None
+        last_refresh_timestamp = database_last_refresh_time
+
+        # Check if we can get meaningful age info from the database
+        if hasattr(db, "filmliste_version"):
+            database_age = current_time - db.filmliste_version
+        elif database_last_refresh_time > 0:
+            # Fallback to last refresh time if no version info
+            database_age = current_time - database_last_refresh_time
+
+        return {
+            "last_refresh_time": last_refresh_timestamp,
+            "database_age_seconds": database_age,
+            "database_age_readable": str(timedelta(seconds=database_age)) if database_age is not None else None,
+        }
+    except Exception as e:
+        logger.warning(f"Could not retrieve database metadata: {e}")
+        return {
+            "last_refresh_time": database_last_refresh_time,
+            "database_age_seconds": None,
+            "database_age_readable": None,
         }
 
 
@@ -428,8 +544,8 @@ async def search_shows(filters: SearchFilters, background_tasks: BackgroundTasks
         validate_filters(filters.filters)
 
         # Perform the search using a fresh database connection
-        # This will trigger background refresh if needed, but won't block
-        db_conn = get_db_connection(background_tasks=background_tasks)
+        # This will not trigger background refresh (as designed)
+        db_conn = get_db_connection(check_for_refresh=False, is_refresh_operation=False)
         shows = list(db_conn.filtered(filters.filters))
 
         # Convert datetime and timedelta objects to strings for Pydantic validation
@@ -468,8 +584,8 @@ async def start_download(download_request: DownloadRequest, background_tasks: Ba
         target_path.mkdir(parents=True, exist_ok=True)
 
         # Get filtered shows using a fresh database connection
-        # This will trigger background refresh if needed, but won't block
-        db_conn = get_db_connection(background_tasks=background_tasks)
+        # This will not trigger background refresh (as designed)
+        db_conn = get_db_connection(check_for_refresh=False, is_refresh_operation=False)
         shows = list(db_conn.filtered(download_request.filters))
 
         if not shows:
@@ -601,12 +717,36 @@ async def get_database_status() -> dict[str, Any]:
     """
     db_status = get_database_refresh_status()
 
-    # Return simplified status as originally intended
-    return {
+    # Get additional metadata
+    metadata = await run_in_threadpool(get_database_metadata)
+
+    # Combine status and metadata
+    result = {
         "is_refreshing": db_status["is_refreshing"],
         "status": db_status["status"],
         "last_refresh_time": db_status["last_refresh_time"],
+        "last_refresh_duration": db_status["last_refresh_duration"],
+        "last_refresh_source": db_status["last_refresh_source"],
+        "database_age_seconds": metadata["database_age_seconds"],
+        "database_age_readable": metadata["database_age_readable"],
     }
+
+    return result
+
+
+@app.post("/api/database/refresh")
+async def trigger_manual_refresh(background_tasks: BackgroundTasks) -> dict[str, str]:
+    """
+    Manually trigger a database refresh (for testing/debugging purposes)
+
+    Returns:
+        JSON: Success confirmation
+    """
+    if _schedule_refresh_job(background_tasks, "manual"):
+        return {"message": "Manual refresh started"}
+    if is_database_refreshing:
+        return {"message": "Refresh already in progress"}
+    return {"message": "Failed to start manual refresh"}
 
 
 if __name__ == "__main__":

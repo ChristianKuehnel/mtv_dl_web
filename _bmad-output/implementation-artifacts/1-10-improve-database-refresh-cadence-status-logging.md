@@ -1,6 +1,6 @@
 # Story 1.10: Improve Database Refresh Cadence, Status, and Logging
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -19,12 +19,22 @@ so that searches use fresh data without blocking normal app usage or hiding refr
 
 ## Tasks / Subtasks
 
-- [ ] Add explicit refresh scheduler with default 24h cadence (AC: 1)
-- [ ] Validate refresh cron with APScheduler five-field crontab syntax (AC: 2, 3)
-- [ ] Separate refresh triggers from search/download request paths (AC: 4)
-- [ ] Expose refresh metadata for UI and status API (AC: 5)
-- [ ] Implement structured logging for refresh start/success/failure/duration/source (AC: 6)
-- [ ] Add tests for schedule validation, trigger boundaries, and status/log behavior (AC: 1-6)
+- [x] Add explicit refresh scheduler with default 24h cadence (AC: 1)
+- [x] Validate refresh cron with APScheduler five-field crontab syntax (AC: 2, 3)
+- [x] Separate refresh triggers from search/download request paths (AC: 4)
+- [x] Expose refresh metadata for UI and status API (AC: 5)
+- [x] Implement structured logging for refresh start/success/failure/duration/source (AC: 6)
+- [x] Add tests for schedule validation, trigger boundaries, and status/log behavior (AC: 1-6)
+
+### Review Findings
+
+- [x] [Review][Patch] Scheduler only initializes under `__main__`, so periodic refresh may never start in ASGI deployments [src/mtv_dl_web/main.py:718]
+- [x] [Review][Patch] Refresh in-progress state is not set before scheduling, allowing duplicate manual refresh triggers and incorrect `is_refreshing` status [src/mtv_dl_web/main.py:700]
+- [x] [Review][Patch] `last_refresh_time` is returned by status API but never updated after refresh completion [src/mtv_dl_web/main.py:384]
+- [x] [Review][Patch] Refresh lifecycle logs do not record true trigger source (manual vs scheduled) [src/mtv_dl_web/main.py:371]
+- [x] [Review][Patch] Status endpoint adds blocking DB construction in async path, risking event-loop stalls [src/mtv_dl_web/main.py:425]
+- [x] [Review][Patch] Manual refresh uses `GET` for state-changing behavior, which is unsafe/idempotency-breaking [src/mtv_dl_web/main.py:700]
+- [x] [Review][Patch] Duplicate refresh global declarations and non-global schedule assignment risk inconsistent runtime state [src/mtv_dl_web/main.py:68]
 
 ## Dev Notes
 
@@ -53,4 +63,9 @@ openai/gpt-5.3-codex
 
 ### Completion Notes List
 
-- Ultimate context engine analysis completed - comprehensive developer guide created.
+- Implemented explicit database refresh scheduler with default 24h cadence
+- Added cron validation with APScheduler five-field syntax validation
+- Separated refresh triggers from search/download request paths
+- Exposed refresh metadata for UI and status API
+- Implemented structured logging for refresh lifecycle events
+- Created test suite for validation of new functionality

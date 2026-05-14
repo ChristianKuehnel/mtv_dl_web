@@ -37,7 +37,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-08T00:00:00Z
-last_updated: 2026-05-13T19:35:00Z
+last_updated: 2026-05-14T00:00:00Z
 project: mtv_dl_web
 project_key: NOKEY
 tracking_system: file-system
@@ -55,7 +55,7 @@ development_status:
   1-7-add-thread-synchronization: done
   1-8-implement-proper-locking: done
   1-9-concurrency-improvements: done
-  1-10-improve-database-refresh-cadence-status-logging: ready-for-dev
+  1-10-improve-database-refresh-cadence-status-logging: done
   1-11-consolidate-mtv-dl-dependency-integration: done
   1-12-publish-container-images-from-main-branch: done
   1-13-implement-download-naming-patterns: ready-for-dev
