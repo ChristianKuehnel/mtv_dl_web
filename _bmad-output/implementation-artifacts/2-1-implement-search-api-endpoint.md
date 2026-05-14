@@ -12,6 +12,14 @@ So that I can find shows to download.
 
 1. **Given** a populated `mtv_dl` database, **when** I call `POST /api/search` with JSON body `{"filters":["title=Example"]}`, **then** it returns matching videos with metadata (FR-1, FR-4)
 2. **Given** invalid filters, **when** I submit them, **then** the API rejects them with a validation error (NFR-7)
+3. **Given** a database refresh is already in progress, **when** search requests are submitted, **then** search handling remains responsive and does not trigger a refresh operation (FR-35, NFR-18, NFR-19)
+4. **Given** an unexpected backend failure occurs, **when** the API returns an error, **then** the response does not expose raw exception internals and uses the structured error contract (NFR-8)
+
+## Retrospective Guardrails
+
+- Status reconciliation: story status in this file and `sprint-status.yaml` must match before any state transition.
+- Evidence gate: do not mark `done` unless AC evidence is explicitly captured in this document.
+- Dependency gate: behavior must stay aligned with Story 1.10 refresh-trigger/freshness contract.
 
 ## Tasks / Subtasks
 

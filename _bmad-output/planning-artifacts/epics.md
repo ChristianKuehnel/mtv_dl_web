@@ -496,6 +496,17 @@ So that files land in the expected shared folder with recognizable names.
 
 **Goal**: Users can search the `mtv_dl` database using filters.
 
+**Epic 2 Readiness Checklist (from Epic 1 retrospective):**
+
+- Sprint tracker and story-file statuses are reconciled before starting/closing Epic 2 stories.
+- Story 1.10 behavior is treated as baseline contract for search flows:
+  - Refresh runs only from manual/scheduled triggers (FR-35).
+  - Search does not trigger refresh implicitly (FR-35).
+  - Last successful refresh time/database age remains available to status consumers (FR-36).
+  - Refresh lifecycle logging remains intact (FR-37).
+- Concurrency safeguards are validated for search/status access during refresh (NFR-18, NFR-19, NFR-20).
+- No story is moved to `done` without acceptance evidence captured in its story file.
+
 ### Story 2.1: Implement Search API Endpoint
 
 As a user,
@@ -511,6 +522,10 @@ So that I can find shows to download.
 **Given** invalid filters,
 **When** I submit them,
 **Then** the API rejects them with a validation error (NFR-7).
+
+**Given** a refresh is currently running,
+**When** I call the search endpoint,
+**Then** search handling remains responsive and does not trigger a new refresh (FR-35, NFR-18, NFR-19).
 
 ---
 
@@ -530,6 +545,10 @@ So that I can refine my searches.
 **When** I submit them,
 **Then** the API returns a `400 Bad Request` (NFR-1).
 
+**Given** validation errors are returned,
+**When** I inspect error responses,
+**Then** they follow structured error format and avoid leaking internal exception details (NFR-8).
+
 ---
 
 ### Story 2.3: Build Search UI
@@ -547,6 +566,14 @@ So that I can search without using the API directly.
 **Given** no results,
 **When** I search,
 **Then** the UI shows a "No results" message.
+
+**Given** a refresh is running in the backend,
+**When** I submit a search in the UI,
+**Then** the UI remains interactive, shows loading/status feedback, and displays results or errors without locking the page (NFR-14, NFR-18, NFR-19).
+
+**Given** the status API exposes last successful refresh time/database age,
+**When** I view search-related status context,
+**Then** that freshness context is shown where available so users can judge search result recency (FR-36).
 
 ### Epic 3: Download Queue Management
 

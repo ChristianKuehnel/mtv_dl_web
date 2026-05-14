@@ -12,6 +12,14 @@ So that I can refine my searches.
 
 1. **Given** valid operators/fields, **when** I submit a search, **then** the API processes them correctly (FR-2, FR-3)
 2. **Given** unsupported operators/fields, **when** I submit them, **then** the API returns a `400 Bad Request` (NFR-1)
+3. **Given** malformed filter syntax, **when** I submit it, **then** validation errors are specific, structured, and non-leaking (NFR-7, NFR-8)
+4. **Given** refresh activity in the backend, **when** filter validation executes, **then** validation remains deterministic and does not initiate refresh side effects (FR-35, NFR-18, NFR-19)
+
+## Retrospective Guardrails
+
+- Status reconciliation: keep story status aligned with `sprint-status.yaml` before transition to `done`.
+- Evidence gate: each AC must map to test evidence in this file before closure.
+- Regression gate: include checks for validation behavior during refresh/concurrent status access.
 
 ## Tasks / Subtasks
 
