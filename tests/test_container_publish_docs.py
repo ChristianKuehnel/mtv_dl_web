@@ -38,7 +38,7 @@ def test_readme_documents_published_image_and_mounts() -> None:
     assert "/data" in readme
     assert "/downloads" in readme
     assert "/config" in readme
-    assert "/home/appuser/.mtv_dl_web" in readme
+    assert "/home/appuser/.mtv_dl_web" not in readme
     assert "docker run" in readme
     assert "podman run" in readme
 

@@ -1,6 +1,6 @@
 # Story 6.1: Download Only Selected Search Results
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -17,20 +17,20 @@ so that non-selected search results are never downloaded by mistake.
 
 ## Tasks / Subtasks
 
-- [ ] Extend request contract to include selected identities (AC: 1, 2, 3)
-  - [ ] Add explicit request field for selected show hashes in `DownloadRequest`
-  - [ ] Keep backward-compatible validation behavior explicit (either reject old payload or document temporary compatibility path)
-- [ ] Wire frontend selection to backend request payload (AC: 1, 2)
-  - [ ] Send `Array.from(selectedShows)` (or equivalent) with the download request
-  - [ ] Keep existing status messaging and button state behavior intact
-- [ ] Restrict backend download set to selected hashes only (AC: 1, 2, 3)
-  - [ ] Search/filter using existing logic first, then intersect with selected hashes
-  - [ ] Return 400/404 for empty intersection or unknown selected hashes
-  - [ ] Preserve thread-safe updates to `active_downloads`
-- [ ] Add focused regression tests (AC: 4)
-  - [ ] Test one-selected-item path
-  - [ ] Test multi-selected-items path
-  - [ ] Test unknown/empty selection rejection path
+- [x] Extend request contract to include selected identities (AC: 1, 2, 3)
+  - [x] Add explicit request field for selected show hashes in `DownloadRequest`
+  - [x] Keep backward-compatible validation behavior explicit (either reject old payload or document temporary compatibility path)
+- [x] Wire frontend selection to backend request payload (AC: 1, 2)
+  - [x] Send `Array.from(selectedShows)` (or equivalent) with the download request
+  - [x] Keep existing status messaging and button state behavior intact
+- [x] Restrict backend download set to selected hashes only (AC: 1, 2, 3)
+  - [x] Search/filter using existing logic first, then intersect with selected hashes
+  - [x] Return 400/404 for empty intersection or unknown selected hashes
+  - [x] Preserve thread-safe updates to `active_downloads`
+- [x] Add focused regression tests (AC: 4)
+  - [x] Test one-selected-item path
+  - [x] Test multi-selected-items path
+  - [x] Test unknown/empty selection rejection path
 
 ## Dev Notes
 
@@ -86,14 +86,18 @@ openai/gpt-5.3-codex
 
 ### Debug Log References
 
-- Pending implementation
+- Added `selected_hashes` request support and selected-only scheduling in `/api/download`.
+- Verified frontend now sends selected hashes in request payload.
+- Added selected-download regression coverage and executed targeted Epic 6 tests.
 
 ### Completion Notes List
 
-- [ ] Ultimate context engine analysis completed - comprehensive developer guide created
+- [x] Download endpoint now validates and deduplicates selected hashes before scheduling jobs.
+- [x] Frontend payload includes selected hashes while preserving existing UX/status flow.
+- [x] Regression tests added for one, multiple, and invalid selected-hash scenarios.
 
 ### File List
 
-- `src/mtv_dl_web/frontend/index.html` (planned)
-- `src/mtv_dl_web/main.py` (planned)
-- `tests/` (planned)
+- `src/mtv_dl_web/frontend/index.html`
+- `src/mtv_dl_web/main.py`
+- `tests/test_download_selected.py`

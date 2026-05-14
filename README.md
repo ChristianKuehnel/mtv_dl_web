@@ -25,13 +25,12 @@ The main branch automatically publishes a container image to GitHub Container Re
 Replace `<username-or-org>` with the GitHub organization or user that owns this repository.
 
 ```bash
-mkdir -p ./data ./downloads ./config ./.mtv_dl_web
+mkdir -p ./data ./downloads ./config
 
 docker run -d -p 8000:8000 \
   -v "$(pwd)/data:/data" \
   -v "$(pwd)/downloads:/downloads" \
   -v "$(pwd)/config:/config" \
-  -v "$(pwd)/.mtv_dl_web:/home/appuser/.mtv_dl_web" \
   --name mtv-dl-web \
   ghcr.io/<owner>/mtv_dl_web:latest
 ```
@@ -39,13 +38,12 @@ docker run -d -p 8000:8000 \
 Equivalent Podman command:
 
 ```bash
-mkdir -p ./data ./downloads ./config ./.mtv_dl_web
+mkdir -p ./data ./downloads ./config
 
 podman run -d -p 8000:8000 \
   -v "$(pwd)/data:/data" \
   -v "$(pwd)/downloads:/downloads" \
   -v "$(pwd)/config:/config" \
-  -v "$(pwd)/.mtv_dl_web:/home/appuser/.mtv_dl_web" \
   --name mtv-dl-web \
   ghcr.io/<owner>/mtv_dl_web:latest
 ```
@@ -58,7 +56,7 @@ podman restart mtv-dl-web
 curl http://localhost:8000/health
 ```
 
-`GET /health` should remain healthy and mounted content persists across restart because `/data`, `/downloads`, `/config`, and `/home/appuser/.mtv_dl_web` are external mounts.
+`GET /health` should remain healthy and mounted content persists across restart because `/data`, `/downloads`, and `/config` are external mounts.
 
 ### Docker Compose
 
@@ -74,8 +72,7 @@ The compose file mounts these host directories into the container:
 | --------------- | --------------------------- | --------------------------------------- |
 | `./downloads`   | `/downloads`                | Downloaded video files                  |
 | `./config`      | `/config`                   | Configuration files                     |
-| `./data`        | `/data`                     | Application data                        |
-| `./.mtv_dl_web` | `/home/appuser/.mtv_dl_web` | `filmliste.sqlite` and download history |
+| `./data`        | `/data`                     | Application data, `filmliste.sqlite`, and download history |
 
 To write directly to NAS storage, change the `./downloads:/downloads` mount in `docker-compose.yml` to a mounted NAS path, for example `/mnt/nas/mediathek:/downloads`.
 
@@ -83,13 +80,12 @@ To write directly to NAS storage, change the `./downloads:/downloads` mount in `
 
 ```bash
 docker build -t mtv-dl-web .
-mkdir -p ./data ./downloads ./config ./.mtv_dl_web
+mkdir -p ./data ./downloads ./config
 
 docker run -d -p 8000:8000 \
   -v "$(pwd)/data:/data" \
   -v "$(pwd)/downloads:/downloads" \
   -v "$(pwd)/config:/config" \
-  -v "$(pwd)/.mtv_dl_web:/home/appuser/.mtv_dl_web" \
   --name mtv-dl-web \
   mtv-dl-web
 ```
@@ -168,9 +164,9 @@ The application also supports configuration through a `config.yaml` file located
 ```yaml
 port: 8000
 host: 0.0.0.0
-database_path: ~/.mtv_dl_web
+database_path: /data/filmliste.sqlite
 download_quality: best
-target_directory: ~/Downloads/mtv_dl
+target_directory: /downloads
 enable_subtitles: true
 enable_nfo: true
 enable_mkv_merge: false

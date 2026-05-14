@@ -23,7 +23,7 @@ def test_docker_compose_volumes():
 
     content = compose_path.read_text()
 
-    required_volumes = ["/data", "/downloads", "/config", "/home/appuser/.mtv_dl_web"]
+    required_volumes = ["/data", "/downloads", "/config"]
     for volume in required_volumes:
         assert volume in content
 
@@ -37,7 +37,7 @@ def test_volume_paths_architecture():
     compose_path = Path(__file__).parent.parent / "docker-compose.yml"
     content = compose_path.read_text()
 
-    assert "/home/appuser/.mtv_dl_web" in content
+    assert "/home/appuser/.mtv_dl_web" not in content
     assert "/data" in content
     assert "/downloads" in content
     assert "/config" in content

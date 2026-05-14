@@ -1,6 +1,6 @@
 # Story 6.2: Enforce Download Target and mtv_dl Naming Outcome
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -18,20 +18,20 @@ so that files do not appear as `download.mp4` in the project root.
 
 ## Tasks / Subtasks
 
-- [ ] Harden target-path handling in backend (AC: 1, 2, 3)
-  - [ ] Resolve configured target path safely (`expanduser`, `resolve` where appropriate)
-  - [ ] Validate downloader returned path is under target root before marking completed
-  - [ ] Keep failure branch explicit for out-of-bound or missing path
-- [ ] Align default target behavior for containerized usage (AC: 4)
-  - [ ] Verify and update defaults in frontend/config/compose where needed
-  - [ ] Ensure docs and runtime defaults do not imply project-root output
-- [ ] Preserve existing mtv_dl integration contract (AC: 1)
-  - [ ] Continue using `Downloader.download(...)` quality tuple + option pass-through
-  - [ ] Do not reimplement naming logic in web layer
-- [ ] Add regression tests (AC: 5)
-  - [ ] Success case: valid in-target output path
-  - [ ] Failure case: out-of-target output path
-  - [ ] Failure case: missing/None output path
+- [x] Harden target-path handling in backend (AC: 1, 2, 3)
+  - [x] Resolve configured target path safely (`expanduser`, `resolve` where appropriate)
+  - [x] Validate downloader returned path is under target root before marking completed
+  - [x] Keep failure branch explicit for out-of-bound or missing path
+- [x] Align default target behavior for containerized usage (AC: 4)
+  - [x] Verify and update defaults in frontend/config/compose where needed
+  - [x] Ensure docs and runtime defaults do not imply project-root output
+- [x] Preserve existing mtv_dl integration contract (AC: 1)
+  - [x] Continue using `Downloader.download(...)` quality tuple + option pass-through
+  - [x] Do not reimplement naming logic in web layer
+- [x] Add regression tests (AC: 5)
+  - [x] Success case: valid in-target output path
+  - [x] Failure case: out-of-target output path
+  - [x] Failure case: missing/None output path
 
 ## Dev Notes
 
@@ -90,17 +90,21 @@ openai/gpt-5.3-codex
 
 ### Debug Log References
 
-- Pending implementation
+- Added resolved-path boundary validation before marking downloads completed.
+- Preserved `Downloader.download(...)` delegation and existing quality/options pass-through.
+- Updated container-aligned target defaults and docs; added regression tests for valid/invalid output paths.
 
 ### Completion Notes List
 
-- [ ] Ultimate context engine analysis completed - comprehensive developer guide created
+- [x] Download completion now requires output path to stay inside configured target root.
+- [x] Out-of-bound and missing output paths now produce explicit failed status.
+- [x] Container defaults now align around `/downloads` target usage.
 
 ### File List
 
-- `src/mtv_dl_web/main.py` (planned)
-- `src/mtv_dl_web/frontend/index.html` (planned)
-- `src/mtv_dl_web/config/settings.py` (planned)
-- `docker-compose.yml` (planned)
-- `README.md` (planned)
-- `tests/` (planned)
+- `src/mtv_dl_web/main.py`
+- `src/mtv_dl_web/frontend/index.html`
+- `src/mtv_dl_web/config/settings.py`
+- `docker-compose.yml`
+- `README.md`
+- `tests/test_download_selected.py`
