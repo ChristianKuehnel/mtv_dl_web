@@ -1,6 +1,6 @@
 # Story 3.3: Enforce Single Active Download
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -16,16 +16,16 @@ So that my system resources are not overwhelmed.
 
 ## Tasks / Subtasks
 
-- [ ] Add queue-processing orchestration in `src/mtv_dl_web/main.py`
-  - [ ] Add helper to promote one `pending` item to `downloading`
-  - [ ] Ensure promotion runs after enqueue and after completion/failure transitions
-- [ ] Integrate single-active rules with existing download background flow
-  - [ ] Preserve current `Downloader.download()` invocation behavior
-  - [ ] Avoid deadlocks between queue lock and `active_downloads_lock`
-- [ ] Add tests in `tests/`
-  - [ ] Verify second item stays pending while first downloads
-  - [ ] Verify automatic progression to next pending item
-  - [ ] Verify failed active item still unblocks queue progression
+- [x] Add queue-processing orchestration in `src/mtv_dl_web/main.py`
+  - [x] Add helper to promote one `pending` item to `downloading`
+  - [x] Ensure promotion runs after enqueue and after completion/failure transitions
+- [x] Integrate single-active rules with existing download background flow
+  - [x] Preserve current `Downloader.download()` invocation behavior
+  - [x] Avoid deadlocks between queue lock and `active_downloads_lock`
+- [x] Add tests in `tests/`
+  - [x] Verify second item stays pending while first downloads
+  - [x] Verify automatic progression to next pending item
+  - [x] Verify failed active item still unblocks queue progression
 
 ## Retrospective Guardrails
 
@@ -70,18 +70,23 @@ So that my system resources are not overwhelmed.
 
 ### Agent Model Used
 
-TBD
+openai/gpt-5.3-codex
 
 ### Debug Log References
 
-TBD
+- `pytest tests/test_queue_api.py tests/test_search_ui.py tests/test_download_selected.py`
 
 ### Completion Notes List
 
-- [ ] Ultimate context engine analysis completed - comprehensive developer guide created
+- [x] Added single-active queue promotion helper for `pending` -> `downloading` transitions.
+- [x] Ensured promotion runs on enqueue and in download completion/failure `finally` path.
+- [x] Added tests covering failed active item queue progression and pending item constraints.
 
 ### File List
 
-- `src/mtv_dl_web/main.py` (planned)
-- `tests/test_api.py` (planned)
-- `tests/test_integration.py` (planned)
+- `src/mtv_dl_web/main.py`
+- `tests/test_queue_api.py`
+
+## Change Log
+
+- 2026-05-14: Added single-active queue orchestration and queue progression tests.

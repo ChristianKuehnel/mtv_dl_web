@@ -9,6 +9,7 @@ import logging
 import os
 import re
 import threading
+import asyncio
 from contextlib import asynccontextmanager
 from concurrent.futures import ThreadPoolExecutor
 from collections.abc import AsyncIterator
@@ -138,6 +139,22 @@ class SearchFilters(BaseModel):
 
 class SearchResponse(BaseModel):
     results: list[ShowItem]
+
+
+class QueueAddRequest(BaseModel):
+    video_id: str
+
+
+class QueueItemResponse(BaseModel):
+    id: str
+    status: str
+    progress: float
+    message: str
+    file_path: str | None = None
+
+
+class QueueListResponse(BaseModel):
+    items: list[QueueItemResponse]
 
 
 # Supported filter operators and fields for validation
@@ -632,23 +649,25 @@ async def start_download(download_request: DownloadRequest, background_tasks: Ba
 
         selected_shows = [shows_by_hash[show_hash] for show_hash in unique_selected_hashes]
 
-        # Process each show in the background
+        # Queue each show and trigger single-active worker promotion
         download_ids = []
         for show in selected_shows:
-            show_id = show["hash"]
+            show_id = str(show["hash"])
             download_ids.append(show_id)
 
-            # Add to active downloads
             with active_downloads_lock:
+                if show_id in active_downloads:
+                    raise HTTPException(status_code=409, detail=f"Video {show_id} is already in queue")
                 active_downloads[show_id] = {
-                    "status": "queued",
+                    "status": "pending",
                     "progress": 0.0,
-                    "message": "Queued for download",
+                    "message": "Queued",
                     "file_path": None,
+                    "show_data": show,
+                    "request_payload": download_request.model_dump(),
                 }
 
-            # Submit download task to background
-            background_tasks.add_task(download_show_background, show, download_request, target_path)
+        background_tasks.add_task(_promote_next_pending_download)
 
         return {
             "message": f"Started downloading {len(selected_shows)} shows",
@@ -716,6 +735,54 @@ async def download_show_background(
             if show_id in active_downloads:
                 active_downloads[show_id]["status"] = "failed"
                 active_downloads[show_id]["message"] = f"Download failed: {str(e)}"
+    finally:
+        _promote_next_pending_download()
+
+
+def _promote_next_pending_download() -> None:
+    """Promote the next pending queue item to downloading."""
+    with active_downloads_lock:
+        if any(item.get("status") == "downloading" for item in active_downloads.values()):
+            return
+
+        pending_id: str | None = None
+        for download_id, item in active_downloads.items():
+            if item.get("status") == "pending":
+                pending_id = download_id
+                break
+
+        if pending_id is None:
+            return
+
+        item = active_downloads[pending_id]
+        show_data_raw = item.get("show_data")
+        request_payload_raw = item.get("request_payload")
+        if not isinstance(show_data_raw, dict) or not isinstance(request_payload_raw, dict):
+            item["status"] = "failed"
+            item["message"] = "Download failed: queue item is malformed"
+            return
+
+        item["status"] = "downloading"
+        item["message"] = "Starting download..."
+        show_data = dict(show_data_raw)
+        request_payload = dict(request_payload_raw)
+
+    try:
+        download_request = DownloadRequest(**request_payload)
+        target_path = Path(download_request.target_directory).expanduser()
+        executor.submit(_run_download_task, show_data, download_request, target_path)
+    except Exception as exc:
+        logger.error(f"Failed to dispatch queued download {pending_id}: {exc}")
+        with active_downloads_lock:
+            if pending_id in active_downloads:
+                active_downloads[pending_id]["status"] = "failed"
+                active_downloads[pending_id]["message"] = "Download failed: could not start worker"
+        _promote_next_pending_download()
+
+
+def _run_download_task(show_data: dict[str, Any], download_request: DownloadRequest, target_path: Path) -> None:
+    """Run async download task from threadpool worker."""
+    asyncio.run(download_show_background(show_data, download_request, target_path))
 
 
 @app.get("/api/download/status/{download_id}")
@@ -737,6 +804,67 @@ async def get_all_download_statuses() -> dict[str, dict[str, Any]]:
     """
     with active_downloads_lock:
         return active_downloads
+
+
+@app.post("/queue")
+@app.post("/api/queue")
+async def add_queue_item(request: QueueAddRequest) -> dict[str, str]:
+    video_id = request.video_id.strip()
+    if not video_id:
+        raise HTTPException(status_code=400, detail="video_id is required")
+
+    db_conn = get_db_connection(check_for_refresh=False, is_refresh_operation=False)
+    candidates = list(db_conn.filtered([f"hash={video_id}"]))
+    if not candidates:
+        raise HTTPException(status_code=404, detail="Unsupported or unknown video_id")
+
+    show = candidates[0]
+    download_request = DownloadRequest(filters=[f"hash={video_id}"], selected_hashes=[video_id])
+
+    with active_downloads_lock:
+        if video_id in active_downloads:
+            raise HTTPException(status_code=409, detail="Video is already in queue")
+
+        active_downloads[video_id] = {
+            "status": "pending",
+            "progress": 0.0,
+            "message": "Queued",
+            "file_path": None,
+            "show_data": show,
+            "request_payload": download_request.model_dump(),
+        }
+
+    _promote_next_pending_download()
+    return {"id": video_id, "status": "pending"}
+
+
+@app.get("/queue", response_model=QueueListResponse)
+@app.get("/api/queue", response_model=QueueListResponse)
+async def list_queue_items() -> QueueListResponse:
+    with active_downloads_lock:
+        items = [
+            QueueItemResponse(
+                id=item_id,
+                status=str(item["status"]),
+                progress=float(item.get("progress", 0.0)),
+                message=str(item.get("message", "")),
+                file_path=item.get("file_path"),
+            )
+            for item_id, item in active_downloads.items()
+        ]
+    return QueueListResponse(items=items)
+
+
+@app.delete("/queue/{queue_id}")
+@app.delete("/api/queue/{queue_id}")
+async def remove_queue_item(queue_id: str) -> dict[str, str]:
+    with active_downloads_lock:
+        if queue_id not in active_downloads:
+            raise HTTPException(status_code=404, detail="Queue item not found")
+        if active_downloads[queue_id]["status"] != "pending":
+            raise HTTPException(status_code=409, detail="Only pending queue items can be removed")
+        del active_downloads[queue_id]
+    return {"id": queue_id, "status": "removed"}
 
 
 @app.delete("/api/download/status/{download_id}")

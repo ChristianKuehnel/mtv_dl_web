@@ -3,7 +3,6 @@
 
 from pathlib import Path
 
-
 INDEX_HTML = Path(__file__).parent.parent / "src/mtv_dl_web/frontend/index.html"
 
 
@@ -55,3 +54,18 @@ def test_search_ui_renders_url_and_series_metadata() -> None:
     assert "Series metadata unavailable" in html
     assert "show.season" in html
     assert "show.episode" in html
+
+
+def test_queue_ui_has_state_labels_and_remove_action() -> None:
+    html = _read_index_html()
+
+    assert 'id="queue-section"' in html
+    assert "State:" in html
+    assert "Remove" in html
+    assert 'item.status === "pending"' in html
+
+
+def test_queue_ui_polls_with_fast_feedback_interval() -> None:
+    html = _read_index_html()
+
+    assert "setInterval(refreshQueue, 1000);" in html

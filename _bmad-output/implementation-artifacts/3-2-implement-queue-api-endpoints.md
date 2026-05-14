@@ -1,6 +1,6 @@
 # Story 3.2: Implement Queue API Endpoints
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -16,19 +16,19 @@ So that I can manage my download queue.
 
 ## Tasks / Subtasks
 
-- [ ] Add queue request/response models in `src/mtv_dl_web/main.py`
-  - [ ] Add a request model for `POST /queue`
-  - [ ] Add response shape for queue listing and delete actions
-- [ ] Implement queue endpoints in `src/mtv_dl_web/main.py`
-  - [ ] Add `POST /queue` to enqueue one item
-  - [ ] Add `GET /queue` to list queue entries and states
-  - [ ] Add `DELETE /queue/{id}` to remove only pending entries
-- [ ] Keep shared-state access thread-safe
-  - [ ] Guard queue mutations with lock discipline compatible with existing `active_downloads_lock`
-  - [ ] Keep API responsive during refresh/download activity
-- [ ] Add/extend API tests in `tests/`
-  - [ ] Happy path add/list/remove
-  - [ ] Validation and error-path tests
+- [x] Add queue request/response models in `src/mtv_dl_web/main.py`
+  - [x] Add a request model for `POST /queue`
+  - [x] Add response shape for queue listing and delete actions
+- [x] Implement queue endpoints in `src/mtv_dl_web/main.py`
+  - [x] Add `POST /queue` to enqueue one item
+  - [x] Add `GET /queue` to list queue entries and states
+  - [x] Add `DELETE /queue/{id}` to remove only pending entries
+- [x] Keep shared-state access thread-safe
+  - [x] Guard queue mutations with lock discipline compatible with existing `active_downloads_lock`
+  - [x] Keep API responsive during refresh/download activity
+- [x] Add/extend API tests in `tests/`
+  - [x] Happy path add/list/remove
+  - [x] Validation and error-path tests
 
 ## Retrospective Guardrails
 
@@ -74,17 +74,24 @@ So that I can manage my download queue.
 
 ### Agent Model Used
 
-TBD
+openai/gpt-5.3-codex
 
 ### Debug Log References
 
-TBD
+- `pytest tests/test_queue_api.py tests/test_search_ui.py tests/test_download_selected.py`
+- `pytest` (fails in this environment due missing `mtv_dl` dependency during collection in unrelated suites)
 
 ### Completion Notes List
 
-- [ ] Ultimate context engine analysis completed - comprehensive developer guide created
+- [x] Added queue API request/response models and `/queue` + `/api/queue` endpoints with 4xx error handling.
+- [x] Added lock-protected queue add/list/remove behavior and pending-only deletion rules.
+- [x] Added queue API tests for happy-path, validation, and status constraints.
 
 ### File List
 
-- `src/mtv_dl_web/main.py` (planned)
-- `tests/test_api.py` (planned)
+- `src/mtv_dl_web/main.py`
+- `tests/test_queue_api.py`
+
+## Change Log
+
+- 2026-05-14: Implemented queue API models/endpoints, thread-safe queue operations, and API coverage tests.
