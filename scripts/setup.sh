@@ -7,8 +7,6 @@ set -e  # Exit on any error
 
 # Set root directory to the parent directory of this script
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-# Set virtual environment directory
-VENV_DIR="$ROOT_DIR/venv"
 # Set node modules directory
 NODE_MODULES="$ROOT_DIR/node_modules"
 
@@ -26,39 +24,9 @@ install_debian_packages() {
     apt-get install -y "$@"
 }
 
-# Function to create and activate Python virtual environment
-setup_python_env() {
-    echo "Setting up Python virtual environment..."
-    
-    # Check if Python 3.10+ is available
-    if ! command_exists python3; then
-        echo "Python 3 not found. Installing Python 3..."
-        install_debian_packages python3 python3-pip python3-venv
-    fi
-    
-    # Create virtual environment in project root
-    if [ ! -d "$VENV_DIR" ]; then
-        python3 -m venv "$VENV_DIR"
-        echo "Virtual environment created in project root."
-    else
-        echo "Virtual environment already exists in project root."
-    fi
-    
-    # Activate virtual environment (suppress SC1091 warning as activation is intentional)
-    # shellcheck disable=SC1091
-    source "$VENV_DIR/bin/activate"
-    
-    # Upgrade pip
-    pip install --upgrade pip
-    
-    echo "Python environment ready."
-}
-
 # Function to install Python packages using uv
 install_python_packages() {
     echo "Installing Python packages with uv..."
-    # shellcheck disable=SC1091
-    source "$VENV_DIR/bin/activate"
     
     # Install uv if not present
     if ! command_exists uv; then
@@ -140,40 +108,50 @@ install_container_tools() {
     echo "Container tools installed."
 }
 
-# Function to check and install mtv_dl
-setup_mtv_dl() {
-    echo "Setting up MTV DL dependency..."
+# Function to install git pre-commit hook that runs linting
+install_git_precommit_hook() {
+    echo "Installing git pre-commit hook..."
     
-    # Check if mtv_dl is already available
-    if [ -d "src/mtv_dl" ]; then
-        echo "mtv_dl directory found in src/mtv_dl."
-        # Check if it's a git submodule
-        if [ -f ".gitmodules" ] && grep -q "mtv_dl" .gitmodules; then
-            echo "mtv_dl is configured as git submodule."
-        else
-            echo "mtv_dl exists but not as submodule. Checking if it's a proper clone..."
-            if [ -d ".git" ] && [ -f "src/mtv_dl/pyproject.toml" ]; then
-                echo "mtv_dl looks like a valid clone."
-            else
-                echo "Warning: mtv_dl directory found but doesn't appear to be a proper mtv_dl clone."
-            fi
-        fi
+    # Determine the correct git directory
+    GIT_DIR="/home/opencode/mtv_dl_web/.git"
+    HOOKS_DIR="$GIT_DIR/hooks"
+    
+    # Create hooks directory if it doesn't exist
+    mkdir -p "$HOOKS_DIR"
+    
+    # Create the pre-commit hook
+    cat > "$HOOKS_DIR/pre-commit" << 'EOF'
+#!/bin/bash
+
+# Pre-commit hook to run linting checks before allowing commit
+
+echo "Running linting checks before commit..."
+
+# Run the linting script
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+LINTING_SCRIPT="$SCRIPT_DIR/scripts/linting.sh"
+
+if [ -x "$LINTING_SCRIPT" ]; then
+    echo "Running linting checks..."
+    "$LINTING_SCRIPT" --check
+    if [ $? -eq 0 ]; then
+        echo "Linting checks passed."
+        exit 0
     else
-        echo "mtv_dl not found. Cloning from upstream..."
-        git submodule update --init --recursive
+        echo "Linting checks failed. Please fix issues before committing."
+        exit 1
     fi
+else
+    echo "Warning: Linting script not found or not executable"
+    exit 0  # Allow commit to proceed if linting script isn't there
+fi
+EOF
+
+    # Make the hook executable
+    chmod +x "$HOOKS_DIR/pre-commit"
     
-    # Install mtv_dl dependencies with uv
-    echo "Installing mtv_dl dependencies..."
-    if [ -f "src/mtv_dl/pyproject.toml" ]; then
-        (
-            cd src/mtv_dl
-            # Install mtv_dl dev dependencies with uv
-            uv sync --extra=dev
-        )
-    fi
-    
-    echo "mtv_dl setup complete."
+    echo "Git pre-commit hook installed successfully!"
+    echo "The hook will now run linting checks before every commit."
 }
 
 # Main setup process
@@ -189,9 +167,6 @@ main() {
         install_debian_packages git
     fi
     
-    # Setup Python environment
-    setup_python_env
-    
     # Install Python packages with uv
     install_python_packages
     
@@ -201,16 +176,15 @@ main() {
     # Install container tools
     install_container_tools
     
-    # Setup mtv_dl dependency
-    setup_mtv_dl
+    # Install git pre-commit hook
+    install_git_precommit_hook
     
     echo "Setup complete!"
     echo ""
     echo "Next steps:"
-    echo "1. Activate the virtual environment: source $VENV_DIR/bin/activate"
-    echo "2. Run tests: pytest"
-    echo "3. Start development server: uvicorn src.main:app --reload"
-    echo "4. For container deployment: docker build -t mtv_dl_web ."
+    echo "1. Run tests: pytest"
+    echo "2. Start development server: uvicorn src.main:app --reload"
+    echo "3. For container deployment: docker build -t mtv_dl_web ."
 }
 
 # Run main function
