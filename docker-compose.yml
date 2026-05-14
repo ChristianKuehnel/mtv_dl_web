@@ -10,14 +10,13 @@ services:
       - ./data:/data
       - ./downloads:/downloads
       - ./config:/config
-      - ./.mtv_dl_web:/home/appuser/.mtv_dl_web
     environment:
       - PYTHONPATH=/app/src
       - PORT=8000
       - HOST=0.0.0.0
-      - DATABASE_PATH=~/.mtv_dl_web/filmliste.sqlite
+      - DATABASE_PATH=/data/filmliste.sqlite
       - DOWNLOAD_QUALITY=best
-      - TARGET_DIRECTORY=~/Downloads/mtv_dl
+      - TARGET_DIRECTORY=/downloads
       - ENABLE_SUBTITLES=true
       - ENABLE_NFO=true
       - ENABLE_MKV_MERGE=false

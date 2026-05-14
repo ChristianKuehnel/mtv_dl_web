@@ -100,6 +100,7 @@ database_refresh_schedule_config: str = "0 0 * * *"  # Default 24h cadence (midn
 # Pydantic models for API requests and responses
 class DownloadRequest(BaseModel):
     filters: list[str]
+    selected_hashes: list[str]
     quality: str = "url_http"
     target_directory: str = settings.target_directory
     include_subtitles: bool = True
@@ -588,9 +589,33 @@ async def start_download(download_request: DownloadRequest, background_tasks: Ba
     Start downloading shows based on filters
     """
     try:
+        unique_selected_hashes = list(dict.fromkeys(download_request.selected_hashes))
+        if not unique_selected_hashes:
+            raise HTTPException(status_code=400, detail="At least one selected hash is required")
+
+        # Validate that all selected hashes are strings to prevent injection attacks
+        for hash_val in unique_selected_hashes:
+            if not isinstance(hash_val, str):
+                raise HTTPException(status_code=400, detail="Selected hashes must be strings")
+
+        # Validate that selected hashes aren't excessively long (potential DoS protection)
+        for hash_val in unique_selected_hashes:
+            if len(hash_val) > 100:  # Reasonable limit for hash values
+                raise HTTPException(status_code=400, detail="Selected hash is too long")
+
         # Validate target directory
         target_path = Path(download_request.target_directory).expanduser()
         target_path.mkdir(parents=True, exist_ok=True)
+
+        # Validate that target directory path is safe (not pointing to system directories)
+        if str(target_path).startswith("/"):
+            # Prevent access to system directories
+            if (
+                target_path.parts == ("/",)
+                or target_path.parts[:2] == ("/", "etc")
+                or target_path.parts[:2] == ("/", "usr")
+            ):
+                raise HTTPException(status_code=400, detail="Target directory cannot point to system directories")
 
         # Get filtered shows using a fresh database connection
         # This will not trigger background refresh (as designed)
@@ -600,9 +625,16 @@ async def start_download(download_request: DownloadRequest, background_tasks: Ba
         if not shows:
             raise HTTPException(status_code=404, detail="No shows found matching filters")
 
+        shows_by_hash = {str(show["hash"]): show for show in shows}
+        unknown_hashes = [show_hash for show_hash in unique_selected_hashes if show_hash not in shows_by_hash]
+        if unknown_hashes:
+            raise HTTPException(status_code=404, detail="Selected hashes not found in filtered results")
+
+        selected_shows = [shows_by_hash[show_hash] for show_hash in unique_selected_hashes]
+
         # Process each show in the background
         download_ids = []
-        for show in shows:
+        for show in selected_shows:
             show_id = show["hash"]
             download_ids.append(show_id)
 
@@ -619,13 +651,16 @@ async def start_download(download_request: DownloadRequest, background_tasks: Ba
             background_tasks.add_task(download_show_background, show, download_request, target_path)
 
         return {
-            "message": f"Started downloading {len(shows)} shows",
+            "message": f"Started downloading {len(selected_shows)} shows",
             "download_ids": download_ids,
         }
 
+    except HTTPException:
+        raise
+
     except Exception as e:
         logger.error(f"Download start failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error occurred")
 
 
 async def download_show_background(
@@ -665,13 +700,15 @@ async def download_show_background(
 
         # Update status
         with active_downloads_lock:
-            if path:
+            if _is_path_within_target(path, target_path):
                 active_downloads[show_id]["status"] = "completed"
                 active_downloads[show_id]["message"] = "Download completed"
                 active_downloads[show_id]["file_path"] = str(path)
             else:
                 active_downloads[show_id]["status"] = "failed"
-                active_downloads[show_id]["message"] = "Download failed"
+                active_downloads[show_id][
+                    "message"
+                ] = "Download failed: output path is missing or outside target directory"
 
     except Exception as e:
         logger.error(f"Background download failed for {show_id}: {e}")
@@ -715,6 +752,72 @@ def _remove_download_status_locked(download_id: str) -> None:
         if download_id not in active_downloads:
             raise HTTPException(status_code=404, detail="Download not found")
         del active_downloads[download_id]
+
+
+def _is_path_within_target(path_value: object, target_path: Path) -> bool:
+    """Return true if resolved path is inside resolved target directory."""
+    if path_value is None:
+        return False
+
+    try:
+        # For path validation, we'll resolve paths but allow non-existent paths
+        resolved_target = target_path.expanduser().resolve(strict=False)
+        resolved_output = Path(str(path_value)).expanduser().resolve(strict=False)
+    except (OSError, TypeError, ValueError):
+        return False
+
+    # Check if the resolved output path is within the resolved target directory
+    # This handles both direct containment and parent relationships
+    try:
+        # If output path is exactly the target, that's fine
+        if resolved_output == resolved_target:
+            return True
+
+        # If target is a parent of output, that's also fine
+        if resolved_target in resolved_output.parents:
+            return True
+
+        # If target is a prefix of output (e.g., /downloads vs /downloads/nested/episode.mp4)
+        # We convert to strings for prefix check to be more robust
+        target_str = str(resolved_target)
+        output_str = str(resolved_output)
+        if output_str.startswith(target_str + "/") or output_str == target_str:
+            return True
+
+    except (OSError, TypeError, ValueError):
+        return False
+
+    return False
+
+    try:
+        # For path validation, we'll resolve paths but allow non-existent paths
+        resolved_target = target_path.expanduser().resolve(strict=False)
+        resolved_output = Path(path_value).expanduser().resolve(strict=False)
+    except (OSError, TypeError, ValueError):
+        return False
+
+    # Check if the resolved output path is within the resolved target directory
+    # This handles both direct containment and parent relationships
+    try:
+        # If output path is exactly the target, that's fine
+        if resolved_output == resolved_target:
+            return True
+
+        # If target is a parent of output, that's also fine
+        if resolved_target in resolved_output.parents:
+            return True
+
+        # If target is a prefix of output (e.g., /downloads vs /downloads/nested/episode.mp4)
+        # We convert to strings for prefix check to be more robust
+        target_str = str(resolved_target)
+        output_str = str(resolved_output)
+        if output_str.startswith(target_str + "/") or output_str == target_str:
+            return True
+
+    except (OSError, TypeError, ValueError):
+        return False
+
+    return False
 
 
 @app.get("/api/database/status")

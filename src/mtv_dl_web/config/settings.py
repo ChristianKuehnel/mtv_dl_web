@@ -21,7 +21,7 @@ class Settings(BaseSettings):
 
     # Download configuration
     download_quality: str = "best"
-    target_directory: str = os.path.expanduser("~/Downloads/mtv_dl")
+    target_directory: str = "/downloads"
 
     # Feature flags
     enable_subtitles: bool = True
