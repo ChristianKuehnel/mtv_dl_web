@@ -32,7 +32,11 @@
               id="refresh-db-btn"
               class="inline-flex items-center gap-2 rounded-md border border-blue-200 bg-blue-50 px-3 py-1.5 text-sm font-medium text-blue-700 transition duration-200 hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              <i id="refresh-db-icon" class="fas fa-rotate-right" aria-hidden="true"></i>
+              <i
+                id="refresh-db-icon"
+                class="fas fa-rotate-right"
+                aria-hidden="true"
+              ></i>
               <span id="refresh-db-label">Refresh Database</span>
             </button>
           </div>
@@ -336,7 +340,9 @@
 
           if (!response.ok) {
             throw new Error(
-              data.detail || data.message || "Failed to trigger database refresh",
+              data.detail ||
+                data.message ||
+                "Failed to trigger database refresh",
             );
           }
 
