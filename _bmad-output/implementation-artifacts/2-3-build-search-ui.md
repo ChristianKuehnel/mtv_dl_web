@@ -1,6 +1,6 @@
 # Story 2.3: Build Search UI
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -17,21 +17,21 @@ So that I can search without using the API directly.
 
 ## Tasks / Subtasks
 
-- [ ] Build search form UI in `src/mtv_dl_web/frontend/index.html`
-  - [ ] Add filter input controls and submit action
-  - [ ] Add loading and disabled states during request execution
-- [ ] Build result rendering flow in frontend JavaScript
-  - [ ] Render required metadata fields from API response
-  - [ ] Handle empty state and error state consistently
-- [ ] Integrate with current search endpoint contract (`POST /api/search`)
-  - [ ] Serialize filters to request payload
-  - [ ] Parse and present structured error messages
-- [ ] Add refresh/freshness context in UI status area
-  - [ ] Show last successful refresh time when available
-  - [ ] Show database age indicator when available
-- [ ] Add regression tests for UI search behavior
-  - [ ] Search while refresh is active remains responsive
-  - [ ] Validation and API errors are surfaced without raw internal details
+- [x] Build search form UI in `src/mtv_dl_web/frontend/index.html`
+  - [x] Add filter input controls and submit action
+  - [x] Add loading and disabled states during request execution
+- [x] Build result rendering flow in frontend JavaScript
+  - [x] Render required metadata fields from API response
+  - [x] Handle empty state and error state consistently
+- [x] Integrate with current search endpoint contract (`POST /api/search`)
+  - [x] Serialize filters to request payload
+  - [x] Parse and present structured error messages
+- [x] Add refresh/freshness context in UI status area
+  - [x] Show last successful refresh time when available
+  - [x] Show database age indicator when available
+- [x] Add regression tests for UI search behavior
+  - [x] Search while refresh is active remains responsive
+  - [x] Validation and API errors are surfaced without raw internal details
 
 ## Retrospective Guardrails
 
@@ -59,22 +59,39 @@ So that I can search without using the API directly.
 
 ### Agent Model Used
 
-TBD
+openai/gpt-5.3-codex
 
 ### Debug Log References
 
-TBD
+- Added `tests/test_search_ui.py` first, confirmed RED state with failing assertions.
+- Implemented UI updates in `src/mtv_dl_web/frontend/index.html` for loading, empty-state, freshness context, and structured search errors.
+- Confirmed GREEN state for story-specific UI tests: `pytest tests/test_search_ui.py`.
+- Implemented follow-up fixes for review findings: clear stale selected shows on empty results, and render URL/season/episode metadata in search results.
+- Extended backend `ShowItem` mapping to expose `url`, `season`, and `episode` from search payloads.
+- Re-ran UI regression tests after follow-up updates: `pytest tests/test_search_ui.py` now passing 6/6.
+- Full-suite regression run (`pytest`) currently blocked by missing runtime dependency `mtv_dl` in environment (ModuleNotFoundError during collection).
 
 ### Completion Notes List
 
-- [ ] TBD
+- [x] Search button now enters a disabled/loading state while `POST /api/search` runs, keeping UI interactive without page lockups.
+- [x] Search results rendering keeps the results panel visible and shows a dedicated `No results` message for empty responses.
+- [x] Search error handling now formats backend validation/contract errors into user-safe messages via `formatSearchError`.
+- [x] Freshness context is displayed in UI via `GET /api/database/status` (`last_refresh_time` and database age indicators).
+- [x] Added regression tests in `tests/test_search_ui.py` covering loading-state hooks, empty-state message, freshness area, and structured error formatter.
+- [x] Search results now clear stale selections on each new render, preventing accidental downloads after empty-result searches.
+- [x] Search results now display source URL and season/episode metadata where available, with safe fallbacks when metadata is absent.
+- [x] Backend search response now exposes `url`, `season`, and `episode` fields for UI rendering compatibility.
+- [x] Validation evidence: `pytest tests/test_search_ui.py` passed (6/6); `pytest tests/test_search.py` blocked in this environment by missing `mtv_dl` dependency.
 
 ### Change Log
 
 - 2026-05-14: Story file scaffolded with retrospective guardrails and expanded AC coverage.
+- 2026-05-14: Implemented search UI behavior updates (loading/disabled state, empty-state rendering, structured error display, freshness context) and added UI regression tests.
+- 2026-05-14: Applied review follow-up fixes for selection reset and FR-4/FR-5 metadata display (`url`, `season`, `episode`) across backend and frontend.
 
 ### File List
 
-- `src/mtv_dl_web/frontend/index.html` (planned)
-- `src/mtv_dl_web/frontend/*.js` (planned)
-- `tests/*` (planned)
+- `src/mtv_dl_web/frontend/index.html` (modified)
+- `src/mtv_dl_web/main.py` (modified)
+- `tests/test_search_ui.py` (added, modified)
+- `tests/test_search.py` (modified)
