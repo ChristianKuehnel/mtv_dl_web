@@ -57,6 +57,22 @@
         </div>
       </div>
 
+      <div
+        id="freshness-status"
+        class="mb-6 bg-white border border-gray-200 rounded-lg p-4"
+      >
+        <div class="flex flex-wrap items-center gap-4 text-sm text-gray-700">
+          <span
+            ><strong>Last refresh:</strong>
+            <span id="last-refresh-time">Unavailable</span></span
+          >
+          <span
+            ><strong>Database age:</strong>
+            <span id="database-age">Unavailable</span></span
+          >
+        </div>
+      </div>
+
       <!-- Search Section -->
       <div class="bg-white rounded-lg shadow-md p-6 mb-6">
         <h2 class="text-xl font-semibold mb-4 text-gray-800">Search Shows</h2>
@@ -117,6 +133,13 @@
           class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6"
         >
           <!-- Results will be populated here -->
+        </div>
+
+        <div
+          id="no-results-message"
+          class="hidden col-span-full text-center py-8 text-gray-500"
+        >
+          No results
         </div>
 
         <div class="bg-white rounded-lg shadow-md p-6">
@@ -208,6 +231,10 @@
       const refreshDatabaseButton = document.getElementById("refresh-db-btn");
       const refreshDatabaseLabel = document.getElementById("refresh-db-label");
       const refreshDatabaseIcon = document.getElementById("refresh-db-icon");
+      const freshnessStatus = document.getElementById("freshness-status");
+      const lastRefreshTime = document.getElementById("last-refresh-time");
+      const databaseAge = document.getElementById("database-age");
+      const noResultsMessage = document.getElementById("no-results-message");
       const HEALTH_REQUEST_TIMEOUT_MS = 4000;
       let lastRefreshInProgress = null;
       let manualRefreshPending = false;
@@ -373,6 +400,83 @@
         }, 5000);
       }
 
+      function setSearchLoading(isLoading) {
+        searchBtn.disabled = isLoading;
+        searchBar.disabled = isLoading;
+        searchBtn.classList.toggle("opacity-70", isLoading);
+        searchBtn.innerHTML = isLoading
+          ? '<i class="fas fa-spinner fa-spin mr-2"></i> Searching...'
+          : '<i class="fas fa-search mr-2"></i> Search Shows';
+      }
+
+      function formatTimestamp(timestampValue) {
+        if (!timestampValue) {
+          return "Unavailable";
+        }
+        const parsed = Number(timestampValue);
+        if (!Number.isFinite(parsed) || parsed <= 0) {
+          return "Unavailable";
+        }
+        return new Date(parsed * 1000).toLocaleString();
+      }
+
+      function formatDatabaseAge(databaseAgeValue, readableAge) {
+        if (readableAge) {
+          return readableAge;
+        }
+        const parsed = Number(databaseAgeValue);
+        if (!Number.isFinite(parsed) || parsed < 0) {
+          return "Unavailable";
+        }
+        const minutes = Math.floor(parsed / 60);
+        if (minutes < 1) {
+          return "< 1 minute";
+        }
+        if (minutes < 60) {
+          return `${minutes} minute${minutes === 1 ? "" : "s"}`;
+        }
+        const hours = Math.floor(minutes / 60);
+        return `${hours} hour${hours === 1 ? "" : "s"}`;
+      }
+
+      async function refreshDatabaseStatus() {
+        if (!freshnessStatus) {
+          return;
+        }
+
+        try {
+          const response = await fetch(`${API_BASE}/database/status`, {
+            cache: "no-store",
+          });
+          const data = await response.json();
+
+          if (!response.ok) {
+            throw new Error("Failed to load database status");
+          }
+
+          lastRefreshTime.textContent = formatTimestamp(data.last_refresh_time);
+          databaseAge.textContent = formatDatabaseAge(
+            data.database_age_seconds,
+            data.database_age_readable,
+          );
+        } catch (_error) {
+          lastRefreshTime.textContent = "Unavailable";
+          databaseAge.textContent = "Unavailable";
+        }
+      }
+
+      function formatSearchError(errorPayload, responseStatus) {
+        if (responseStatus === 422) {
+          return "Validation error: please check your filters and try again.";
+        }
+
+        if (typeof errorPayload?.detail === "string" && errorPayload.detail) {
+          return errorPayload.detail;
+        }
+
+        return "Search request failed. Please try again.";
+      }
+
       // Split mtv_dl-style filters while preserving quoted values.
       function parseFilters(input) {
         const filters = [];
@@ -435,6 +539,7 @@
           return;
         }
 
+        setSearchLoading(true);
         try {
           const filters = parseFilters(filterText);
           showStatus("Searching shows...");
@@ -451,32 +556,43 @@
           const data = await response.json();
 
           if (!response.ok) {
-            throw new Error(data.detail || "Search failed");
+            throw new Error(formatSearchError(data, response.status));
           }
 
           displayResults(data.results);
           showStatus(`Found ${data.results.length} shows`);
+          refreshDatabaseStatus();
         } catch (error) {
           showStatus(`Search error: ${error.message}`, "error");
           console.error("Search error:", error);
+        } finally {
+          setSearchLoading(false);
         }
       }
 
       // Display search results
       function displayResults(results) {
         resultsContainer.innerHTML = "";
+        selectedShows.clear();
 
         if (results.length === 0) {
-          resultsContainer.innerHTML =
-            '<div class="col-span-full text-center py-8 text-gray-500">No shows found</div>';
-          resultsSection.classList.add("hidden");
+          resultsSection.classList.remove("hidden");
+          noResultsMessage.classList.remove("hidden");
+          updateDownloadButton();
           return;
         }
 
         resultsSection.classList.remove("hidden");
-        selectedShows.clear();
+        noResultsMessage.classList.add("hidden");
 
         results.forEach((show) => {
+          const seriesInfo =
+            show.season || show.episode
+              ? `S${show.season || "?"}E${show.episode || "?"}`
+              : "Series metadata unavailable";
+          const showUrl = show.url
+            ? `<a class="text-blue-600 hover:underline" href="${show.url}" target="_blank" rel="noopener noreferrer">Source URL</a>`
+            : "Source URL unavailable";
           const showDiv = document.createElement("div");
           showDiv.className =
             "border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow";
@@ -490,6 +606,10 @@
                                 <span>${show.duration}</span> | 
                                 <span>${show.size} MB</span> | 
                                 <span>${new Date(show.start).toLocaleDateString()}</span>
+                            </div>
+                            <div class="text-xs text-gray-500 mt-1">
+                                <span>${seriesInfo}</span> | 
+                                <span>${showUrl}</span>
                             </div>
                         </div>
                     </div>
@@ -675,6 +795,7 @@
         refreshHealthStatus();
         refreshDatabaseStatus();
         setInterval(refreshHealthStatus, 5000);
+        setInterval(refreshDatabaseStatus, 5000);
         setInterval(refreshDatabaseStatus, 5000);
         // Periodically refresh downloads
         setInterval(refreshDownloads, 5000);
