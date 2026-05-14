@@ -27,9 +27,12 @@ run_tests() {
         exit 1
     fi
 
-    echo "🔍 Running pytest with uv..."
+    echo "📦 Syncing dependencies with uv (including dev extras)..."
     echo "-----------------------------------"
     "$UV_BIN" sync --extra dev
+
+    echo "🔍 Running pytest with uv..."
+    echo "-----------------------------------"
     "$UV_BIN" run --extra dev --with-editable . pytest tests/ -v
 }
 
