@@ -31,7 +31,7 @@ except ImportError as e:
     raise
 
 # Import settings
-from src.mtv_dl_web.config.settings import settings
+from mtv_dl_web.config.settings import settings
 
 # Configure logging
 log_level = os.environ.get("LOG_LEVEL", "INFO").upper()

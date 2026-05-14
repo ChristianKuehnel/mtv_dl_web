@@ -8,7 +8,6 @@ from typing import Any, Optional
 from pydantic.v1 import BaseSettings
 import yaml
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -65,7 +64,7 @@ class Settings(BaseSettings):
 
 # Load settings
 # Try to load from config file if specified, otherwise use defaults
-config_file_path = os.environ.get('CONFIG_FILE', None)
+config_file_path = os.environ.get("CONFIG_FILE", None)
 if config_file_path:
     try:
         settings = Settings.load_from_file(config_file_path)
