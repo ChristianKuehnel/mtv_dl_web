@@ -73,5 +73,3 @@ if config_file_path:
         raise SystemExit(f"Failed to load configuration from {config_file_path}: {e}")
 else:
     settings = Settings()
-
-
