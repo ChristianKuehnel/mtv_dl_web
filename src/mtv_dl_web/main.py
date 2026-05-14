@@ -30,6 +30,9 @@ except ImportError as e:
     print(f"Failed to import mtv_dl: {e}")
     raise
 
+# Import settings
+from mtv_dl_web.config.settings import settings
+
 # Configure logging
 log_level = os.environ.get("LOG_LEVEL", "INFO").upper()
 logging.basicConfig(level=getattr(logging, log_level, logging.INFO))
@@ -191,9 +194,10 @@ def validate_filters(filters: list[str]) -> None:
 
 
 # Database configuration
-DATABASE_DIR = Path(os.environ.get("DATABASE_DIR", str(Path.home() / ".mtv_dl_web"))).expanduser()
+configured_database_path = Path(settings.database_path).expanduser()
+DATABASE_DIR = configured_database_path.parent if configured_database_path.suffix else configured_database_path
 DATABASE_DIR.mkdir(parents=True, exist_ok=True)
-DATABASE_FILE = DATABASE_DIR / "filmliste.sqlite"
+DATABASE_FILE = configured_database_path if configured_database_path.suffix else DATABASE_DIR / "filmliste.sqlite"
 HISTORY_FILE = DATABASE_DIR / "history.sqlite"
 
 
@@ -460,7 +464,7 @@ async def start_download(download_request: DownloadRequest, background_tasks: Ba
     """
     try:
         # Validate target directory
-        target_path = Path(download_request.target_directory)
+        target_path = Path(download_request.target_directory).expanduser()
         target_path.mkdir(parents=True, exist_ok=True)
 
         # Get filtered shows using a fresh database connection
@@ -487,7 +491,7 @@ async def start_download(download_request: DownloadRequest, background_tasks: Ba
                 }
 
             # Submit download task to background
-            background_tasks.add_task(download_show_background, show, download_request)
+            background_tasks.add_task(download_show_background, show, download_request, target_path)
 
         return {
             "message": f"Started downloading {len(shows)} shows",
@@ -499,7 +503,9 @@ async def start_download(download_request: DownloadRequest, background_tasks: Ba
         raise HTTPException(status_code=500, detail=str(e))
 
 
-async def download_show_background(show_data: dict[str, Any], download_request: DownloadRequest) -> None:
+async def download_show_background(
+    show_data: dict[str, Any], download_request: DownloadRequest, target_path: Path
+) -> None:
     """
     Background task to handle the actual download
     """
@@ -525,7 +531,7 @@ async def download_show_background(show_data: dict[str, Any], download_request: 
         # Perform download
         path = downloader.download(
             quality=quality,
-            target=Path(download_request.target_directory),
+            target=target_path,
             include_subtitles=download_request.include_subtitles,
             include_nfo=download_request.include_nfo,
             merge_to_mkv=download_request.merge_to_mkv,
