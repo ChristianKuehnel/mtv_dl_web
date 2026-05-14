@@ -54,7 +54,7 @@ development_status:
   1-6-enable-concurrent-web-ui-access: done
   1-7-add-thread-synchronization: ready-for-dev
   1-8-implement-proper-locking: ready-for-dev
-  1-9-concurrency-improvements: ready-for-dev
+  1-9-concurrency-improvements: done
   1-10-improve-database-refresh-cadence-status-logging: ready-for-dev
   1-11-consolidate-mtv-dl-dependency-integration: done
   1-12-publish-container-images-from-main-branch: done
