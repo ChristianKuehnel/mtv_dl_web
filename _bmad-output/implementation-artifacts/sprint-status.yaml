@@ -62,10 +62,10 @@ development_status:
   epic-1-retrospective: done
 
   # Epic 2: Search Functionality
-  epic-2: backlog
+  epic-2: in-progress
   2-1-implement-search-api-endpoint: done
   2-2-validate-filter-operators-fields: done
-  2-3-build-search-ui: backlog
+  2-3-build-search-ui: ready-for-dev
   epic-2-retrospective: optional
 
   # Epic 3: Download Queue Management
