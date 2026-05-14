@@ -11,6 +11,7 @@ import re
 import threading
 from contextlib import asynccontextmanager
 from concurrent.futures import ThreadPoolExecutor
+from collections.abc import AsyncIterator
 from datetime import datetime, timedelta
 from pathlib import Path
 from threading import Lock
@@ -40,8 +41,9 @@ log_level = os.environ.get("LOG_LEVEL", "INFO").upper()
 logging.basicConfig(level=getattr(logging, log_level, logging.INFO))
 logger = logging.getLogger(__name__)
 
+
 @asynccontextmanager
-async def lifespan(_: FastAPI):
+async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     """Initialize and cleanup background scheduler for app lifecycle."""
     initialize_database_refresh_scheduler()
     try:
