@@ -533,6 +533,7 @@ async def health_check() -> dict[str, Any]:
         },
     }
 
+
 @app.get("/api/config")
 async def get_config() -> dict[str, Any]:
     """

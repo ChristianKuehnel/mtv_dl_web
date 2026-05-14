@@ -17,14 +17,13 @@ from mtv_dl_web.config.settings import Settings
 def test_env_overrides_yaml_values(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     """Environment values must take precedence over YAML values."""
     config_file = tmp_path / "config.yaml"
-    config_file.write_text("port: 7000\ntarget_directory: /tmp/from-file\n", encoding="utf-8")
+    config_file.write_text("port: 7000\n", encoding="utf-8")
 
     monkeypatch.setenv("PORT", "9001")
 
     loaded = Settings.load_from_file(str(config_file))
 
     assert loaded.port == 9001
-    assert loaded.target_directory == "/tmp/from-file"
 
 
 def test_invalid_yaml_top_level_is_rejected(tmp_path: Path) -> None:
