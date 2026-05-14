@@ -244,11 +244,14 @@ def test_search_response_structure(fake_db):
             "channel": "ARD",
             "title": "Test Show",
             "topic": "News", 
+            "url_http": "https://example.org/show/test1",
             "size": 100,
             "start": "2023-01-01T12:00:00",
             "duration": "30m",
             "age": "7d",
             "region": "DE",
+            "season": 1,
+            "episode": 5,
             "downloaded": None
         }
     ]
@@ -262,9 +265,13 @@ def test_search_response_structure(fake_db):
     result = data["results"][0]
 
     # Verify all expected fields are present
-    required_fields = ["hash", "channel", "title", "topic", "size", "start", "duration", "age", "region"]
+    required_fields = ["hash", "channel", "title", "topic", "url", "size", "start", "duration", "age", "region", "season", "episode"]
     for field in required_fields:
         assert field in result, f"Missing required field: {field}"
+
+    assert result["url"] == "https://example.org/show/test1"
+    assert result["season"] == "1"
+    assert result["episode"] == "5"
 
 
 if __name__ == "__main__":

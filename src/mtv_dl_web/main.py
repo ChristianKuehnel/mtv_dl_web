@@ -120,11 +120,14 @@ class ShowItem(BaseModel):
     channel: str
     title: str
     topic: str
+    url: str | None = None
     size: int
     start: str
     duration: str
     age: str
     region: str
+    season: str | None = None
+    episode: str | None = None
     downloaded: str | None = None
 
 
@@ -552,6 +555,8 @@ async def search_shows(filters: SearchFilters, background_tasks: BackgroundTasks
         results = []
         for show in shows:
             show_dict = dict(show)
+            if "url" not in show_dict:
+                show_dict["url"] = show_dict.get("url_http")
             # Convert datetime objects to ISO format strings
             if isinstance(show_dict.get("start"), datetime):
                 show_dict["start"] = show_dict["start"].isoformat()
@@ -562,6 +567,10 @@ async def search_shows(filters: SearchFilters, background_tasks: BackgroundTasks
                 show_dict["duration"] = str(show_dict["duration"])
             if isinstance(show_dict.get("age"), timedelta):
                 show_dict["age"] = str(show_dict["age"])
+            if show_dict.get("season") is not None:
+                show_dict["season"] = str(show_dict["season"])
+            if show_dict.get("episode") is not None:
+                show_dict["episode"] = str(show_dict["episode"])
             results.append(ShowItem(**show_dict))
 
         return SearchResponse(results=results)
