@@ -6,13 +6,19 @@ WORKDIR /app
 # Install uv from official image
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
+# Set PATH to include uv
+ENV PATH="/root/.cargo/bin:$PATH"
+
 # Copy dependency metadata and lock file for deterministic sync
 COPY pyproject.toml uv.lock ./
+
+# Copy package source so uv can build/install the local project
+COPY src/mtv_dl_web ./src/mtv_dl_web
 
 # Install dependencies with uv
 RUN uv sync --frozen
 
-# Copy application code
+# Copy remaining application files
 COPY . .
 
 # Create a non-root user
