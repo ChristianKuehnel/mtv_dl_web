@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 class Settings(BaseSettings):
     # Service configuration
     port: int = 8000
-    host: str = "0.0.0.0"
+    host: str = "localhost"
 
     # Database configuration
     database_path: str = os.path.expanduser("~/.mtv_dl_web")
