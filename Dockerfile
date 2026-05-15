@@ -12,7 +12,7 @@ RUN curl -LsSf https://astral.sh/uv/install.sh -o /tmp/install-uv.sh && \
 ENV PATH="/root/.cargo/bin:$PATH"
 
 # Copy dependency metadata and lock file for deterministic sync
-COPY pyproject.toml uv.lock .
+COPY pyproject.toml uv.lock ./
 
 # Install dependencies with uv
 RUN uv sync --frozen
