@@ -3,13 +3,8 @@ FROM python:3.11-slim
 # Set working directory
 WORKDIR /app
 
-# Install uv
-RUN curl -LsSf https://astral.sh/uv/install.sh -o /tmp/install-uv.sh && \
-    sh /tmp/install-uv.sh && \
-    rm /tmp/install-uv.sh
-
-# Set PATH to include uv
-ENV PATH="/root/.cargo/bin:$PATH"
+# Install uv from official image
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 # Copy pyproject.toml for dependency resolution
 COPY pyproject.toml .
