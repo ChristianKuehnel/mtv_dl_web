@@ -24,6 +24,26 @@ The main branch automatically publishes a container image to GitHub Container Re
 
 Replace `<username-or-org>` with the GitHub organization or user that owns this repository.
 
+### Container Signature Verification
+
+Published GHCR images are signed with [cosign](https://github.com/sigstore/cosign) in the release workflow.
+
+Manual verification (before running the image):
+
+```bash
+cosign verify ghcr.io/<owner>/mtv_dl_web:latest \
+  --certificate-identity-regexp "https://github.com/<owner>/mtv_dl_web/.github/workflows/publish-container.yml@refs/heads/main" \
+  --certificate-oidc-issuer "https://token.actions.githubusercontent.com"
+```
+
+Automatic verification when pulling/running:
+
+- Use a policy enforcer that validates cosign signatures before images are admitted or started.
+- Kubernetes: use Sigstore Policy Controller (or Kyverno/Connaisseur with cosign verification) to block unsigned/untrusted images.
+- Local Docker/Podman hosts: run pulls through a policy-enabled registry/proxy (or CI gate) that enforces `cosign verify` before deployment.
+
+This gives you a "fail closed" setup: unsigned images (or images signed by the wrong workflow identity) are rejected automatically.
+
 ```bash
 mkdir -p ./data ./downloads ./config
 
