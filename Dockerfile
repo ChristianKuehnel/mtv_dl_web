@@ -7,7 +7,7 @@ WORKDIR /app
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 # Copy dependency metadata and lock file for deterministic sync
-COPY pyproject.toml uv.lock .
+COPY pyproject.toml uv.lock ./
 
 # Install dependencies with uv
 RUN uv sync --frozen
