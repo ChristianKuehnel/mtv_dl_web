@@ -5,7 +5,7 @@ import logging
 from pathlib import Path
 from typing import Any, Optional
 
-from pydantic.v1 import BaseSettings
+from pydantic.v1 import BaseSettings, Field
 import yaml
 
 logger = logging.getLogger(__name__)
@@ -13,27 +13,28 @@ logger = logging.getLogger(__name__)
 
 class Settings(BaseSettings):
     # Service configuration
-    port: int = 8000
-    host: str = "localhost"
+    port: int = Field(8000, env="mtv_dl_web.port")
+    host: str = Field("localhost", env="mtv_dl_web.host")
 
     # Database configuration
-    database_path: str = os.path.expanduser("~/.mtv_dl_web")
+    database_path: str = Field(os.path.expanduser("~/.mtv_dl_web"), env="mtv_dl_web.database_path")
 
     # Download configuration
-    download_quality: str = "best"
-    target_directory: str = "/downloads"
+    download_quality: str = Field("best", env="mtv_dl_web.download_quality")
+    target_directory: str = Field("/downloads", env="mtv_dl_web.target_directory")
 
     # Feature flags
-    enable_subtitles: bool = True
-    enable_nfo: bool = True
-    enable_mkv_merge: bool = False
+    enable_subtitles: bool = Field(True, env="mtv_dl_web.enable_subtitles")
+    enable_nfo: bool = Field(True, env="mtv_dl_web.enable_nfo")
+    enable_mkv_merge: bool = Field(False, env="mtv_dl_web.enable_mkv_merge")
 
     # Configuration file path
-    config_file: Optional[str] = None
+    config_file: Optional[str] = Field(None, env="mtv_dl_web.config_file")
 
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
+        case_sensitive = True
 
     @classmethod
     def load_from_file(cls, config_file_path: str) -> "Settings":
@@ -67,7 +68,8 @@ class Settings(BaseSettings):
 
 # Load settings
 # Try to load from config file if specified, otherwise use defaults
-config_file_path = os.environ.get("CONFIG_FILE", None)
+bootstrap_settings = Settings()
+config_file_path = bootstrap_settings.config_file
 if config_file_path:
     try:
         settings = Settings.load_from_file(config_file_path)

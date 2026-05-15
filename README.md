@@ -176,7 +176,7 @@ The application supports configuration through environment variables and a YAML 
 | Parameter in implementation | Key in `config.yaml` | Environment variable | Default | Semantics |
 | --------------------------- | -------------------- | -------------------- | ------- | --------- |
 | `port` | `port` | `mtv_dl_web.port` | `8000` | HTTP port the FastAPI service listens on. |
-| `host` | `host` | `mtv_dl_web.host` | `localhost` | Network interface address the service binds to. |
+| `host` | `host` | `mtv_dl_web.host` | `localhost` | Network interface address the FastAPI service binds to. |
 | `database_path` | `database_path` | `mtv_dl_web.database_path` | `~/.mtv_dl_web` | Path for mtv_dl data storage. If it is a directory, files like `filmliste.sqlite` and `history.sqlite` are created there; if it is a file path, that file is used for the film list and `history.sqlite` is placed in its parent directory. |
 | `download_quality` | `download_quality` | `mtv_dl_web.download_quality` | `best` | Default quality profile passed to downloads. |
 | `target_directory` | `target_directory` | `mtv_dl_web.target_directory` | `/downloads` | Default output directory for downloaded media. |

@@ -19,7 +19,7 @@ def test_env_overrides_yaml_values(monkeypatch: pytest.MonkeyPatch, tmp_path: Pa
     config_file = tmp_path / "config.yaml"
     config_file.write_text("port: 7000\ntarget_directory: /tmp/from-file\n", encoding="utf-8")
 
-    monkeypatch.setenv("PORT", "9001")
+    monkeypatch.setenv("mtv_dl_web.port", "9001")
 
     loaded = Settings.load_from_file(str(config_file))
 
@@ -100,15 +100,15 @@ def test_every_setting_uses_env_over_file(monkeypatch: pytest.MonkeyPatch, tmp_p
         encoding="utf-8",
     )
 
-    monkeypatch.setenv("PORT", "9001")
-    monkeypatch.setenv("HOST", "0.0.0.0")
-    monkeypatch.setenv("DATABASE_PATH", "/env/db")
-    monkeypatch.setenv("DOWNLOAD_QUALITY", "best")
-    monkeypatch.setenv("TARGET_DIRECTORY", "/env/downloads")
-    monkeypatch.setenv("ENABLE_SUBTITLES", "true")
-    monkeypatch.setenv("ENABLE_NFO", "true")
-    monkeypatch.setenv("ENABLE_MKV_MERGE", "false")
-    monkeypatch.setenv("CONFIG_FILE", "/env/config.yaml")
+    monkeypatch.setenv("mtv_dl_web.port", "9001")
+    monkeypatch.setenv("mtv_dl_web.host", "0.0.0.0")
+    monkeypatch.setenv("mtv_dl_web.database_path", "/env/db")
+    monkeypatch.setenv("mtv_dl_web.download_quality", "best")
+    monkeypatch.setenv("mtv_dl_web.target_directory", "/env/downloads")
+    monkeypatch.setenv("mtv_dl_web.enable_subtitles", "true")
+    monkeypatch.setenv("mtv_dl_web.enable_nfo", "true")
+    monkeypatch.setenv("mtv_dl_web.enable_mkv_merge", "false")
+    monkeypatch.setenv("mtv_dl_web.config_file", "/env/config.yaml")
 
     loaded = Settings.load_from_file(str(config_file))
 
@@ -128,7 +128,7 @@ def test_invalid_env_type_raises_validation_error(monkeypatch: pytest.MonkeyPatc
     config_file = tmp_path / "config.yaml"
     config_file.write_text("port: 7000\n", encoding="utf-8")
 
-    monkeypatch.setenv("PORT", "not-an-int")
+    monkeypatch.setenv("mtv_dl_web.port", "not-an-int")
 
     with pytest.raises(ValueError, match="port"):
         Settings.load_from_file(str(config_file))
