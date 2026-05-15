@@ -50,8 +50,5 @@ if [ "$("$RUNTIME" inspect -f '{{.State.Running}}' "$CONTAINER_NAME" 2>/dev/null
     exit 1
 fi
 
-echo "Container is running. Press CTRL-C to stop and remove it."
-
-while true; do
-    sleep 1
-done
+echo "Container is running. Streaming logs (CTRL-C to stop and remove container)."
+"$RUNTIME" logs -f "$CONTAINER_NAME"
