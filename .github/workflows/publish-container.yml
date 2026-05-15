@@ -55,4 +55,5 @@ jobs:
         env:
           COSIGN_EXPERIMENTAL: "true"
         run: |
-          cosign sign --yes ghcr.io/${{ github.repository }}@${{ steps.build-and-push.outputs.digest }}
+          IMAGE_REPO="ghcr.io/${GITHUB_REPOSITORY,,}"
+          cosign sign --yes "${IMAGE_REPO}@${{ steps.build-and-push.outputs.digest }}"
