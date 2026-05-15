@@ -9,27 +9,32 @@ from pydantic.v1 import BaseSettings, Field
 import yaml
 
 logger = logging.getLogger(__name__)
+ENV_PREFIX = "mtv_dl_web"
+
+
+def env_key(name: str) -> str:
+    return f"{ENV_PREFIX}.{name}"
 
 
 class Settings(BaseSettings):
     # Service configuration
-    port: int = Field(8000, env="mtv_dl_web.port")
-    host: str = Field("localhost", env="mtv_dl_web.host")
+    port: int = Field(8000, env=env_key("port"))
+    host: str = Field("localhost", env=env_key("host"))
 
     # Database configuration
-    database_path: str = Field(os.path.expanduser("~/.mtv_dl_web"), env="mtv_dl_web.database_path")
+    database_path: str = Field(os.path.expanduser("~/.mtv_dl_web"), env=env_key("database_path"))
 
     # Download configuration
-    download_quality: str = Field("best", env="mtv_dl_web.download_quality")
-    target_directory: str = Field("/downloads", env="mtv_dl_web.target_directory")
+    download_quality: str = Field("best", env=env_key("download_quality"))
+    target_directory: str = Field("/downloads", env=env_key("target_directory"))
 
     # Feature flags
-    enable_subtitles: bool = Field(True, env="mtv_dl_web.enable_subtitles")
-    enable_nfo: bool = Field(True, env="mtv_dl_web.enable_nfo")
-    enable_mkv_merge: bool = Field(False, env="mtv_dl_web.enable_mkv_merge")
+    enable_subtitles: bool = Field(True, env=env_key("enable_subtitles"))
+    enable_nfo: bool = Field(True, env=env_key("enable_nfo"))
+    enable_mkv_merge: bool = Field(False, env=env_key("enable_mkv_merge"))
 
     # Configuration file path
-    config_file: Optional[str] = Field(None, env="mtv_dl_web.config_file")
+    config_file: Optional[str] = Field(None, env=env_key("config_file"))
 
     class Config:
         env_file = ".env"
