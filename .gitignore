@@ -9,7 +9,3 @@ __pycache__
 # BMad personal config
 _bmad/config.user.toml
 _bmad/custom/config.user.toml
-
-uv.lock
-
-uv.lock
