@@ -6,14 +6,17 @@ WORKDIR /app
 # Install uv from official image
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
-# Copy pyproject.toml for dependency resolution
-COPY pyproject.toml .
+# Copy dependency metadata and lock file for deterministic sync
+COPY pyproject.toml uv.lock ./
 
 # Install dependencies with uv
 RUN uv sync --frozen
 
 # Copy application code
 COPY . .
+
+# Create a non-root user
+RUN useradd --create-home --shell /bin/bash appuser
 
 # Create directories for mounted volumes
 RUN mkdir -p /data /downloads /config && \
@@ -22,7 +25,6 @@ RUN mkdir -p /data /downloads /config && \
 # Expose port
 EXPOSE 8000
 
-# Create a non-root user
 USER appuser
 
 # Run the application with proper module path
