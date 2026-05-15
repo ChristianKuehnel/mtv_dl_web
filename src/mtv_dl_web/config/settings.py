@@ -55,11 +55,14 @@ class Settings(BaseSettings):
             raise ValueError(f"Unknown configuration keys: {', '.join(unknown_keys)}")
 
         settings = cls()
-        for key, value in config_data.items():
-            if key.upper() not in os.environ:
-                setattr(settings, key, value)
+        merged_values = settings.dict()
+        env_override_fields = settings.__fields_set__
 
-        return settings
+        for key, value in config_data.items():
+            if key not in env_override_fields:
+                merged_values[key] = value
+
+        return cls(**merged_values)
 
 
 # Load settings
