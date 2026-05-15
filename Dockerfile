@@ -11,14 +11,17 @@ RUN curl -LsSf https://astral.sh/uv/install.sh -o /tmp/install-uv.sh && \
 # Set PATH to include uv
 ENV PATH="/root/.cargo/bin:$PATH"
 
-# Copy pyproject.toml for dependency resolution
-COPY pyproject.toml .
+# Copy dependency metadata and lock file for deterministic sync
+COPY pyproject.toml uv.lock .
 
 # Install dependencies with uv
 RUN uv sync --frozen
 
 # Copy application code
 COPY . .
+
+# Create a non-root user
+RUN useradd --create-home --shell /bin/bash appuser
 
 # Create directories for mounted volumes
 RUN mkdir -p /data /downloads /config && \
@@ -27,7 +30,6 @@ RUN mkdir -p /data /downloads /config && \
 # Expose port
 EXPOSE 8000
 
-# Create a non-root user
 USER appuser
 
 # Run the application with proper module path
