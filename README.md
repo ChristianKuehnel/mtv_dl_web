@@ -149,17 +149,25 @@ Supported fields include `description`, `region`, `size`, `channel`, `topic`, `t
 
 ## Configuration
 
-### Environment Variables
+### Supported Parameters
 
-| Variable       | Default         | Description        |
-| -------------- | --------------- | ------------------ |
-| `PORT`         | `8000`          | Service port       |
-| `DATABASE_DIR` | `~/.mtv_dl_web` | Database directory |
-| `LOG_LEVEL`    | `INFO`          | Logging level      |
+The application supports configuration through environment variables and a YAML config file (typically `/config/config.yaml` in Docker).
 
-### Configuration File (config.yaml)
+| Parameter in implementation | Key in `config.yaml` | Environment variable | Default | Semantics |
+| --------------------------- | -------------------- | -------------------- | ------- | --------- |
+| `port` | `port` | `PORT` | `8000` | HTTP port the FastAPI service listens on. |
+| `host` | `host` | `HOST` | `0.0.0.0` | Network interface address the service binds to. |
+| `database_path` | `database_path` | `DATABASE_PATH` | `~/.mtv_dl_web` | Path for mtv_dl data storage. If it is a directory, files like `filmliste.sqlite` and `history.sqlite` are created there; if it is a file path, that file is used for the film list and `history.sqlite` is placed in its parent directory. |
+| `download_quality` | `download_quality` | `DOWNLOAD_QUALITY` | `best` | Default quality profile passed to downloads. |
+| `target_directory` | `target_directory` | `TARGET_DIRECTORY` | `/downloads` | Default output directory for downloaded media. |
+| `enable_subtitles` | `enable_subtitles` | `ENABLE_SUBTITLES` | `true` | Default for subtitle download in the UI/API. |
+| `enable_nfo` | `enable_nfo` | `ENABLE_NFO` | `true` | Default for writing NFO metadata in the UI/API. |
+| `enable_mkv_merge` | `enable_mkv_merge` | `ENABLE_MKV_MERGE` | `false` | Default for merging outputs to MKV in the UI/API. |
+| `config_file` | `config_file` | `CONFIG_FILE` | `null` | Optional path to a YAML config file loaded at startup. |
+| `(logging level)` | n/a | `LOG_LEVEL` | `INFO` | Python logging level for application logs (`DEBUG`, `INFO`, `WARNING`, etc.). |
+| `(skip request-time DB update check)` | n/a | `MTV_DL_WEB_SKIP_DB_UPDATE` | unset | When set to `1`, skips request-time database update check code paths. |
 
-The application also supports configuration through a `config.yaml` file located in the config directory (mounted at `/config` in Docker). This file allows for more detailed configuration of the service:
+### Configuration File (`config.yaml`) Example
 
 ```yaml
 port: 8000
@@ -179,7 +187,7 @@ Configuration values are loaded in the following priority order (highest to lowe
 2. `config.yaml` file values
 3. Default values
 
-Values in `config.yaml` should be set to the directory path where database files are stored (not the full file paths). The mtv_dl package will determine the appropriate file names internally.
+`database_path` supports both a directory path and a file path, as described in the table above.
 
 ## API Endpoints
 
