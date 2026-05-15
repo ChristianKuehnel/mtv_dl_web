@@ -60,7 +60,7 @@ class Settings(BaseSettings):
         if unknown_keys:
             raise ValueError(f"Unknown configuration keys: {', '.join(unknown_keys)}")
 
-        settings = cls()
+        settings = cls.parse_obj({})
         merged_values = settings.dict()
         env_override_fields = settings.__fields_set__
 
@@ -68,12 +68,12 @@ class Settings(BaseSettings):
             if key not in env_override_fields:
                 merged_values[key] = value
 
-        return cls(**merged_values)
+        return cls.parse_obj(merged_values)
 
 
 # Load settings
 # Try to load from config file if specified, otherwise use defaults
-bootstrap_settings = Settings()
+bootstrap_settings = Settings.parse_obj({})
 config_file_path = bootstrap_settings.config_file
 if config_file_path:
     try:
@@ -82,4 +82,4 @@ if config_file_path:
         logger.error("Failed to load configuration from %s: %s", config_file_path, e)
         raise SystemExit(f"Failed to load configuration from {config_file_path}: {e}")
 else:
-    settings = Settings()
+    settings = Settings.parse_obj({})
