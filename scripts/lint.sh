@@ -12,12 +12,16 @@ if [ ! -d ".venv" ]; then
     exit 1
 fi
 
+# shellcheck source=/dev/null
 source .venv/bin/activate
 
 paths=("src")
 if [ -d "tests" ]; then
     paths+=("tests")
 fi
+
+echo "Running ShellCheck..."
+shellcheck scripts/*.sh
 
 echo "Running Black..."
 BLACK_NUM_WORKERS=1 python -m black --check "${paths[@]}"

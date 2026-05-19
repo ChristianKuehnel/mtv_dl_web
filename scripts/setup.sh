@@ -12,6 +12,11 @@ cd "$SCRIPT_DIR/.."
 # Exit on any error
 set -e
 
+if ! command -v shellcheck >/dev/null 2>&1; then
+    echo "ShellCheck is not installed. Please install shellcheck and run this script again."
+    exit 1
+fi
+
 if [ ! -d ".venv" ]; then
     echo "Creating virtual environment..."
     python3 -m venv .venv
@@ -21,6 +26,7 @@ fi
 
 # Activate virtual environment
 echo "Activating virtual environment..."
+# shellcheck source=/dev/null
 source .venv/bin/activate
 
 # Upgrade pip
