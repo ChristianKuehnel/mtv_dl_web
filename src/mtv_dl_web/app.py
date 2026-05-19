@@ -1,7 +1,7 @@
 from pathlib import Path
 import logging
 
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, send_from_directory
 
 from . import config
 from .wrapper import Wrapper
@@ -28,9 +28,9 @@ def create_app():
     app.wrapper = Wrapper(config.mtv_dl_database_dir)
 
     @app.route("/")
-    def hello_world():
+    def index():
         logger.debug("Handling request for /")
-        return "Hello, World!"
+        return send_from_directory(app.static_folder, "index.html")
 
     @app.route("/health")
     def health():
