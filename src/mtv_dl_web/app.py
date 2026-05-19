@@ -32,6 +32,10 @@ def create_app():
         logger.debug("Handling request for /")
         return "Hello, World!"
 
+    @app.route("/health")
+    def health():
+        return jsonify({"status": "ok"})
+
     @app.route("/list")
     def list_items():
         logger.info(
