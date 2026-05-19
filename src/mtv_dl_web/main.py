@@ -17,7 +17,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from threading import Lock
 from time import perf_counter
-from typing import Any
+from typing import Any, Protocol, cast
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from fastapi import BackgroundTasks, FastAPI, HTTPException
@@ -158,6 +158,14 @@ class QueueItemResponse(BaseModel):
 
 class QueueListResponse(BaseModel):
     items: list[QueueItemResponse]
+
+
+class DatabaseProtocol(Protocol):
+    connection: Any
+
+    def filtered(self, filters: list[str]) -> Any: ...
+
+    def update_if_old(self) -> None: ...
 
 
 # Supported filter operators and fields for validation
@@ -316,8 +324,16 @@ else:
     legacy_database_file = DATABASE_DIR / "filmliste.sqlite"
     legacy_history_file = DATABASE_DIR / "history.sqlite"
 
-    DATABASE_FILE = legacy_database_file if legacy_database_file.exists() and not mtv_dl_database_file.exists() else mtv_dl_database_file
-    HISTORY_FILE = legacy_history_file if legacy_history_file.exists() and not mtv_dl_history_file.exists() else mtv_dl_history_file
+    DATABASE_FILE = (
+        legacy_database_file
+        if legacy_database_file.exists() and not mtv_dl_database_file.exists()
+        else mtv_dl_database_file
+    )
+    HISTORY_FILE = (
+        legacy_history_file
+        if legacy_history_file.exists() and not mtv_dl_history_file.exists()
+        else mtv_dl_history_file
+    )
 
 
 def set_database_update_in_progress(is_in_progress: bool) -> None:
@@ -348,7 +364,7 @@ def check_database_connectivity() -> None:
 
 def get_db_connection(
     check_for_refresh: bool = True, background_tasks: BackgroundTasks | None = None, is_refresh_operation: bool = False
-) -> Database:
+) -> DatabaseProtocol:
     """
     Create a new database connection for each request to avoid thread-safety issues
 
@@ -368,7 +384,7 @@ def get_db_connection(
             # The scheduler will handle refreshes
             pass  # Skip refresh trigger during regular request handling
         logger.debug("Database connection created successfully")
-        return db
+        return cast(DatabaseProtocol, db)
     except Exception as e:
         logger.error(f"Failed to create database connection: {e}")
         raise
@@ -402,7 +418,7 @@ def _schedule_refresh_job(background_tasks: BackgroundTasks | None, trigger_sour
         return False
 
 
-def check_and_refresh_database_if_needed(db: Database, background_tasks: BackgroundTasks | None = None) -> None:
+def check_and_refresh_database_if_needed(db: DatabaseProtocol, background_tasks: BackgroundTasks | None = None) -> None:
     """
     Check if database needs refresh and trigger it in background if needed.
     This function should not be called from search/download request paths.
