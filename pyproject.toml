@@ -11,6 +11,7 @@ dependencies = [
     "mtv_dl==0.28.0",
     "PyYAML==6.0.3",
     "tzdata",
+    "waitress==3.0.2",
 ]
 
 [project.optional-dependencies]
@@ -19,6 +20,7 @@ dev = [
     "mypy",
     "pytest",
     "types-PyYAML",
+    "types-waitress",
 ]
 
 [tool.setuptools.packages.find]

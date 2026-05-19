@@ -17,4 +17,4 @@ RUN mkdir -p /config /downloads /database
 VOLUME ["/config", "/downloads", "/database"]
 EXPOSE 8071
 
-CMD ["python", "-c", "from mtv_dl_web.app import create_app; from mtv_dl_web import config; create_app().run(host=config.host, port=config.port)"]
+CMD ["python", "-m", "mtv_dl_web.server"]
