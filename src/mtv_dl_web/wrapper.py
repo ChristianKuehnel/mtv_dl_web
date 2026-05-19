@@ -90,3 +90,21 @@ class Wrapper:
             self.call_binary(["-r", "0", "list", "title='some random text'"])
             is not None
         )
+
+    def download(self, show_hash: str):
+        """
+        Download an item from mtv_dl.
+
+        Calls mtv_dl with a 72-hour refresh window and the provided show hash.
+
+        Args:
+            show_hash: Show hash to download.
+
+        Returns:
+            bool: True when mtv_dl completed successfully, otherwise False
+        """
+        logger.info("Running mtv_dl download command")
+        return (
+            self.call_binary(["-r", "72", "download", f"hash={show_hash}"])
+            is not None
+        )

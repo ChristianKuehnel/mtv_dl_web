@@ -55,6 +55,24 @@ def create_app():
         response.headers["Content-Type"] = "application/json"
         return response, status_code
 
+    @app.route("/download")
+    def download():
+        logger.info(
+            "Handling request for /download from %s",
+            request.headers.get("X-Forwarded-For", request.remote_addr),
+        )
+        show_hash = request.args.get("hash")
+        if not show_hash:
+            response = jsonify({"error": "hash is required"})
+            response.headers["Content-Type"] = "application/json"
+            return response, 400
+
+        success = app.wrapper.download(show_hash)
+        status_code = 200 if success else 500
+        response = jsonify({"success": success})
+        response.headers["Content-Type"] = "application/json"
+        return response, status_code
+
     return app
 
 
