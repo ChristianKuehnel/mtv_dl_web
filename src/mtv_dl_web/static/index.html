@@ -31,15 +31,85 @@
       }
 
       h1 {
-        margin: 0 0 1.25rem;
+        margin: 0;
         font-size: 2rem;
         line-height: 1.15;
+      }
+
+      .page-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 1rem;
+        margin: 0 0 1.25rem;
       }
 
       form {
         display: flex;
         gap: 0.75rem;
         margin-bottom: 1rem;
+      }
+
+      .health {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 0.5rem 1rem;
+        min-height: 1.75rem;
+        margin: 0.15rem 0 0;
+        color: #4e5969;
+        font-size: 0.95rem;
+        text-align: right;
+      }
+
+      .health-state {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        font-weight: 700;
+      }
+
+      .health-state::before {
+        content: "";
+        width: 0.6rem;
+        height: 0.6rem;
+        border-radius: 999px;
+        background: #868e96;
+      }
+
+      .health-state[data-state="ok"] {
+        color: #2b8a3e;
+      }
+
+      .health-state[data-state="ok"]::before {
+        background: #2f9e44;
+      }
+
+      .health-state[data-state="error"] {
+        color: #c92a2a;
+      }
+
+      .health-state[data-state="error"]::before {
+        background: #e03131;
+      }
+
+      .db-age {
+        color: #5d6675;
+      }
+
+      .update-db-button {
+        padding: 0.35rem 0.65rem;
+        border-color: #687385;
+        background: #fff;
+        color: #2f3744;
+        font-size: 0.85rem;
+        font-weight: 650;
+      }
+
+      .update-db-button:hover:not(:disabled) {
+        border-color: #1864ab;
+        color: #1864ab;
       }
 
       input {
@@ -125,8 +195,23 @@
           flex-direction: column;
         }
 
+        .page-header {
+          flex-direction: column;
+          gap: 0.65rem;
+        }
+
+        .health {
+          justify-content: flex-start;
+          margin-top: 0;
+          text-align: left;
+        }
+
         button {
           width: 100%;
+        }
+
+        .health .update-db-button {
+          width: auto;
         }
       }
 
@@ -146,7 +231,34 @@
           background: #1971c2;
         }
 
+        .update-db-button {
+          border-color: #6f7c91;
+          background: #181d26;
+          color: #f5f7fb;
+        }
+
+        .update-db-button:hover:not(:disabled) {
+          border-color: #74c0fc;
+          color: #74c0fc;
+        }
+
         .status {
+          color: #bac2d0;
+        }
+
+        .health {
+          color: #d7deea;
+        }
+
+        .health-state[data-state="ok"] {
+          color: #69db7c;
+        }
+
+        .health-state[data-state="error"] {
+          color: #ff8787;
+        }
+
+        .db-age {
           color: #bac2d0;
         }
 
@@ -169,7 +281,17 @@
   </head>
   <body>
     <main>
-      <h1>MTV Downloader</h1>
+      <header class="page-header">
+        <h1>MTV Downloader</h1>
+
+        <div class="health" aria-live="polite">
+          <span id="health-status" class="health-state">Checking</span>
+          <span id="db-age" class="db-age"></span>
+          <button id="update-db-button" class="update-db-button" type="button">
+            Update database
+          </button>
+        </div>
+      </header>
 
       <form id="search-form">
         <input
@@ -197,9 +319,13 @@
       const form = document.querySelector("#search-form");
       const input = document.querySelector("#search-query");
       const button = document.querySelector("#search-button");
+      const healthStatusElement = document.querySelector("#health-status");
+      const dbAgeElement = document.querySelector("#db-age");
+      const updateDbButton = document.querySelector("#update-db-button");
       const statusElement = document.querySelector("#status");
       const tableHead = document.querySelector("#results-head");
       const tableBody = document.querySelector("#results-body");
+      let lastDbUpdate = null;
       const resultColumns = [
         "hash",
         "channel",
@@ -273,6 +399,101 @@
         return String(value);
       }
 
+      function pluralize(value, unit) {
+        return `${value} ${unit}${value === 1 ? "" : "s"}`;
+      }
+
+      function formatRelativeAge(date) {
+        const seconds = Math.max(0, Math.floor((Date.now() - date.getTime()) / 1000));
+        const minutes = Math.floor(seconds / 60);
+        const hours = Math.floor(minutes / 60);
+        const days = Math.floor(hours / 24);
+
+        if (days > 0) {
+          return `${pluralize(days, "day")} ago`;
+        }
+
+        if (hours > 0) {
+          const remainingMinutes = minutes % 60;
+          if (remainingMinutes > 0) {
+            return `${pluralize(hours, "hour")} ${pluralize(remainingMinutes, "minute")} ago`;
+          }
+
+          return `${pluralize(hours, "hour")} ago`;
+        }
+
+        if (minutes > 0) {
+          return `${pluralize(minutes, "minute")} ago`;
+        }
+
+        return "just now";
+      }
+
+      function renderDatabaseAge() {
+        if (!lastDbUpdate) {
+          dbAgeElement.textContent = "";
+          dbAgeElement.removeAttribute("title");
+          return;
+        }
+
+        dbAgeElement.textContent = `Database updated ${formatRelativeAge(lastDbUpdate)}`;
+        dbAgeElement.title = new Intl.DateTimeFormat(undefined, {
+          dateStyle: "medium",
+          timeStyle: "short",
+        }).format(lastDbUpdate);
+      }
+
+      async function loadHealth() {
+        try {
+          const response = await fetch("/health");
+          const data = await response.json();
+
+          if (!response.ok) {
+            throw new Error(data.error || "Health check failed");
+          }
+
+          lastDbUpdate = new Date(data.last_db_update);
+          if (Number.isNaN(lastDbUpdate.getTime())) {
+            throw new Error("Invalid database update timestamp");
+          }
+
+          healthStatusElement.textContent = "OK";
+          healthStatusElement.dataset.state = "ok";
+          renderDatabaseAge();
+        } catch (error) {
+          lastDbUpdate = null;
+          healthStatusElement.textContent = "Error";
+          healthStatusElement.dataset.state = "error";
+          dbAgeElement.textContent = error.message;
+          dbAgeElement.removeAttribute("title");
+        }
+      }
+
+      async function refreshDatabase() {
+        updateDbButton.disabled = true;
+        updateDbButton.textContent = "Updating";
+        dbAgeElement.textContent = "Updating database";
+
+        try {
+          const response = await fetch("/refresh_database");
+          const data = await response.json();
+
+          if (!response.ok || !data.success) {
+            throw new Error(data.error || "Database update failed");
+          }
+
+          await loadHealth();
+        } catch (error) {
+          healthStatusElement.textContent = "Error";
+          healthStatusElement.dataset.state = "error";
+          dbAgeElement.textContent = error.message;
+          dbAgeElement.removeAttribute("title");
+        } finally {
+          updateDbButton.disabled = false;
+          updateDbButton.textContent = "Update database";
+        }
+      }
+
       function renderRows(data) {
         tableHead.replaceChildren();
         tableBody.replaceChildren();
@@ -337,6 +558,9 @@
       }
 
       form.addEventListener("submit", search);
+      updateDbButton.addEventListener("click", refreshDatabase);
+      loadHealth();
+      setInterval(renderDatabaseAge, 60 * 1000);
     </script>
   </body>
 </html>

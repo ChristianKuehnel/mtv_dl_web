@@ -1,6 +1,8 @@
 import json
 import logging
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
+import re
 import subprocess
 import sys
 from typing import Optional, Sequence
@@ -101,6 +103,24 @@ def normalize_filter_queries(filter_queries: Sequence[str]) -> list[str]:
     return [normalize_filter_query(filter_query) for filter_query in filter_queries]
 
 
+def parse_database_age(age: str) -> timedelta:
+    """Parse the database age format emitted by ``mtv_dl`` debug logs."""
+    match = re.fullmatch(
+        r"(?:(?P<days>\d+) days?, )?"
+        r"(?P<hours>\d+):(?P<minutes>\d{2}):(?P<seconds>\d{2})",
+        age,
+    )
+    if match is None:
+        raise ValueError(f"Invalid mtv_dl database age: {age!r}")
+
+    return timedelta(
+        days=int(match.group("days") or 0),
+        hours=int(match.group("hours")),
+        minutes=int(match.group("minutes")),
+        seconds=int(match.group("seconds")),
+    )
+
+
 class Wrapper:
     """A wrapper class for MTV downloader functionality."""
 
@@ -192,6 +212,37 @@ class Wrapper:
             self.call_binary(["-r", "0", "list", "title='some random text'"])
             is not None
         )
+
+    def database_age(self) -> datetime:
+        """
+        Return when the mtv_dl database was last updated.
+
+        mtv_dl does not expose a structured status command, but verbose output
+        includes the same database-age value used for refresh decisions.
+        """
+        logger.info("Running mtv_dl database age probe")
+        result = self.call_binary(
+            [
+                "--verbose",
+                "--no-bar",
+                "--refresh-after",
+                "999999",
+                "dump",
+                "title=__mtv_dl_web_age_probe__",
+            ]
+        )
+
+        if result is None:
+            raise RuntimeError("mtv_dl database age probe failed")
+
+        match = re.search(r"Database age is ([^.]+)\.", result.stdout)
+        if match is None:
+            raise RuntimeError("Could not parse mtv_dl database age")
+
+        age = parse_database_age(match.group(1).strip())
+        now = datetime.now(tz=timezone.utc).replace(second=0, microsecond=0)
+        return now - age
+
 
     def download(self, show_hash: str):
         """

@@ -38,7 +38,19 @@ def create_app():
 
     @app.route("/health")
     def health():
-        return jsonify({"status": "ok"})
+        try:
+            last_db_update = app.wrapper.database_age()
+        except RuntimeError as e:
+            response = jsonify({"error": str(e), "status": "error"})
+            response.headers["Content-Type"] = "application/json"
+            return response, 500
+
+        return jsonify(
+            {
+                "last_db_update": last_db_update.isoformat(),
+                "status": "ok",
+            }
+        )
 
     @app.route("/list")
     def list_items():
