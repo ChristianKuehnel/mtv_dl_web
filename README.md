@@ -8,6 +8,8 @@ This must be run behind some reverse proxy. Don't put it blindly in the public i
 
 ## TODOs
 
+List of things I want to implement:
+
 - For the MVP:
     - [x] Create nice web ui for searching
     - [x] Show database age on web ui, add a "update" button
@@ -23,3 +25,5 @@ This must be run behind some reverse proxy. Don't put it blindly in the public i
     * [ ] allow user to store filter queries
     * [ ] when updating the database, run those filter queries
     * [ ] notify the user about new downloads
+* some day
+    * [ ] support a different output path when downloading series

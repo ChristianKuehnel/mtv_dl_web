@@ -27,9 +27,10 @@ def create_app():
     Path(config.mtv_dl_database_dir).mkdir(parents=True, exist_ok=True)
     logger.info("Starting MTV Downloader Web Application")
     logger.info("Using mtv_dl database directory: %s", config.mtv_dl_database_dir)
+    logger.info("Using mtv_dl download path: %s", config.download_path)
 
     app = Flask(__name__)
-    app.wrapper = Wrapper(config.mtv_dl_database_dir)
+    app.wrapper = Wrapper(config.mtv_dl_database_dir, config.download_path)
 
     @app.route("/")
     def index():

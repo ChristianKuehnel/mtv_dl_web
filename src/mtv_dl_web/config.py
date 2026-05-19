@@ -53,6 +53,7 @@ def _load_config(path: Path = CONFIG_PATH) -> dict[str, Any]:
 config = _load_config()
 
 mtv_dl_database_dir: str = str(config["mtv_dl_database_dir"])
+download_path: str = str(config["download_path"])
 host: str = str(config["host"])
 port: int = int(config["port"])
 logging_level: str = str(config["logging_level"])
@@ -61,6 +62,7 @@ logging_level: str = str(config["logging_level"])
 __all__ = [
     "CONFIG_PATH",
     "config",
+    "download_path",
     "host",
     "logging_level",
     "mtv_dl_database_dir",

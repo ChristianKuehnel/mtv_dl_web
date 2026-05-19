@@ -10,6 +10,7 @@ from typing import Optional, Sequence
 
 logger = logging.getLogger(__name__)
 
+DEFAULT_REFRESH_AFTER_HOURS = "9999"
 REGEX_FILTER_FIELDS = {
     "description",
     "start",
@@ -124,14 +125,18 @@ def parse_database_age(age: str) -> timedelta:
 class Wrapper:
     """A wrapper class for MTV downloader functionality."""
 
-    def __init__(self, home_dir: Optional[str] = None):
+    def __init__(
+        self, home_dir: Optional[str] = None, download_path: Optional[str] = None
+    ):
         """
         Initialize the Wrapper with an optional home directory.
 
         Args:
             home_dir (str): Path to the home directory for mtv_dl configuration
+            download_path (str): Target path expression for downloaded files
         """
         self.home_dir = home_dir
+        self.download_path = download_path
 
     def call_binary(self, args: Sequence[str]) -> Optional[subprocess.CompletedProcess]:
         """
@@ -179,7 +184,13 @@ class Wrapper:
         logger.info("Running mtv_dl dump command")
         logger.debug("mtv_dl list filter queries: %s", filter_queries)
         result = self.call_binary(
-            ["-r", "72", "--no-bar", "dump", *normalize_filter_queries(filter_queries)]
+            [
+                "-r",
+                DEFAULT_REFRESH_AFTER_HOURS,
+                "--no-bar",
+                "dump",
+                *normalize_filter_queries(filter_queries),
+            ]
         )
 
         if result is None:
@@ -243,7 +254,6 @@ class Wrapper:
         now = datetime.now(tz=timezone.utc).replace(second=0, microsecond=0)
         return now - age
 
-
     def download(self, show_hash: str):
         """
         Download an item from mtv_dl.
@@ -257,6 +267,8 @@ class Wrapper:
             bool: True when mtv_dl completed successfully, otherwise False
         """
         logger.info("Running mtv_dl download command")
-        return (
-            self.call_binary(["-r", "72", "download", f"hash={show_hash}"]) is not None
-        )
+        args = ["-r", DEFAULT_REFRESH_AFTER_HOURS, "download"]
+        if self.download_path:
+            args.extend(["--target", self.download_path])
+        args.append(f"hash={show_hash}")
+        return self.call_binary(args) is not None
