@@ -24,3 +24,6 @@ jobs:
 
       - name: Run lint
         run: scripts/lint.sh
+
+      - name: Build container image
+        run: scripts/build_container_image.sh
