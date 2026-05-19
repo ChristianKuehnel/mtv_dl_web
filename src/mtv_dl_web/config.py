@@ -50,10 +50,31 @@ def _load_config(path: Path = CONFIG_PATH) -> dict[str, Any]:
     return config
 
 
+def _normalize_base_dir(base_dir: str) -> str:
+    base_dir = base_dir.rstrip("/\\")
+
+    if not base_dir:
+        return ""
+
+    return os.path.abspath(os.path.expanduser(base_dir))
+
+
+def _join_download_path(base_dir: str, target_dir: str) -> str:
+    target_dir = target_dir.lstrip("/\\")
+
+    if not target_dir:
+        return base_dir
+
+    return os.path.join(base_dir, target_dir)
+
+
 config = _load_config()
 
 mtv_dl_database_dir: str = str(config["mtv_dl_database_dir"])
-download_path: str = str(config["download_path"])
+download_basedir: str = str(config["download_basedir"])
+mtv_dl_targetdir: str = str(config["mtv_dl_targetdir"])
+base_dir: str = _normalize_base_dir(download_basedir)
+download_path: str = _join_download_path(base_dir, mtv_dl_targetdir)
 host: str = str(config["host"])
 port: int = int(config["port"])
 logging_level: str = str(config["logging_level"])
@@ -61,10 +82,13 @@ logging_level: str = str(config["logging_level"])
 
 __all__ = [
     "CONFIG_PATH",
+    "base_dir",
     "config",
+    "download_basedir",
     "download_path",
     "host",
     "logging_level",
     "mtv_dl_database_dir",
+    "mtv_dl_targetdir",
     "port",
 ]

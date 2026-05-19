@@ -25,8 +25,10 @@ def setup_logging() -> None:
 def create_app():
     setup_logging()
     Path(config.mtv_dl_database_dir).mkdir(parents=True, exist_ok=True)
+    Path(config.base_dir).mkdir(parents=True, exist_ok=True)
     logger.info("Starting MTV Downloader Web Application")
     logger.info("Using mtv_dl database directory: %s", config.mtv_dl_database_dir)
+    logger.info("Using download base directory: %s", config.base_dir)
     logger.info("Using mtv_dl download path: %s", config.download_path)
 
     app = Flask(__name__)

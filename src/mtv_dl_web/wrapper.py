@@ -138,18 +138,23 @@ class Wrapper:
         self.home_dir = home_dir
         self.download_path = download_path
 
-    def call_binary(self, args: Sequence[str]) -> Optional[subprocess.CompletedProcess]:
+    def call_binary(
+        self,
+        args: Sequence[str],
+        refresh_after: str = DEFAULT_REFRESH_AFTER_HOURS,
+    ) -> Optional[subprocess.CompletedProcess]:
         """
         Call the mtv_dl binary with shared wrapper options.
 
         Args:
             args: Arguments to pass to mtv_dl after any shared options.
+            refresh_after: Value for mtv_dl's --refresh-after option.
 
         Returns:
             subprocess.CompletedProcess: The completed process on success
             None: If mtv_dl fails or is not available
         """
-        cmd = [mtv_dl_binary(), *args]
+        cmd = [mtv_dl_binary(), "--refresh-after", refresh_after, "--no-bar", *args]
 
         if self.home_dir:
             cmd.insert(1, "--dir")
@@ -185,10 +190,8 @@ class Wrapper:
         logger.debug("mtv_dl list filter queries: %s", filter_queries)
         result = self.call_binary(
             [
-                "-r",
-                DEFAULT_REFRESH_AFTER_HOURS,
-                "--no-bar",
                 "dump",
+                "--include-future",
                 *normalize_filter_queries(filter_queries),
             ]
         )
@@ -220,7 +223,10 @@ class Wrapper:
         """
         logger.info("Running mtv_dl database refresh command")
         return (
-            self.call_binary(["-r", "0", "list", "title='some random text'"])
+            self.call_binary(
+                ["list", "title='some random text'"],
+                refresh_after="0",
+            )
             is not None
         )
 
@@ -235,12 +241,10 @@ class Wrapper:
         result = self.call_binary(
             [
                 "--verbose",
-                "--no-bar",
-                "--refresh-after",
-                "999999",
                 "dump",
                 "title=__mtv_dl_web_age_probe__",
-            ]
+            ],
+            refresh_after="999999",
         )
 
         if result is None:
@@ -267,8 +271,15 @@ class Wrapper:
             bool: True when mtv_dl completed successfully, otherwise False
         """
         logger.info("Running mtv_dl download command")
-        args = ["-r", DEFAULT_REFRESH_AFTER_HOURS, "download"]
+        args = ["download", "--include-future"]
         if self.download_path:
             args.extend(["--target", self.download_path])
         args.append(f"hash={show_hash}")
-        return self.call_binary(args) is not None
+        result = self.call_binary(args)
+        if result is None:
+            return False
+
+        logger.info("mtv_dl download completed for hash %s", show_hash)
+        logger.debug("mtv_dl download stdout: %s", result.stdout)
+        logger.debug("mtv_dl download stderr: %s", result.stderr)
+        return True
