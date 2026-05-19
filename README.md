@@ -74,6 +74,7 @@ port: 8071
 logging_level: "INFO"
 download_basedir: "/downloads"
 mtv_dl_targetdir: "{topic}/{start} {title}{ext}"
+exclude_audiodeskription: true
 database_refresh:
   enabled: true
   cron: "0 3 * * *"
@@ -91,6 +92,9 @@ Configuration parameters:
 - `download_basedir`: user-facing download base directory. In the container this
   should normally be `/downloads`.
 - `mtv_dl_targetdir`: `mtv_dl` target template below `download_basedir`.
+- `exclude_audiodeskription`: filters out all shows that have
+  `Audiodeskription` in the title. This is enabled by default and works by
+  adding `title!=Audiodeskription` to list filters.
 - `database_refresh.enabled`: whether scheduled database refreshes are enabled.
 - `database_refresh.cron`: five-field cron expression for scheduled refreshes.
   Quote this value because `*` has YAML meaning.
@@ -114,6 +118,9 @@ Environment variables take precedence over `mtv_dl_web.yaml`. Use the
 - `MTV_DL_WEB_LOGGING_LEVEL`: overrides `logging_level`.
 - `MTV_DL_WEB_DOWNLOAD_BASEDIR`: overrides `download_basedir`.
 - `MTV_DL_WEB_MTV_DL_TARGETDIR`: overrides `mtv_dl_targetdir`.
+- `MTV_DL_WEB_EXCLUDE_AUDIODESKRIPTION`: overrides
+  `exclude_audiodeskription`. Accepted boolean values are `true`, `false`, `1`,
+  `0`, `yes`, `no`, `on`, and `off`.
 - `MTV_DL_WEB_DATABASE_REFRESH_ENABLED`: overrides
   `database_refresh.enabled`. Accepted boolean values are `true`, `false`, `1`,
   `0`, `yes`, `no`, `on`, and `off`.
@@ -140,7 +147,7 @@ podman run --rm \
 
 List of things I want to implement:
 
-- For the MVP:
+- [x] For the MVP:
     - [x] Create nice web ui for searching
     - [x] Show database age on web ui, add a "update" button
     * [x] Add a per-show download button
@@ -149,18 +156,19 @@ List of things I want to implement:
     * [x] implement threading model and mutexes to avoid collisions
     * [x] implement download queue
     * [x] implement cron updates of the database
-    * [ ] ... something about testing :)
     * [x] forward backend errors to the frontend
     * [x] in the container: use environment variables over the config file
     * [x] fix WARNING: "This is a development server. Do not use it in a production deployment. Use a production WSGI server instead."
     * [x] update the queue so that it shows the title of the show, not just the hash, probably do that in the backend when enquing something
     * [x] duration parameter doesn't work
     * [x] cover different combinations of search queries
-    * [ ] create a `mtv_dl` mock for testing, to not depend on live data
-    * [ ] add config flag to add the filter `title!=Audiodeskription`
-* Cron searches
+    * [x] add config flag to add the filter `title!=Audiodeskription`
+* [ ] Cron searches
     * [ ] allow user to store filter queries
     * [ ] when updating the database, run those filter queries
 * maybe some day
     * [ ] support a different output path when downloading series
     * [ ] support a post-download script and/or notify the user about new downloads
+    * [ ] create a `mtv_dl` mock for testing, to not depend on live data
+    * [ ] ... something about more testing :)
+    * [ ] make the web UI nicer, somehow, whatever that means

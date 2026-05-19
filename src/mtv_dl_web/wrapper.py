@@ -138,7 +138,10 @@ class Wrapper:
     """A wrapper class for MTV downloader functionality."""
 
     def __init__(
-        self, home_dir: Optional[str] = None, download_path: Optional[str] = None
+        self,
+        home_dir: Optional[str] = None,
+        download_path: Optional[str] = None,
+        exclude_audiodeskription: bool = True,
     ):
         """
         Initialize the Wrapper with an optional home directory.
@@ -146,9 +149,11 @@ class Wrapper:
         Args:
             home_dir (str): Path to the home directory for mtv_dl configuration
             download_path (str): Target path expression for downloaded files
+            exclude_audiodeskription (bool): Exclude audiodescription entries
         """
         self.home_dir = home_dir
         self.download_path = download_path
+        self.exclude_audiodeskription = exclude_audiodeskription
 
     def call_binary(
         self,
@@ -199,12 +204,16 @@ class Wrapper:
             dict or list: JSON data retrieved from mtv_dl as Python object
         """
         logger.info("Running mtv_dl dump command")
-        logger.debug("mtv_dl list filter queries: %s", filter_queries)
+        list_filter_queries = list(filter_queries)
+        if self.exclude_audiodeskription:
+            list_filter_queries.append("title!=Audiodeskription")
+
+        logger.debug("mtv_dl list filter queries: %s", list_filter_queries)
         result = self.call_binary(
             [
                 "dump",
                 "--include-future",
-                *normalize_filter_queries(filter_queries),
+                *normalize_filter_queries(list_filter_queries),
             ]
         )
 

@@ -47,6 +47,7 @@ def _apply_environment_overrides(
         ("MTV_DL_WEB_LOGGING_LEVEL", ("logging_level",), str),
         ("MTV_DL_WEB_DOWNLOAD_BASEDIR", ("download_basedir",), str),
         ("MTV_DL_WEB_MTV_DL_TARGETDIR", ("mtv_dl_targetdir",), str),
+        ("MTV_DL_WEB_EXCLUDE_AUDIODESKRIPTION", ("exclude_audiodeskription",), _parse_bool),
         (
             "MTV_DL_WEB_DATABASE_REFRESH_ENABLED",
             ("database_refresh", "enabled"),
@@ -128,6 +129,7 @@ download_path: str = _join_download_path(base_dir, mtv_dl_targetdir)
 host: str = str(config["host"])
 port: int = int(config["port"])
 logging_level: str = str(config["logging_level"])
+exclude_audiodeskription: bool = bool(config.get("exclude_audiodeskription", True))
 database_refresh_enabled: bool = bool(database_refresh_config.get("enabled", False))
 database_refresh_cron: str = str(database_refresh_config.get("cron", ""))
 database_refresh_timezone: str = str(database_refresh_config.get("timezone", "UTC"))
@@ -143,6 +145,7 @@ __all__ = [
     "database_refresh_timezone",
     "download_basedir",
     "download_path",
+    "exclude_audiodeskription",
     "host",
     "logging_level",
     "mtv_dl_database_dir",

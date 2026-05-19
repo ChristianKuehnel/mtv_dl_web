@@ -34,7 +34,11 @@ def create_app():
     logger.info("Using mtv_dl download path: %s", config.download_path)
 
     app = Flask(__name__)
-    app.wrapper = Wrapper(config.mtv_dl_database_dir, config.download_path)
+    app.wrapper = Wrapper(
+        config.mtv_dl_database_dir,
+        config.download_path,
+        config.exclude_audiodeskription,
+    )
     app.download_queue = DownloadQueue(app.wrapper)
     app.database_refresh_scheduler = None
     if config.database_refresh_enabled:
