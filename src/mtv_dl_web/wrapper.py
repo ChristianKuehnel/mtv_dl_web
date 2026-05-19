@@ -3,6 +3,7 @@ import logging
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 import re
+import shlex
 import subprocess
 import sys
 from typing import Optional, Sequence
@@ -99,9 +100,20 @@ def normalize_filter_query(filter_query: str) -> str:
     return f"{field}{operator}{unquote_filter_pattern(pattern)}"
 
 
+def split_filter_query(filter_query: str) -> list[str]:
+    """Split whitespace-separated filter queries while preserving quoted spaces."""
+    return shlex.split(filter_query)
+
+
 def normalize_filter_queries(filter_queries: Sequence[str]) -> list[str]:
     """Convert caller-provided filters into validated mtv_dl arguments."""
-    return [normalize_filter_query(filter_query) for filter_query in filter_queries]
+    normalized_filter_queries: list[str] = []
+    for filter_query in filter_queries:
+        normalized_filter_queries.extend(
+            normalize_filter_query(split_filter_query_part)
+            for split_filter_query_part in split_filter_query(filter_query)
+        )
+    return normalized_filter_queries
 
 
 def parse_database_age(age: str) -> timedelta:

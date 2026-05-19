@@ -154,9 +154,10 @@ List of things I want to implement:
     * [x] in the container: use environment variables over the config file
     * [x] fix WARNING: "This is a development server. Do not use it in a production deployment. Use a production WSGI server instead."
     * [x] update the queue so that it shows the title of the show, not just the hash, probably do that in the backend when enquing something
-    * [ ] duration parameter doesn't work
-    * [ ] cover different combinations of search queries
+    * [x] duration parameter doesn't work
+    * [x] cover different combinations of search queries
     * [ ] create a `mtv_dl` mock for testing, to not depend on live data
+    * [ ] add config flag to add the filter `title!=Audiodeskription`
 * Cron searches
     * [ ] allow user to store filter queries
     * [ ] when updating the database, run those filter queries
