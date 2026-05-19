@@ -29,7 +29,10 @@ from pydantic import BaseModel
 
 # Import the mtv_dl functionality
 try:
-    from mtv_dl.mtv_dl import Database, Downloader
+    import mtv_dl.mtv_dl as mtv_dl_module
+
+    Database = mtv_dl_module.Database
+    Downloader = mtv_dl_module.Downloader
 except ImportError as e:
     print(f"Failed to import mtv_dl: {e}")
     raise
@@ -301,8 +304,20 @@ def validate_filters(filters: list[str]) -> None:
 configured_database_path = Path(settings.database_path).expanduser()
 DATABASE_DIR = configured_database_path.parent if configured_database_path.suffix else configured_database_path
 DATABASE_DIR.mkdir(parents=True, exist_ok=True)
-DATABASE_FILE = configured_database_path if configured_database_path.suffix else DATABASE_DIR / "filmliste.sqlite"
-HISTORY_FILE = DATABASE_DIR / "history.sqlite"
+FILMLISTE_DATABASE_FILENAME = getattr(mtv_dl_module, "FILMLISTE_DATABASE_FILE", "filmliste.sqlite")
+HISTORY_DATABASE_FILENAME = getattr(mtv_dl_module, "HISTORY_DATABASE_FILE", "history.sqlite")
+
+if configured_database_path.suffix:
+    DATABASE_FILE = configured_database_path
+    HISTORY_FILE = configured_database_path.parent / HISTORY_DATABASE_FILENAME
+else:
+    mtv_dl_database_file = DATABASE_DIR / FILMLISTE_DATABASE_FILENAME
+    mtv_dl_history_file = DATABASE_DIR / HISTORY_DATABASE_FILENAME
+    legacy_database_file = DATABASE_DIR / "filmliste.sqlite"
+    legacy_history_file = DATABASE_DIR / "history.sqlite"
+
+    DATABASE_FILE = legacy_database_file if legacy_database_file.exists() and not mtv_dl_database_file.exists() else mtv_dl_database_file
+    HISTORY_FILE = legacy_history_file if legacy_history_file.exists() and not mtv_dl_history_file.exists() else mtv_dl_history_file
 
 
 def set_database_update_in_progress(is_in_progress: bool) -> None:

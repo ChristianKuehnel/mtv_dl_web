@@ -180,6 +180,62 @@ def test_search_endpoint_integration_path(monkeypatch):
     assert data["results"][0]["hash"] == "integration1"
 
 
+def test_search_uses_no_refresh_db_connection(monkeypatch):
+    """Search must not trigger database updates."""
+
+    captured: dict[str, object] = {}
+
+    class LocalDb:
+        def filtered(self, _filters):
+            return []
+
+    def fake_get_db_connection(*args, **kwargs):
+        captured["args"] = args
+        captured["kwargs"] = kwargs
+        return LocalDb()
+
+    monkeypatch.setattr(main, "get_db_connection", fake_get_db_connection)
+
+    response = client.post("/api/search", json={"filters": ["channel=ARD"]})
+
+    assert response.status_code == 200
+    assert captured["kwargs"] == {"check_for_refresh": False, "is_refresh_operation": False}
+
+
+def test_directory_database_path_uses_mtv_dl_default_filenames(monkeypatch):
+    """Directory database_path should align with mtv_dl database filenames."""
+
+    class CaptureDatabase:
+        init_args: tuple[object, object] | None = None
+
+        def __init__(self, database_file, history_file):
+            CaptureDatabase.init_args = (database_file, history_file)
+
+        def filtered(self, _filters):
+            return []
+
+    monkeypatch.setattr(main, "Database", CaptureDatabase)
+
+    response = client.post("/api/search", json={"filters": ["channel=ARD"]})
+
+    assert response.status_code == 200
+    assert CaptureDatabase.init_args is not None
+    database_file, history_file = CaptureDatabase.init_args
+    expected_database_name = (
+        "filmliste.sqlite"
+        if (main.DATABASE_DIR / "filmliste.sqlite").exists() and not (main.DATABASE_DIR / main.FILMLISTE_DATABASE_FILENAME).exists()
+        else main.FILMLISTE_DATABASE_FILENAME
+    )
+    expected_history_name = (
+        "history.sqlite"
+        if (main.DATABASE_DIR / "history.sqlite").exists() and not (main.DATABASE_DIR / main.HISTORY_DATABASE_FILENAME).exists()
+        else main.HISTORY_DATABASE_FILENAME
+    )
+
+    assert str(database_file).endswith(expected_database_name)
+    assert str(history_file).endswith(expected_history_name)
+
+
 def test_search_endpoint_complex_filters(fake_db):
     """Test search with multiple complex filters"""
     mock_shows = [
