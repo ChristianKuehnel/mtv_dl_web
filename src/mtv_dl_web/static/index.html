@@ -179,6 +179,47 @@
         color: #5d6675;
       }
 
+      .alert {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 1rem;
+        margin: 0 0 1rem;
+        padding: 0.75rem 0.85rem;
+        border: 1px solid #d0d7e2;
+        border-radius: 8px;
+        background: #eef4ff;
+        color: #1c3f66;
+      }
+
+      .alert[hidden] {
+        display: none;
+      }
+
+      .alert[data-state="error"] {
+        border-color: #ffc9c9;
+        background: #fff5f5;
+        color: #9b1c1c;
+      }
+
+      .alert-message {
+        margin: 0;
+      }
+
+      .alert-close {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 1.5rem;
+        height: 1.5rem;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        color: inherit;
+        font-size: 1.2rem;
+        line-height: 1;
+      }
+
       .table-wrap {
         width: 100%;
         overflow-x: auto;
@@ -316,6 +357,18 @@
           color: #bac2d0;
         }
 
+        .alert {
+          border-color: #33577f;
+          background: #152234;
+          color: #d8ebff;
+        }
+
+        .alert[data-state="error"] {
+          border-color: #842029;
+          background: #2b171b;
+          color: #ffc9c9;
+        }
+
         .queue-status {
           color: #bac2d0;
         }
@@ -371,6 +424,18 @@
         </div>
       </header>
 
+      <div id="alert" class="alert" data-state="info" role="alert" hidden>
+        <p id="alert-message" class="alert-message"></p>
+        <button
+          id="alert-close"
+          class="alert-close"
+          type="button"
+          aria-label="Dismiss message"
+        >
+          &times;
+        </button>
+      </div>
+
       <form id="search-form">
         <input
           id="search-query"
@@ -420,6 +485,9 @@
       const queueStatusElement = document.querySelector("#queue-status");
       const queueHead = document.querySelector("#queue-head");
       const queueBody = document.querySelector("#queue-body");
+      const alertElement = document.querySelector("#alert");
+      const alertMessageElement = document.querySelector("#alert-message");
+      const alertCloseButton = document.querySelector("#alert-close");
       let lastDbUpdate = null;
       const resultColumns = [
         "hash",
@@ -503,6 +571,36 @@
         };
       }
 
+      function showAlert(message, state = "error") {
+        alertMessageElement.textContent = message;
+        alertElement.dataset.state = state;
+        alertElement.hidden = false;
+      }
+
+      function hideAlert() {
+        alertMessageElement.textContent = "";
+        alertElement.hidden = true;
+      }
+
+      async function fetchJson(url, options) {
+        const response = await fetch(url, options);
+        let data = null;
+
+        try {
+          data = await response.json();
+        } catch (error) {
+          if (response.ok) {
+            return null;
+          }
+        }
+
+        if (!response.ok) {
+          throw new Error(data?.error || "Request failed");
+        }
+
+        return data;
+      }
+
       function pluralize(value, unit) {
         return `${value} ${unit}${value === 1 ? "" : "s"}`;
       }
@@ -552,12 +650,7 @@
 
       async function loadHealth() {
         try {
-          const response = await fetch("/health");
-          const data = await response.json();
-
-          if (!response.ok) {
-            throw new Error(data.error || "Health check failed");
-          }
+          const data = await fetchJson("/health");
 
           lastDbUpdate = new Date(data.last_db_update);
           if (Number.isNaN(lastDbUpdate.getTime())) {
@@ -573,6 +666,7 @@
           healthStatusElement.dataset.state = "error";
           dbAgeElement.textContent = error.message;
           dbAgeElement.removeAttribute("title");
+          showAlert(error.message);
         }
       }
 
@@ -583,10 +677,9 @@
         dbAgeElement.textContent = "Updating database";
 
         try {
-          const response = await fetch("/refresh_database");
-          const data = await response.json();
+          const data = await fetchJson("/refresh_database");
 
-          if (!response.ok || !data.success) {
+          if (!data.success) {
             throw new Error(data.error || "Database update failed");
           }
 
@@ -597,6 +690,7 @@
           healthStatusElement.dataset.state = "error";
           dbAgeElement.textContent = error.message;
           dbAgeElement.removeAttribute("title");
+          showAlert(error.message);
         } finally {
           updateDbButton.disabled = false;
           updateDbButton.title = "Update database (can take a while)";
@@ -640,10 +734,9 @@
         statusElement.textContent = "Starting download";
 
         try {
-          const response = await fetch(`/download?${params.toString()}`);
-          const data = await response.json();
+          const data = await fetchJson(`/download?${params.toString()}`);
 
-          if (!response.ok || !data.success) {
+          if (!data.success) {
             throw new Error(data.error || "Download failed");
           }
 
@@ -651,6 +744,7 @@
           await loadQueue();
         } catch (error) {
           statusElement.textContent = error.message;
+          showAlert(error.message);
         } finally {
           downloadButton.disabled = false;
           downloadButton.title = "Download";
@@ -790,18 +884,14 @@
 
       async function loadQueue() {
         try {
-          const response = await fetch("/queue");
-          const data = await response.json();
-
-          if (!response.ok) {
-            throw new Error(data.error || "Queue lookup failed");
-          }
+          const data = await fetchJson("/queue");
 
           renderQueue(data);
         } catch (error) {
           queueHead.replaceChildren();
           queueBody.replaceChildren();
           queueStatusElement.textContent = error.message;
+          showAlert(error.message);
         }
       }
 
@@ -816,20 +906,17 @@
 
         button.disabled = true;
         statusElement.textContent = "Searching";
+        hideAlert();
 
         try {
-          const response = await fetch(`/list?${params.toString()}`);
-          const data = await response.json();
-
-          if (!response.ok) {
-            throw new Error(data.error || "Search failed");
-          }
+          const data = await fetchJson(`/list?${params.toString()}`);
 
           renderRows(data);
         } catch (error) {
           tableHead.replaceChildren();
           tableBody.replaceChildren();
           statusElement.textContent = error.message;
+          showAlert(error.message);
         } finally {
           button.disabled = false;
         }
@@ -837,6 +924,7 @@
 
       form.addEventListener("submit", search);
       updateDbButton.addEventListener("click", refreshDatabase);
+      alertCloseButton.addEventListener("click", hideAlert);
       updateDbButton.append(createDatabaseUpdateIcon());
       loadHealth();
       loadQueue();

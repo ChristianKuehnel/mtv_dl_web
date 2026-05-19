@@ -20,7 +20,7 @@ List of things I want to implement:
     * [x] implement download queue
     * [x] implement cron updates of the database
     * [ ] ... something about testing :)
-    * [ ] forward backend errors to the frontend
+    * [x] forward backend errors to the frontend
     * [ ] in the container: use environment variables over the config file
     * [ ] fix WARNING: "This is a development server. Do not use it in a production deployment. Use a production WSGI server instead."
     * [ ] update the queue so that it shows the title of the show, not just the hash, probably do that in the backend when enquing something
