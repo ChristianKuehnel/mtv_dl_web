@@ -57,6 +57,9 @@ services:
       - ./config:/config
       - ./Downloads:/downloads
       - ./mtv_dl_db:/database
+    environment:
+      MTV_DL_WEB_LOGGING_LEVEL: "INFO"
+      MTV_DL_WEB_DATABASE_REFRESH_CRON: "0 3 * * *"
 ```
 
 ### Configuration
@@ -99,6 +102,39 @@ The default cron expression `0 3 * * *` refreshes the database every day at
 refreshes use the same work queue as downloads, so downloads and refreshes run
 one at a time.
 
+All configuration parameters can also be set through environment variables.
+Environment variables take precedence over `mtv_dl_web.yaml`. Use the
+`MTV_DL_WEB_` prefix to avoid name collisions:
+
+- `MTV_DL_WEB_CONFIG`: path to the config file. Defaults to
+  `/config/mtv_dl_web.yaml` in the container.
+- `MTV_DL_WEB_MTV_DL_DATABASE_DIR`: overrides `mtv_dl_database_dir`.
+- `MTV_DL_WEB_HOST`: overrides `host`.
+- `MTV_DL_WEB_PORT`: overrides `port`.
+- `MTV_DL_WEB_LOGGING_LEVEL`: overrides `logging_level`.
+- `MTV_DL_WEB_DOWNLOAD_BASEDIR`: overrides `download_basedir`.
+- `MTV_DL_WEB_MTV_DL_TARGETDIR`: overrides `mtv_dl_targetdir`.
+- `MTV_DL_WEB_DATABASE_REFRESH_ENABLED`: overrides
+  `database_refresh.enabled`. Accepted boolean values are `true`, `false`, `1`,
+  `0`, `yes`, `no`, `on`, and `off`.
+- `MTV_DL_WEB_DATABASE_REFRESH_CRON`: overrides `database_refresh.cron`.
+- `MTV_DL_WEB_DATABASE_REFRESH_TIMEZONE`: overrides
+  `database_refresh.timezone`.
+
+For example, to disable scheduled refreshes while keeping the rest of the YAML
+file:
+
+```sh
+podman run --rm \
+  --name mtv-dl-web \
+  -p 8071:8071 \
+  -v "$PWD/config:/config" \
+  -v "$PWD/Downloads:/downloads" \
+  -v "$PWD/mtv_dl_db:/database" \
+  -e MTV_DL_WEB_DATABASE_REFRESH_ENABLED=false \
+  ghcr.io/christiankuehnel/mtv_dl_web:latest
+```
+
 
 ## TODOs
 
@@ -115,10 +151,12 @@ List of things I want to implement:
     * [x] implement cron updates of the database
     * [ ] ... something about testing :)
     * [x] forward backend errors to the frontend
-    * [ ] in the container: use environment variables over the config file
+    * [x] in the container: use environment variables over the config file
     * [x] fix WARNING: "This is a development server. Do not use it in a production deployment. Use a production WSGI server instead."
     * [x] update the queue so that it shows the title of the show, not just the hash, probably do that in the backend when enquing something
     * [ ] duration parameter doesn't work
+    * [ ] cover different combinations of search queries
+    * [ ] create a `mtv_dl` mock for testing, to not depend on live data
 * Cron searches
     * [ ] allow user to store filter queries
     * [ ] when updating the database, run those filter queries
