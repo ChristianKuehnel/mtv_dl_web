@@ -200,10 +200,70 @@
       const statusElement = document.querySelector("#status");
       const tableHead = document.querySelector("#results-head");
       const tableBody = document.querySelector("#results-body");
+      const resultColumns = [
+        "hash",
+        "channel",
+        "title",
+        "topic",
+        "size",
+        "start",
+        "duration",
+        "age",
+        "region",
+        "downloaded",
+        "season",
+        "episode",
+      ];
 
-      function formatCellValue(value) {
+      function formatAgeValue(value) {
+        const age = String(value);
+        const daysMatch = age.match(/^(\d+) days?,\s+(\d+):/);
+        if (daysMatch) {
+          const days = Number(daysMatch[1]);
+          const hours = Number(daysMatch[2]);
+          const years = Math.floor(days / 365);
+
+          if (years > 0) {
+            return `${years}y`;
+          }
+
+          if (days > 0) {
+            return `${days}d`;
+          }
+
+          return `${hours}h`;
+        }
+
+        const hoursMatch = age.match(/^(\d+):/);
+        if (hoursMatch) {
+          return `${Number(hoursMatch[1])}h`;
+        }
+
+        return age;
+      }
+
+      function formatStartValue(value) {
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) {
+          return String(value);
+        }
+
+        return new Intl.DateTimeFormat(undefined, {
+          dateStyle: "medium",
+        }).format(date);
+      }
+
+      function formatCellValue(value, column) {
         if (value === null || value === undefined) {
           return "";
+        }
+
+        if (column === "age") {
+          return formatAgeValue(value);
+        }
+
+        if (column === "start") {
+          return formatStartValue(value);
         }
 
         if (typeof value === "object") {
@@ -224,22 +284,8 @@
           return;
         }
 
-        const columns = Array.from(
-          rows.reduce((keys, row) => {
-            if (row && typeof row === "object" && !Array.isArray(row)) {
-              Object.keys(row).forEach((key) => keys.add(key));
-            }
-            return keys;
-          }, new Set()),
-        );
-
-        if (columns.length === 0) {
-          statusElement.textContent = "No table data";
-          return;
-        }
-
         const headerRow = document.createElement("tr");
-        columns.forEach((column) => {
+        resultColumns.forEach((column) => {
           const headerCell = document.createElement("th");
           headerCell.scope = "col";
           headerCell.textContent = column;
@@ -249,9 +295,9 @@
 
         rows.forEach((row) => {
           const tableRow = document.createElement("tr");
-          columns.forEach((column) => {
+          resultColumns.forEach((column) => {
             const cell = document.createElement("td");
-            cell.textContent = formatCellValue(row[column]);
+            cell.textContent = formatCellValue(row[column], column);
             tableRow.append(cell);
           });
           tableBody.append(tableRow);

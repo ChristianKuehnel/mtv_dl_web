@@ -9,7 +9,7 @@ This must be run behind some reverse proxy. Don't put it blindly in the public i
 ## TODOs
 
 - For the MVP:
-    - [ ] Create nice web ui for searching
+    - [x] Create nice web ui for searching
     - [ ] Show database age on web ui, add a "update" button
     * [ ] Add a per-show download button
     * [ ] implement threading model and mutexes to avoid collisions
