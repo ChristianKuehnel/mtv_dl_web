@@ -15,7 +15,7 @@ List of things I want to implement:
     - [x] Show database age on web ui, add a "update" button
     * [x] Add a per-show download button
     * [x] Add config parameter for the download folder
-    * [ ] containerize it, including all paths/mount points
+    * [x] containerize it, including all paths/mount points
     * [ ] implement threading model and mutexes to avoid collisions
     * [ ] implement download queue
     * [ ] implement cron updates of the database
