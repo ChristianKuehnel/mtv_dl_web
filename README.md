@@ -14,7 +14,7 @@ List of things I want to implement:
     - [x] Create nice web ui for searching
     - [x] Show database age on web ui, add a "update" button
     * [x] Add a per-show download button
-    * [ ] Add config parameter for the download folder
+    * [x] Add config parameter for the download folder
     * [ ] implement threading model and mutexes to avoid collisions
     * [ ] implement download queue
     * [ ] implement cron updates of the database
@@ -25,5 +25,6 @@ List of things I want to implement:
     * [ ] allow user to store filter queries
     * [ ] when updating the database, run those filter queries
     * [ ] notify the user about new downloads
-* some day
+* maybe some day
     * [ ] support a different output path when downloading series
+    * [ ] support a post-download script

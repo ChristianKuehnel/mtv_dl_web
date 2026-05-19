@@ -5,3 +5,5 @@
 __pycache__
 # mtv_dl home directory with the database
 mtv_dl_db/
+# Standard Download folder for testing
+/Downloads
