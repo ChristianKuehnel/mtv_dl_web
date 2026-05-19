@@ -11,7 +11,8 @@ This must be run behind some reverse proxy. Don't put it blindly in the public i
 - For the MVP:
     - [x] Create nice web ui for searching
     - [x] Show database age on web ui, add a "update" button
-    * [ ] Add a per-show download button
+    * [x] Add a per-show download button
+    * [ ] Add config parameter for the download folder
     * [ ] implement threading model and mutexes to avoid collisions
     * [ ] implement download queue
     * [ ] implement cron updates of the database

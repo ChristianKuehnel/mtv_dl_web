@@ -99,6 +99,11 @@
       }
 
       .update-db-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 2.2rem;
+        height: 2.2rem;
         padding: 0.35rem 0.65rem;
         border-color: #687385;
         background: #fff;
@@ -110,6 +115,23 @@
       .update-db-button:hover:not(:disabled) {
         border-color: #1864ab;
         color: #1864ab;
+      }
+
+      .update-db-button svg,
+      .download-button svg {
+        width: 1.1rem;
+        height: 1.1rem;
+        stroke: currentColor;
+      }
+
+      .download-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 2.2rem;
+        height: 2.2rem;
+        padding: 0.35rem 0.65rem;
+        font-size: 0.85rem;
       }
 
       input {
@@ -210,8 +232,12 @@
           width: 100%;
         }
 
+        .download-button {
+          width: 2.2rem;
+        }
+
         .health .update-db-button {
-          width: auto;
+          width: 2.2rem;
         }
       }
 
@@ -287,9 +313,13 @@
         <div class="health" aria-live="polite">
           <span id="health-status" class="health-state">Checking</span>
           <span id="db-age" class="db-age"></span>
-          <button id="update-db-button" class="update-db-button" type="button">
-            Update database
-          </button>
+          <button
+            id="update-db-button"
+            class="update-db-button"
+            type="button"
+            title="Update database (can take a while)"
+            aria-label="Update database. This can take a while."
+          ></button>
         </div>
       </header>
 
@@ -471,7 +501,8 @@
 
       async function refreshDatabase() {
         updateDbButton.disabled = true;
-        updateDbButton.textContent = "Updating";
+        updateDbButton.title = "Updating database";
+        updateDbButton.setAttribute("aria-busy", "true");
         dbAgeElement.textContent = "Updating database";
 
         try {
@@ -490,8 +521,88 @@
           dbAgeElement.removeAttribute("title");
         } finally {
           updateDbButton.disabled = false;
-          updateDbButton.textContent = "Update database";
+          updateDbButton.title = "Update database (can take a while)";
+          updateDbButton.removeAttribute("aria-busy");
+          updateDbButton.replaceChildren(createDatabaseUpdateIcon());
         }
+      }
+
+      function createDatabaseUpdateIcon() {
+        const svgNamespace = "http://www.w3.org/2000/svg";
+        const icon = document.createElementNS(svgNamespace, "svg");
+        icon.setAttribute("viewBox", "0 0 24 24");
+        icon.setAttribute("fill", "none");
+        icon.setAttribute("stroke-width", "2");
+        icon.setAttribute("stroke-linecap", "round");
+        icon.setAttribute("stroke-linejoin", "round");
+        icon.setAttribute("aria-hidden", "true");
+
+        [
+          ["path", { d: "M21 12a9 9 0 0 0-15.6-6.1L3 8" }],
+          ["path", { d: "M3 3v5h5" }],
+          ["path", { d: "M3 12a9 9 0 0 0 15.6 6.1L21 16" }],
+          ["path", { d: "M16 16h5v5" }],
+        ].forEach(([tagName, attributes]) => {
+          const element = document.createElementNS(svgNamespace, tagName);
+          Object.entries(attributes).forEach(([name, value]) => {
+            element.setAttribute(name, value);
+          });
+          icon.append(element);
+        });
+
+        return icon;
+      }
+
+      async function downloadShow(showHash, downloadButton) {
+        const params = new URLSearchParams({ hash: showHash });
+
+        downloadButton.disabled = true;
+        downloadButton.title = "Downloading";
+        downloadButton.setAttribute("aria-busy", "true");
+        statusElement.textContent = "Starting download";
+
+        try {
+          const response = await fetch(`/download?${params.toString()}`);
+          const data = await response.json();
+
+          if (!response.ok || !data.success) {
+            throw new Error(data.error || "Download failed");
+          }
+
+          statusElement.textContent = "Download started";
+        } catch (error) {
+          statusElement.textContent = error.message;
+        } finally {
+          downloadButton.disabled = false;
+          downloadButton.title = "Download";
+          downloadButton.removeAttribute("aria-busy");
+          downloadButton.replaceChildren(createDownloadIcon());
+        }
+      }
+
+      function createDownloadIcon() {
+        const svgNamespace = "http://www.w3.org/2000/svg";
+        const icon = document.createElementNS(svgNamespace, "svg");
+        icon.setAttribute("viewBox", "0 0 24 24");
+        icon.setAttribute("fill", "none");
+        icon.setAttribute("stroke-width", "2");
+        icon.setAttribute("stroke-linecap", "round");
+        icon.setAttribute("stroke-linejoin", "round");
+        icon.setAttribute("aria-hidden", "true");
+
+        [
+          ["path", { d: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" }],
+          ["polyline", { points: "7 10 12 15 17 10" }],
+          ["line", { x1: "12", x2: "12", y1: "15", y2: "3" }],
+        ].forEach(([tagName, attributes]) => {
+          const element = document.createElementNS(svgNamespace, tagName);
+          Object.entries(attributes).forEach(([name, value]) => {
+            element.setAttribute(name, value);
+          });
+          icon.append(element);
+        });
+
+        return icon;
       }
 
       function renderRows(data) {
@@ -509,7 +620,7 @@
         resultColumns.forEach((column) => {
           const headerCell = document.createElement("th");
           headerCell.scope = "col";
-          headerCell.textContent = column;
+          headerCell.textContent = column === "hash" ? "download" : column;
           headerRow.append(headerCell);
         });
         tableHead.append(headerRow);
@@ -518,7 +629,27 @@
           const tableRow = document.createElement("tr");
           resultColumns.forEach((column) => {
             const cell = document.createElement("td");
-            cell.textContent = formatCellValue(row[column], column);
+
+            if (column === "hash") {
+              const showHash = formatCellValue(row[column], column);
+              const downloadButton = document.createElement("button");
+              downloadButton.className = "download-button";
+              downloadButton.type = "button";
+              downloadButton.title = "Download";
+              downloadButton.append(createDownloadIcon());
+              downloadButton.setAttribute(
+                "aria-label",
+                `Download ${formatCellValue(row.title, "title") || showHash}`,
+              );
+              downloadButton.disabled = !showHash;
+              downloadButton.addEventListener("click", () => {
+                downloadShow(showHash, downloadButton);
+              });
+              cell.append(downloadButton);
+            } else {
+              cell.textContent = formatCellValue(row[column], column);
+            }
+
             tableRow.append(cell);
           });
           tableBody.append(tableRow);
@@ -559,6 +690,7 @@
 
       form.addEventListener("submit", search);
       updateDbButton.addEventListener("click", refreshDatabase);
+      updateDbButton.append(createDatabaseUpdateIcon());
       loadHealth();
       setInterval(renderDatabaseAge, 60 * 1000);
     </script>
