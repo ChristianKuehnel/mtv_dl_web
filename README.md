@@ -17,6 +17,8 @@ Container images are published to the GitHub Container Registry:
 
 <https://github.com/ChristianKuehnel/mtv_dl_web/pkgs/container/mtv_dl_web>
 
+End users should pull the published container image directly from GitHub.
+
 Pull the image with Podman:
 
 ```sh
@@ -28,8 +30,6 @@ Or with Docker:
 ```sh
 docker pull ghcr.io/christiankuehnel/mtv_dl_web:latest
 ```
-
-The easiest way to run the container from this checkout is:
 
 To run it with Podman:
 
@@ -142,6 +142,13 @@ podman run --rm \
   ghcr.io/christiankuehnel/mtv_dl_web:latest
 ```
 
+Before starting the container, make sure the host config directory contains
+`mtv_dl_web.yaml`. You can use `config/mtv_dl_web.yaml` from this repository as a
+starting point.
+
+Keep `/downloads` and `/database` mounted to persistent host directories. Without
+those mounts, downloaded files and database state only live inside the container.
+
 
 ## TODOs
 
@@ -172,3 +179,21 @@ List of things I want to implement:
     * [ ] create a `mtv_dl` mock for testing, to not depend on live data
     * [ ] ... something about more testing :)
     * [ ] make the web UI nicer, somehow, whatever that means
+
+## Development
+
+The `scripts/` directory is meant for local development and testing, not for end
+users running the service in production. End users should pull the published
+container image from GitHub Container Registry as described above.
+
+Useful development commands:
+
+- `scripts/setup.sh`: create `.venv` when needed and install Python and frontend
+  development dependencies.
+- `scripts/test.sh`: run the pytest test suite from `tests/`.
+- `scripts/lint.sh`: run ShellCheck, Black, Prettier, HTMLHint, and mypy.
+- `scripts/run.sh`: run the app locally with Flask's development server.
+- `scripts/build_container_image.sh`: build a local container image for testing
+  changes before publishing.
+- `scripts/run_container.sh`: build and run a local development container from
+  the checkout.

@@ -47,7 +47,11 @@ def _apply_environment_overrides(
         ("MTV_DL_WEB_LOGGING_LEVEL", ("logging_level",), str),
         ("MTV_DL_WEB_DOWNLOAD_BASEDIR", ("download_basedir",), str),
         ("MTV_DL_WEB_MTV_DL_TARGETDIR", ("mtv_dl_targetdir",), str),
-        ("MTV_DL_WEB_EXCLUDE_AUDIODESKRIPTION", ("exclude_audiodeskription",), _parse_bool),
+        (
+            "MTV_DL_WEB_EXCLUDE_AUDIODESKRIPTION",
+            ("exclude_audiodeskription",),
+            _parse_bool,
+        ),
         (
             "MTV_DL_WEB_DATABASE_REFRESH_ENABLED",
             ("database_refresh", "enabled"),

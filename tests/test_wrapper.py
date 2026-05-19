@@ -1,5 +1,6 @@
 import pytest
 import subprocess
+from typing import Sequence
 
 from mtv_dl_web.wrapper import Wrapper, normalize_filter_queries
 
@@ -11,10 +12,10 @@ class RecordingWrapper(Wrapper):
 
     def call_binary(
         self,
-        args: list[str],
+        args: Sequence[str],
         refresh_after: str = "9999",
     ) -> subprocess.CompletedProcess:
-        self.calls.append(args)
+        self.calls.append(list(args))
         return subprocess.CompletedProcess(args, 0, stdout="[]", stderr="")
 
 
