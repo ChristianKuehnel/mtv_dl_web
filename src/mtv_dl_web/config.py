@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import ast
+import logging
 import os
 from pathlib import Path
 from typing import Any
 
+
+logger = logging.getLogger(__name__)
 
 CONFIG_PATH = Path(
     os.environ.get(
@@ -29,6 +32,7 @@ def _parse_value(value: str) -> Any:
 
 def _load_config(path: Path = CONFIG_PATH) -> dict[str, Any]:
     config: dict[str, Any] = {}
+    logger.debug("Loading configuration from %s", path)
 
     with path.open(encoding="utf-8") as config_file:
         for line_number, line in enumerate(config_file, start=1):
@@ -42,6 +46,7 @@ def _load_config(path: Path = CONFIG_PATH) -> dict[str, Any]:
 
             config[key.strip()] = _parse_value(value)
 
+    logger.debug("Loaded configuration keys: %s", sorted(config))
     return config
 
 

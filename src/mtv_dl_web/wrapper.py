@@ -1,6 +1,10 @@
-import subprocess
 import json
+import logging
+import subprocess
 from typing import Optional
+
+
+logger = logging.getLogger(__name__)
 
 
 class Wrapper:
@@ -33,6 +37,9 @@ class Wrapper:
                 cmd.insert(1, "--dir")
                 cmd.insert(2, self.home_dir)
 
+            logger.info("Running mtv_dl list command")
+            logger.debug("mtv_dl command: %s", cmd)
+
             # Call mtv_dl binary with dump command to get JSON output
             result = subprocess.run(cmd, capture_output=True, text=True, check=True)
 
@@ -43,17 +50,18 @@ class Wrapper:
                     return data
                 except json.JSONDecodeError as e:
                     # If JSON parsing fails, return raw output as string
-                    print(f"Warning: Could not parse JSON: {e}")
+                    logger.warning("Could not parse mtv_dl JSON output: %s", e)
                     return result.stdout.strip()
             else:
+                logger.info("mtv_dl returned no output")
                 return {}
 
         except subprocess.CalledProcessError as e:
             # Handle errors from mtv_dl command
-            print(f"Error running mtv_dl: {e}")
-            print(f"stderr: {e.stderr}")
+            logger.error("Error running mtv_dl: %s", e)
+            logger.error("mtv_dl stderr: %s", e.stderr)
             return {}
         except FileNotFoundError:
             # Handle case where mtv_dl is not found
-            print("Error: mtv_dl binary not found")
+            logger.error("mtv_dl binary not found")
             return {}
