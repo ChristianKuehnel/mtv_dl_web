@@ -3,3 +3,5 @@
 # any egg_info files
 *.egg-info
 __pycache__
+# mtv_dl home directory with the database
+mtv_dl_db/

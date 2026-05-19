@@ -20,6 +20,5 @@ source .venv/bin/activate
 
 # Run the Flask application
 echo "Starting Flask application..."
-export FLASK_APP=src/mtv_dl_web/app.py
-export FLASK_ENV=development
-python -m flask run --host=0.0.0.0 --port=5000
+export PYTHONPATH=src
+python -m mtv_dl_web.app

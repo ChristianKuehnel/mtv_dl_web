@@ -1,8 +1,14 @@
+from pathlib import Path
+
 from flask import Flask, jsonify
+
+from . import config
 from .wrapper import Wrapper
 
 
 def create_app():
+    Path(config.mtv_dl_database_dir).mkdir(parents=True, exist_ok=True)
+
     app = Flask(__name__)
 
     @app.route("/")
@@ -11,7 +17,7 @@ def create_app():
 
     @app.route("/list")
     def list_items():
-        wrapper = Wrapper()
+        wrapper = Wrapper(config.mtv_dl_database_dir)
         result = wrapper.list()
         response = jsonify(result)
         response.headers["Content-Type"] = "application/json"
@@ -22,4 +28,4 @@ def create_app():
 
 if __name__ == "__main__":
     app = create_app()
-    app.run(debug=True)
+    app.run(debug=True, host=config.host, port=config.port)
