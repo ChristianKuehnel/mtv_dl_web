@@ -1,0 +1,706 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>MTV Downloader</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        font-family:
+          Inter,
+          ui-sans-serif,
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          sans-serif;
+        line-height: 1.5;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        min-height: 100vh;
+        margin: 0;
+        background: #f4f6f8;
+        color: #20242c;
+      }
+
+      main {
+        width: min(96vw, 72rem);
+        margin: 0 auto;
+        padding: 2rem 1rem;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 2rem;
+        line-height: 1.15;
+      }
+
+      .page-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 1rem;
+        margin: 0 0 1.25rem;
+      }
+
+      form {
+        display: flex;
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+      }
+
+      .health {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 0.5rem 1rem;
+        min-height: 1.75rem;
+        margin: 0.15rem 0 0;
+        color: #4e5969;
+        font-size: 0.95rem;
+        text-align: right;
+      }
+
+      .health-state {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        font-weight: 700;
+      }
+
+      .health-state::before {
+        content: "";
+        width: 0.6rem;
+        height: 0.6rem;
+        border-radius: 999px;
+        background: #868e96;
+      }
+
+      .health-state[data-state="ok"] {
+        color: #2b8a3e;
+      }
+
+      .health-state[data-state="ok"]::before {
+        background: #2f9e44;
+      }
+
+      .health-state[data-state="error"] {
+        color: #c92a2a;
+      }
+
+      .health-state[data-state="error"]::before {
+        background: #e03131;
+      }
+
+      .db-age {
+        color: #5d6675;
+      }
+
+      .update-db-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 2.2rem;
+        height: 2.2rem;
+        padding: 0.35rem 0.65rem;
+        border-color: #687385;
+        background: #fff;
+        color: #2f3744;
+        font-size: 0.85rem;
+        font-weight: 650;
+      }
+
+      .update-db-button:hover:not(:disabled) {
+        border-color: #1864ab;
+        color: #1864ab;
+      }
+
+      .update-db-button svg,
+      .download-button svg {
+        width: 1.1rem;
+        height: 1.1rem;
+        stroke: currentColor;
+      }
+
+      .download-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 2.2rem;
+        height: 2.2rem;
+        padding: 0.35rem 0.65rem;
+        font-size: 0.85rem;
+      }
+
+      input {
+        width: 100%;
+        min-width: 0;
+        padding: 0.7rem 0.8rem;
+        border: 1px solid #c9d0da;
+        border-radius: 6px;
+        background: #fff;
+        color: inherit;
+        font: inherit;
+      }
+
+      button {
+        flex: 0 0 auto;
+        padding: 0.7rem 1rem;
+        border: 1px solid #1864ab;
+        border-radius: 6px;
+        background: #1864ab;
+        color: #fff;
+        font: inherit;
+        font-weight: 650;
+        cursor: pointer;
+      }
+
+      button:disabled {
+        cursor: wait;
+        opacity: 0.65;
+      }
+
+      .status {
+        min-height: 1.5rem;
+        margin: 0 0 0.75rem;
+        color: #5d6675;
+      }
+
+      .table-wrap {
+        width: 100%;
+        overflow-x: auto;
+        border: 1px solid #d7dde5;
+        border-radius: 8px;
+        background: #fff;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.9rem;
+      }
+
+      th,
+      td {
+        max-width: 22rem;
+        padding: 0.65rem 0.75rem;
+        border-bottom: 1px solid #e2e7ee;
+        text-align: left;
+        vertical-align: top;
+      }
+
+      th {
+        position: sticky;
+        top: 0;
+        background: #eef2f6;
+        color: #394150;
+        font-weight: 700;
+        text-transform: capitalize;
+      }
+
+      tbody tr:last-child td {
+        border-bottom: 0;
+      }
+
+      td {
+        overflow-wrap: anywhere;
+      }
+
+      @media (max-width: 42rem) {
+        main {
+          padding: 1rem 0.75rem;
+        }
+
+        form {
+          flex-direction: column;
+        }
+
+        .page-header {
+          flex-direction: column;
+          gap: 0.65rem;
+        }
+
+        .health {
+          justify-content: flex-start;
+          margin-top: 0;
+          text-align: left;
+        }
+
+        button {
+          width: 100%;
+        }
+
+        .download-button {
+          width: 2.2rem;
+        }
+
+        .health .update-db-button {
+          width: 2.2rem;
+        }
+      }
+
+      @media (prefers-color-scheme: dark) {
+        body {
+          background: #11141a;
+          color: #f5f7fb;
+        }
+
+        input {
+          border-color: #3b4658;
+          background: #181d26;
+        }
+
+        button {
+          border-color: #4dabf7;
+          background: #1971c2;
+        }
+
+        .update-db-button {
+          border-color: #6f7c91;
+          background: #181d26;
+          color: #f5f7fb;
+        }
+
+        .update-db-button:hover:not(:disabled) {
+          border-color: #74c0fc;
+          color: #74c0fc;
+        }
+
+        .status {
+          color: #bac2d0;
+        }
+
+        .health {
+          color: #d7deea;
+        }
+
+        .health-state[data-state="ok"] {
+          color: #69db7c;
+        }
+
+        .health-state[data-state="error"] {
+          color: #ff8787;
+        }
+
+        .db-age {
+          color: #bac2d0;
+        }
+
+        .table-wrap {
+          border-color: #30394a;
+          background: #181d26;
+        }
+
+        th {
+          background: #242b38;
+          color: #d7deea;
+        }
+
+        th,
+        td {
+          border-bottom-color: #30394a;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header class="page-header">
+        <h1>MTV Downloader</h1>
+
+        <div class="health" aria-live="polite">
+          <span id="health-status" class="health-state">Checking</span>
+          <span id="db-age" class="db-age"></span>
+          <button
+            id="update-db-button"
+            class="update-db-button"
+            type="button"
+            title="Update database (can take a while)"
+            aria-label="Update database. This can take a while."
+          ></button>
+        </div>
+      </header>
+
+      <form id="search-form">
+        <input
+          id="search-query"
+          name="query"
+          type="search"
+          autocomplete="off"
+          placeholder="Search by title"
+          aria-label="Search by title"
+        />
+        <button id="search-button" type="submit">Search</button>
+      </form>
+
+      <p id="status" class="status" role="status"></p>
+
+      <div class="table-wrap">
+        <table>
+          <thead id="results-head"></thead>
+          <tbody id="results-body"></tbody>
+        </table>
+      </div>
+    </main>
+
+    <script>
+      const form = document.querySelector("#search-form");
+      const input = document.querySelector("#search-query");
+      const button = document.querySelector("#search-button");
+      const healthStatusElement = document.querySelector("#health-status");
+      const dbAgeElement = document.querySelector("#db-age");
+      const updateDbButton = document.querySelector("#update-db-button");
+      const statusElement = document.querySelector("#status");
+      const tableHead = document.querySelector("#results-head");
+      const tableBody = document.querySelector("#results-body");
+      let lastDbUpdate = null;
+      const resultColumns = [
+        "hash",
+        "channel",
+        "title",
+        "topic",
+        "size",
+        "start",
+        "duration",
+        "age",
+        "region",
+        "downloaded",
+        "season",
+        "episode",
+      ];
+
+      function formatAgeValue(value) {
+        const age = String(value);
+        const daysMatch = age.match(/^(\d+) days?,\s+(\d+):/);
+        if (daysMatch) {
+          const days = Number(daysMatch[1]);
+          const hours = Number(daysMatch[2]);
+          const years = Math.floor(days / 365);
+
+          if (years > 0) {
+            return `${years}y`;
+          }
+
+          if (days > 0) {
+            return `${days}d`;
+          }
+
+          return `${hours}h`;
+        }
+
+        const hoursMatch = age.match(/^(\d+):/);
+        if (hoursMatch) {
+          return `${Number(hoursMatch[1])}h`;
+        }
+
+        return age;
+      }
+
+      function formatStartValue(value) {
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) {
+          return String(value);
+        }
+
+        return new Intl.DateTimeFormat(undefined, {
+          dateStyle: "medium",
+        }).format(date);
+      }
+
+      function formatCellValue(value, column) {
+        if (value === null || value === undefined) {
+          return "";
+        }
+
+        if (column === "age") {
+          return formatAgeValue(value);
+        }
+
+        if (column === "start") {
+          return formatStartValue(value);
+        }
+
+        if (typeof value === "object") {
+          return JSON.stringify(value);
+        }
+
+        return String(value);
+      }
+
+      function pluralize(value, unit) {
+        return `${value} ${unit}${value === 1 ? "" : "s"}`;
+      }
+
+      function formatRelativeAge(date) {
+        const seconds = Math.max(
+          0,
+          Math.floor((Date.now() - date.getTime()) / 1000),
+        );
+        const minutes = Math.floor(seconds / 60);
+        const hours = Math.floor(minutes / 60);
+        const days = Math.floor(hours / 24);
+
+        if (days > 0) {
+          return `${pluralize(days, "day")} ago`;
+        }
+
+        if (hours > 0) {
+          const remainingMinutes = minutes % 60;
+          if (remainingMinutes > 0) {
+            return `${pluralize(hours, "hour")} ${pluralize(remainingMinutes, "minute")} ago`;
+          }
+
+          return `${pluralize(hours, "hour")} ago`;
+        }
+
+        if (minutes > 0) {
+          return `${pluralize(minutes, "minute")} ago`;
+        }
+
+        return "just now";
+      }
+
+      function renderDatabaseAge() {
+        if (!lastDbUpdate) {
+          dbAgeElement.textContent = "";
+          dbAgeElement.removeAttribute("title");
+          return;
+        }
+
+        dbAgeElement.textContent = `Database updated ${formatRelativeAge(lastDbUpdate)}`;
+        dbAgeElement.title = new Intl.DateTimeFormat(undefined, {
+          dateStyle: "medium",
+          timeStyle: "short",
+        }).format(lastDbUpdate);
+      }
+
+      async function loadHealth() {
+        try {
+          const response = await fetch("/health");
+          const data = await response.json();
+
+          if (!response.ok) {
+            throw new Error(data.error || "Health check failed");
+          }
+
+          lastDbUpdate = new Date(data.last_db_update);
+          if (Number.isNaN(lastDbUpdate.getTime())) {
+            throw new Error("Invalid database update timestamp");
+          }
+
+          healthStatusElement.textContent = "OK";
+          healthStatusElement.dataset.state = "ok";
+          renderDatabaseAge();
+        } catch (error) {
+          lastDbUpdate = null;
+          healthStatusElement.textContent = "Error";
+          healthStatusElement.dataset.state = "error";
+          dbAgeElement.textContent = error.message;
+          dbAgeElement.removeAttribute("title");
+        }
+      }
+
+      async function refreshDatabase() {
+        updateDbButton.disabled = true;
+        updateDbButton.title = "Updating database";
+        updateDbButton.setAttribute("aria-busy", "true");
+        dbAgeElement.textContent = "Updating database";
+
+        try {
+          const response = await fetch("/refresh_database");
+          const data = await response.json();
+
+          if (!response.ok || !data.success) {
+            throw new Error(data.error || "Database update failed");
+          }
+
+          await loadHealth();
+        } catch (error) {
+          healthStatusElement.textContent = "Error";
+          healthStatusElement.dataset.state = "error";
+          dbAgeElement.textContent = error.message;
+          dbAgeElement.removeAttribute("title");
+        } finally {
+          updateDbButton.disabled = false;
+          updateDbButton.title = "Update database (can take a while)";
+          updateDbButton.removeAttribute("aria-busy");
+          updateDbButton.replaceChildren(createDatabaseUpdateIcon());
+        }
+      }
+
+      function createDatabaseUpdateIcon() {
+        const svgNamespace = "http://www.w3.org/2000/svg";
+        const icon = document.createElementNS(svgNamespace, "svg");
+        icon.setAttribute("viewBox", "0 0 24 24");
+        icon.setAttribute("fill", "none");
+        icon.setAttribute("stroke-width", "2");
+        icon.setAttribute("stroke-linecap", "round");
+        icon.setAttribute("stroke-linejoin", "round");
+        icon.setAttribute("aria-hidden", "true");
+
+        [
+          ["path", { d: "M21 12a9 9 0 0 0-15.6-6.1L3 8" }],
+          ["path", { d: "M3 3v5h5" }],
+          ["path", { d: "M3 12a9 9 0 0 0 15.6 6.1L21 16" }],
+          ["path", { d: "M16 16h5v5" }],
+        ].forEach(([tagName, attributes]) => {
+          const element = document.createElementNS(svgNamespace, tagName);
+          Object.entries(attributes).forEach(([name, value]) => {
+            element.setAttribute(name, value);
+          });
+          icon.append(element);
+        });
+
+        return icon;
+      }
+
+      async function downloadShow(showHash, downloadButton) {
+        const params = new URLSearchParams({ hash: showHash });
+
+        downloadButton.disabled = true;
+        downloadButton.title = "Downloading";
+        downloadButton.setAttribute("aria-busy", "true");
+        statusElement.textContent = "Starting download";
+
+        try {
+          const response = await fetch(`/download?${params.toString()}`);
+          const data = await response.json();
+
+          if (!response.ok || !data.success) {
+            throw new Error(data.error || "Download failed");
+          }
+
+          statusElement.textContent = "Download started";
+        } catch (error) {
+          statusElement.textContent = error.message;
+        } finally {
+          downloadButton.disabled = false;
+          downloadButton.title = "Download";
+          downloadButton.removeAttribute("aria-busy");
+          downloadButton.replaceChildren(createDownloadIcon());
+        }
+      }
+
+      function createDownloadIcon() {
+        const svgNamespace = "http://www.w3.org/2000/svg";
+        const icon = document.createElementNS(svgNamespace, "svg");
+        icon.setAttribute("viewBox", "0 0 24 24");
+        icon.setAttribute("fill", "none");
+        icon.setAttribute("stroke-width", "2");
+        icon.setAttribute("stroke-linecap", "round");
+        icon.setAttribute("stroke-linejoin", "round");
+        icon.setAttribute("aria-hidden", "true");
+
+        [
+          ["path", { d: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" }],
+          ["polyline", { points: "7 10 12 15 17 10" }],
+          ["line", { x1: "12", x2: "12", y1: "15", y2: "3" }],
+        ].forEach(([tagName, attributes]) => {
+          const element = document.createElementNS(svgNamespace, tagName);
+          Object.entries(attributes).forEach(([name, value]) => {
+            element.setAttribute(name, value);
+          });
+          icon.append(element);
+        });
+
+        return icon;
+      }
+
+      function renderRows(data) {
+        tableHead.replaceChildren();
+        tableBody.replaceChildren();
+
+        const rows = Array.isArray(data) ? data : [data];
+
+        if (rows.length === 0) {
+          statusElement.textContent = "No results";
+          return;
+        }
+
+        const headerRow = document.createElement("tr");
+        resultColumns.forEach((column) => {
+          const headerCell = document.createElement("th");
+          headerCell.scope = "col";
+          headerCell.textContent = column === "hash" ? "download" : column;
+          headerRow.append(headerCell);
+        });
+        tableHead.append(headerRow);
+
+        rows.forEach((row) => {
+          const tableRow = document.createElement("tr");
+          resultColumns.forEach((column) => {
+            const cell = document.createElement("td");
+
+            if (column === "hash") {
+              const showHash = formatCellValue(row[column], column);
+              const downloadButton = document.createElement("button");
+              downloadButton.className = "download-button";
+              downloadButton.type = "button";
+              downloadButton.title = "Download";
+              downloadButton.append(createDownloadIcon());
+              downloadButton.setAttribute(
+                "aria-label",
+                `Download ${formatCellValue(row.title, "title") || showHash}`,
+              );
+              downloadButton.disabled = !showHash;
+              downloadButton.addEventListener("click", () => {
+                downloadShow(showHash, downloadButton);
+              });
+              cell.append(downloadButton);
+            } else {
+              cell.textContent = formatCellValue(row[column], column);
+            }
+
+            tableRow.append(cell);
+          });
+          tableBody.append(tableRow);
+        });
+
+        statusElement.textContent = `${rows.length} result${rows.length === 1 ? "" : "s"}`;
+      }
+
+      async function search(event) {
+        event.preventDefault();
+
+        const params = new URLSearchParams();
+        const query = input.value.trim();
+        if (query) {
+          params.append("filter", `${query}`);
+        }
+
+        button.disabled = true;
+        statusElement.textContent = "Searching";
+
+        try {
+          const response = await fetch(`/list?${params.toString()}`);
+          const data = await response.json();
+
+          if (!response.ok) {
+            throw new Error(data.error || "Search failed");
+          }
+
+          renderRows(data);
+        } catch (error) {
+          tableHead.replaceChildren();
+          tableBody.replaceChildren();
+          statusElement.textContent = error.message;
+        } finally {
+          button.disabled = false;
+        }
+      }
+
+      form.addEventListener("submit", search);
+      updateDbButton.addEventListener("click", refreshDatabase);
+      updateDbButton.append(createDatabaseUpdateIcon());
+      loadHealth();
+      setInterval(renderDatabaseAge, 60 * 1000);
+    </script>
+  </body>
+</html>

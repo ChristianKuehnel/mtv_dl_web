@@ -1,11 +1,11 @@
 # Virtual Environment
-venv/
-
-# Node.js
-node_modules/
-package-lock.json
+.venv/
+# any egg_info files
+*.egg-info
 __pycache__
-
-# BMad personal config
-_bmad/config.user.toml
-_bmad/custom/config.user.toml
+# mtv_dl home directory with the database
+mtv_dl_db/
+# Standard Download folder for testing
+/Downloads
+# NodeJS modules, used for linting the project
+/node_modules

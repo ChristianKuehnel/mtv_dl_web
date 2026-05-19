@@ -1,34 +1,20 @@
-FROM python:3.11-slim
+FROM python:3.12-slim
 
-# Set working directory
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    MTV_DL_WEB_CONFIG=/config/mtv_dl_web.yaml
+
 WORKDIR /app
 
-# Install uv from official image
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+COPY pyproject.toml ./
+COPY src ./src
 
-# Copy dependency metadata and lock file for deterministic sync
-COPY pyproject.toml uv.lock ./
+RUN pip install --no-cache-dir --upgrade pip \
+    && pip install --no-cache-dir .
 
-# Copy package source so uv can build/install the local project
-COPY src/mtv_dl_web ./src/mtv_dl_web
+RUN mkdir -p /config /downloads /database
 
-# Install dependencies with uv
-RUN rm -rf .venv && uv sync --frozen
+VOLUME ["/config", "/downloads", "/database"]
+EXPOSE 8071
 
-# Copy remaining application files
-COPY . .
-
-# Create a non-root user
-RUN useradd --create-home --shell /bin/bash appuser
-
-# Create directories for mounted volumes
-RUN mkdir -p /data /downloads /config && \
-    chown -R appuser:appuser /app /data /downloads /config
-
-# Expose port
-EXPOSE 8000
-
-USER appuser
-
-# Run the application from the project virtualenv
-CMD [".venv/bin/uvicorn", "mtv_dl_web.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["python", "-c", "from mtv_dl_web.app import create_app; from mtv_dl_web import config; create_app().run(host=config.host, port=config.port)"]

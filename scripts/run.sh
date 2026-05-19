@@ -1,29 +1,25 @@
 #!/bin/bash
 
-# Script to run the MTV Downloader Web service using uv
-# This script will use the config.yaml file in the current directory
+# Script to run the Flask application using the virtual environment
 
-set -e  # Exit on any error
+# Get the directory where this script is located
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-echo "Starting MTV Downloader Web service..."
+# Change to the script's parent directory
+cd "$SCRIPT_DIR/.." || exit
 
-# Check if uv is available
-if ! command -v uv &> /dev/null; then
-    echo "Error: uv is not installed or not in PATH"
-    echo "Please install uv first: https://docs.astral.sh/uv/"
+# Check if virtual environment exists
+if [ ! -d ".venv" ]; then
+    echo "Virtual environment not found. Please run setup.sh first."
     exit 1
 fi
 
-# Check if config.yaml exists in current directory
-if [ ! -f "config.yaml" ]; then
-    echo "Warning: config.yaml not found in current directory"
-    echo "Using default configuration values"
-fi
+# Activate virtual environment
+echo "Activating virtual environment..."
+# shellcheck source=/dev/null
+source .venv/bin/activate
 
-# Activate the project environment
-uv sync
-
-# Run the service with uvicorn
-uv run uvicorn mtv_dl_web.main:app --host 0.0.0.0 --port 8000
-
-echo "Service stopped"
+# Run the Flask application
+echo "Starting Flask application..."
+export PYTHONPATH=src
+python -m mtv_dl_web.app
