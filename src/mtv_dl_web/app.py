@@ -118,7 +118,8 @@ def create_app():
             response.headers["Content-Type"] = "application/json"
             return response, 400
 
-        job = app.download_queue.enqueue(show_hash)
+        title = request.args.get("title") or None
+        job = app.download_queue.enqueue(show_hash, title)
         response = jsonify({"job_id": job.id, "status": "queued", "success": True})
         response.headers["Content-Type"] = "application/json"
         return response

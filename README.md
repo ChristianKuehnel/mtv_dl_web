@@ -117,11 +117,11 @@ List of things I want to implement:
     * [x] forward backend errors to the frontend
     * [ ] in the container: use environment variables over the config file
     * [x] fix WARNING: "This is a development server. Do not use it in a production deployment. Use a production WSGI server instead."
-    * [ ] update the queue so that it shows the title of the show, not just the hash, probably do that in the backend when enquing something
+    * [x] update the queue so that it shows the title of the show, not just the hash, probably do that in the backend when enquing something
+    * [ ] duration parameter doesn't work
 * Cron searches
     * [ ] allow user to store filter queries
     * [ ] when updating the database, run those filter queries
-    * [ ] notify the user about new downloads
 * maybe some day
     * [ ] support a different output path when downloading series
-    * [ ] support a post-download script
+    * [ ] support a post-download script and/or notify the user about new downloads

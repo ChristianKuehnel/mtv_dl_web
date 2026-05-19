@@ -23,6 +23,7 @@ class WorkJobSnapshot(TypedDict):
     id: int
     type: JobKind
     show_hash: Optional[str]
+    title: Optional[str]
 
 
 class WorkQueueSnapshot(TypedDict):
@@ -38,9 +39,15 @@ class WorkJob:
     id: int
     type: JobKind
     show_hash: Optional[str] = None
+    title: Optional[str] = None
 
     def snapshot(self) -> WorkJobSnapshot:
-        return {"id": self.id, "type": self.type, "show_hash": self.show_hash}
+        return {
+            "id": self.id,
+            "type": self.type,
+            "show_hash": self.show_hash,
+            "title": self.title,
+        }
 
 
 class DownloadQueue:
@@ -61,10 +68,15 @@ class DownloadQueue:
         )
         self._worker.start()
 
-    def enqueue(self, show_hash: str) -> WorkJob:
+    def enqueue(self, show_hash: str, title: Optional[str] = None) -> WorkJob:
         """Add a download request to the queue."""
         with self._lock:
-            job = WorkJob(id=self._next_job_id, type="download", show_hash=show_hash)
+            job = WorkJob(
+                id=self._next_job_id,
+                type="download",
+                show_hash=show_hash,
+                title=title,
+            )
             self._next_job_id += 1
 
         logger.info("Queueing download job %s for hash %s", job.id, job.show_hash)

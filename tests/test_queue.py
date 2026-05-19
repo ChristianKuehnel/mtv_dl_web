@@ -43,7 +43,7 @@ def download_queue(wrapper: RecordingWrapper) -> DownloadQueue:
 def test_download_queue_processes_jobs_one_at_a_time(
     wrapper: RecordingWrapper, download_queue: DownloadQueue
 ) -> None:
-    first_job = download_queue.enqueue("first")
+    first_job = download_queue.enqueue("first", "First Show")
     second_job = download_queue.enqueue("second")
 
     assert first_job.id == 1
@@ -52,8 +52,15 @@ def test_download_queue_processes_jobs_one_at_a_time(
     time.sleep(0.05)
     assert wrapper.calls == [("first", "start")]
     assert download_queue.snapshot() == {
-        "current": {"id": 1, "type": "download", "show_hash": "first"},
-        "pending": [{"id": 2, "type": "download", "show_hash": "second"}],
+        "current": {
+            "id": 1,
+            "type": "download",
+            "show_hash": "first",
+            "title": "First Show",
+        },
+        "pending": [
+            {"id": 2, "type": "download", "show_hash": "second", "title": None}
+        ],
         "pending_count": 1,
     }
 
@@ -85,8 +92,20 @@ def test_database_refresh_shares_queue_with_downloads(
     time.sleep(0.05)
     assert wrapper.calls == [("first", "start")]
     assert download_queue.snapshot() == {
-        "current": {"id": 1, "type": "download", "show_hash": "first"},
-        "pending": [{"id": 2, "type": "database_refresh", "show_hash": None}],
+        "current": {
+            "id": 1,
+            "type": "download",
+            "show_hash": "first",
+            "title": None,
+        },
+        "pending": [
+            {
+                "id": 2,
+                "type": "database_refresh",
+                "show_hash": None,
+                "title": None,
+            }
+        ],
         "pending_count": 1,
     }
 
@@ -132,8 +151,20 @@ def test_database_refresh_is_not_queued_twice(
     assert first_refresh_job.id == 2
     assert wrapper.first_download_started.wait(timeout=1)
     assert download_queue.snapshot() == {
-        "current": {"id": 1, "type": "download", "show_hash": "first"},
-        "pending": [{"id": 2, "type": "database_refresh", "show_hash": None}],
+        "current": {
+            "id": 1,
+            "type": "download",
+            "show_hash": "first",
+            "title": None,
+        },
+        "pending": [
+            {
+                "id": 2,
+                "type": "database_refresh",
+                "show_hash": None,
+                "title": None,
+            }
+        ],
         "pending_count": 1,
     }
 

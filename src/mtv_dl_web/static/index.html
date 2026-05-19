@@ -566,6 +566,7 @@
         return {
           id: job.id,
           showHash: job.show_hash,
+          title: job.title,
           type: job.type === "database_refresh" ? "Refresh" : "Download",
           state,
         };
@@ -725,8 +726,11 @@
         return icon;
       }
 
-      async function downloadShow(showHash, downloadButton) {
+      async function downloadShow(showHash, title, downloadButton) {
         const params = new URLSearchParams({ hash: showHash });
+        if (title) {
+          params.append("title", title);
+        }
 
         downloadButton.disabled = true;
         downloadButton.title = "Downloading";
@@ -816,7 +820,11 @@
               );
               downloadButton.disabled = !showHash;
               downloadButton.addEventListener("click", () => {
-                downloadShow(showHash, downloadButton);
+                downloadShow(
+                  showHash,
+                  formatCellValue(row.title, "title"),
+                  downloadButton,
+                );
               });
               cell.append(downloadButton);
             } else {
@@ -870,7 +878,7 @@
             job.state,
             String(job.id),
             job.type,
-            job.showHash || "Database refresh",
+            job.title || job.showHash || "Database refresh",
           ].forEach((value) => {
             const cell = document.createElement("td");
             cell.textContent = value;
