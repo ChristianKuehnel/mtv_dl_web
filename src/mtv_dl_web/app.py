@@ -4,6 +4,7 @@ import logging
 from flask import Flask, jsonify, request, send_from_directory
 
 from . import config
+from .queue import DownloadQueue
 from .wrapper import Wrapper
 
 
@@ -33,6 +34,7 @@ def create_app():
 
     app = Flask(__name__)
     app.wrapper = Wrapper(config.mtv_dl_database_dir, config.download_path)
+    app.download_queue = DownloadQueue(app.wrapper)
 
     @app.route("/")
     def index():
@@ -101,11 +103,20 @@ def create_app():
             response.headers["Content-Type"] = "application/json"
             return response, 400
 
-        success = app.wrapper.download(show_hash)
-        status_code = 200 if success else 500
-        response = jsonify({"success": success})
+        job = app.download_queue.enqueue(show_hash)
+        response = jsonify({"job_id": job.id, "status": "queued", "success": True})
         response.headers["Content-Type"] = "application/json"
-        return response, status_code
+        return response
+
+    @app.route("/queue")
+    def queue():
+        logger.info(
+            "Handling request for /queue from %s",
+            request.headers.get("X-Forwarded-For", request.remote_addr),
+        )
+        response = jsonify(app.download_queue.snapshot())
+        response.headers["Content-Type"] = "application/json"
+        return response
 
     return app
 

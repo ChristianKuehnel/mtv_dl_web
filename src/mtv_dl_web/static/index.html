@@ -41,6 +41,12 @@
         line-height: 1.15;
       }
 
+      h2 {
+        margin: 0;
+        font-size: 1.15rem;
+        line-height: 1.2;
+      }
+
       .page-header {
         display: flex;
         align-items: flex-start;
@@ -181,6 +187,30 @@
         background: #fff;
       }
 
+      .queue-section {
+        margin-top: 1.5rem;
+      }
+
+      .queue-header {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-bottom: 0.6rem;
+      }
+
+      .queue-status {
+        margin: 0;
+        color: #5d6675;
+        font-size: 0.95rem;
+        text-align: right;
+      }
+
+      .queue-table th:first-child,
+      .queue-table td:first-child {
+        width: 8rem;
+      }
+
       table {
         width: 100%;
         border-collapse: collapse;
@@ -233,6 +263,15 @@
           text-align: left;
         }
 
+        .queue-header {
+          flex-direction: column;
+          gap: 0.25rem;
+        }
+
+        .queue-status {
+          text-align: left;
+        }
+
         button {
           width: 100%;
         }
@@ -274,6 +313,10 @@
         }
 
         .status {
+          color: #bac2d0;
+        }
+
+        .queue-status {
           color: #bac2d0;
         }
 
@@ -348,6 +391,20 @@
           <tbody id="results-body"></tbody>
         </table>
       </div>
+
+      <section class="queue-section" aria-labelledby="queue-heading">
+        <div class="queue-header">
+          <h2 id="queue-heading">Download Queue</h2>
+          <p id="queue-status" class="queue-status"></p>
+        </div>
+
+        <div class="table-wrap">
+          <table class="queue-table">
+            <thead id="queue-head"></thead>
+            <tbody id="queue-body"></tbody>
+          </table>
+        </div>
+      </section>
     </main>
 
     <script>
@@ -360,6 +417,9 @@
       const statusElement = document.querySelector("#status");
       const tableHead = document.querySelector("#results-head");
       const tableBody = document.querySelector("#results-body");
+      const queueStatusElement = document.querySelector("#queue-status");
+      const queueHead = document.querySelector("#queue-head");
+      const queueBody = document.querySelector("#queue-body");
       let lastDbUpdate = null;
       const resultColumns = [
         "hash",
@@ -432,6 +492,14 @@
         }
 
         return String(value);
+      }
+
+      function formatQueueJob(job, state) {
+        return {
+          id: job.id,
+          showHash: job.show_hash,
+          state,
+        };
       }
 
       function pluralize(value, unit) {
@@ -577,7 +645,8 @@
             throw new Error(data.error || "Download failed");
           }
 
-          statusElement.textContent = "Download started";
+          statusElement.textContent = "Download queued";
+          await loadQueue();
         } catch (error) {
           statusElement.textContent = error.message;
         } finally {
@@ -666,6 +735,69 @@
         statusElement.textContent = `${rows.length} result${rows.length === 1 ? "" : "s"}`;
       }
 
+      function renderQueue(queue) {
+        queueHead.replaceChildren();
+        queueBody.replaceChildren();
+
+        const jobs = [];
+        if (queue.current) {
+          jobs.push(formatQueueJob(queue.current, "Running"));
+        }
+
+        queue.pending.forEach((job) => {
+          jobs.push(formatQueueJob(job, "Queued"));
+        });
+
+        const headerRow = document.createElement("tr");
+        ["state", "job", "hash"].forEach((column) => {
+          const headerCell = document.createElement("th");
+          headerCell.scope = "col";
+          headerCell.textContent = column;
+          headerRow.append(headerCell);
+        });
+        queueHead.append(headerRow);
+
+        if (jobs.length === 0) {
+          const row = document.createElement("tr");
+          const cell = document.createElement("td");
+          cell.colSpan = 3;
+          cell.textContent = "Queue empty";
+          row.append(cell);
+          queueBody.append(row);
+          queueStatusElement.textContent = "No downloads queued";
+          return;
+        }
+
+        jobs.forEach((job) => {
+          const row = document.createElement("tr");
+          [job.state, String(job.id), job.showHash].forEach((value) => {
+            const cell = document.createElement("td");
+            cell.textContent = value;
+            row.append(cell);
+          });
+          queueBody.append(row);
+        });
+
+        queueStatusElement.textContent = `${jobs.length} download${jobs.length === 1 ? "" : "s"}`;
+      }
+
+      async function loadQueue() {
+        try {
+          const response = await fetch("/queue");
+          const data = await response.json();
+
+          if (!response.ok) {
+            throw new Error(data.error || "Queue lookup failed");
+          }
+
+          renderQueue(data);
+        } catch (error) {
+          queueHead.replaceChildren();
+          queueBody.replaceChildren();
+          queueStatusElement.textContent = error.message;
+        }
+      }
+
       async function search(event) {
         event.preventDefault();
 
@@ -700,7 +832,9 @@
       updateDbButton.addEventListener("click", refreshDatabase);
       updateDbButton.append(createDatabaseUpdateIcon());
       loadHealth();
+      loadQueue();
       setInterval(renderDatabaseAge, 60 * 1000);
+      setInterval(loadQueue, 5 * 1000);
     </script>
   </body>
 </html>

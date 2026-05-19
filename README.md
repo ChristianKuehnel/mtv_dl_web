@@ -17,12 +17,13 @@ List of things I want to implement:
     * [x] Add config parameter for the download folder
     * [x] containerize it, including all paths/mount points
     * [ ] implement threading model and mutexes to avoid collisions
-    * [ ] implement download queue
+    * [x] implement download queue
     * [ ] implement cron updates of the database
     * [ ] ... something about testing :)
     * [ ] forward backend errors to the frontend
     * [ ] in the container: use environment variables over the config file
     * [ ] fix WARNING: "This is a development server. Do not use it in a production deployment. Use a production WSGI server instead."
+    * [ ] update the queue so that it shows the title of the show, not just the hash, probably do that in the backend when enquing something
 * Cron searches
     * [ ] allow user to store filter queries
     * [ ] when updating the database, run those filter queries

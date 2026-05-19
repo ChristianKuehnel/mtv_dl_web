@@ -3,6 +3,7 @@
 ## Project Commands
 - Setup: `scripts/setup.sh`
 - Lint: `scripts/lint.sh`
+- Test suite: `scripts/test.sh`
 - Run locally: `scripts/run.sh`
 - Python syntax check: `.venv/bin/python -m compileall src/mtv_dl_web`
 
