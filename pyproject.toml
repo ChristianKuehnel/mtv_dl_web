@@ -6,8 +6,11 @@ build-backend = "setuptools.build_meta"
 name = "mtv-dl-web"
 version = "0.1.0"
 dependencies = [
+    "APScheduler==3.11.1",
     "Flask==2.3.3",
     "mtv_dl==0.28.0",
+    "PyYAML==6.0.3",
+    "tzdata",
 ]
 
 [project.optional-dependencies]
@@ -15,6 +18,7 @@ dev = [
     "black==25.1.0",
     "mypy",
     "pytest",
+    "types-PyYAML",
 ]
 
 [tool.setuptools.packages.find]

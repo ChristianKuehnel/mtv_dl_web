@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-import ast
 import logging
 import os
 from pathlib import Path
 from typing import Any
+
+import yaml
 
 
 logger = logging.getLogger(__name__)
@@ -19,33 +20,16 @@ CONFIG_PATH = Path(
 )
 
 
-def _parse_value(value: str) -> Any:
-    value = value.strip()
-    if not value:
-        return ""
-
-    try:
-        return ast.literal_eval(value)
-    except (SyntaxError, ValueError):
-        return value
-
-
 def _load_config(path: Path = CONFIG_PATH) -> dict[str, Any]:
-    config: dict[str, Any] = {}
     logger.debug("Loading configuration from %s", path)
 
     with path.open(encoding="utf-8") as config_file:
-        for line_number, line in enumerate(config_file, start=1):
-            stripped = line.strip()
-            if not stripped or stripped.startswith("#"):
-                continue
+        loaded_config = yaml.safe_load(config_file)
 
-            key, separator, value = stripped.partition(":")
-            if not separator:
-                raise ValueError(f"Invalid config line {line_number}: {line.rstrip()}")
+    if not isinstance(loaded_config, dict):
+        raise ValueError(f"Config file must contain a YAML mapping: {path}")
 
-            config[key.strip()] = _parse_value(value)
-
+    config: dict[str, Any] = loaded_config
     logger.debug("Loaded configuration keys: %s", sorted(config))
     return config
 
@@ -69,6 +53,9 @@ def _join_download_path(base_dir: str, target_dir: str) -> str:
 
 
 config = _load_config()
+database_refresh_config = config.get("database_refresh", {})
+if not isinstance(database_refresh_config, dict):
+    raise ValueError("database_refresh must be a YAML mapping")
 
 mtv_dl_database_dir: str = str(config["mtv_dl_database_dir"])
 download_basedir: str = str(config["download_basedir"])
@@ -78,12 +65,19 @@ download_path: str = _join_download_path(base_dir, mtv_dl_targetdir)
 host: str = str(config["host"])
 port: int = int(config["port"])
 logging_level: str = str(config["logging_level"])
+database_refresh_enabled: bool = bool(database_refresh_config.get("enabled", False))
+database_refresh_cron: str = str(database_refresh_config.get("cron", ""))
+database_refresh_timezone: str = str(database_refresh_config.get("timezone", "UTC"))
 
 
 __all__ = [
     "CONFIG_PATH",
     "base_dir",
     "config",
+    "database_refresh_config",
+    "database_refresh_cron",
+    "database_refresh_enabled",
+    "database_refresh_timezone",
     "download_basedir",
     "download_path",
     "host",

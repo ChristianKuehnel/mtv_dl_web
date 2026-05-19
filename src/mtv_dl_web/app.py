@@ -5,6 +5,7 @@ from flask import Flask, jsonify, request, send_from_directory
 
 from . import config
 from .queue import DownloadQueue
+from .scheduler import DatabaseRefreshScheduler
 from .wrapper import Wrapper
 
 
@@ -35,6 +36,14 @@ def create_app():
     app = Flask(__name__)
     app.wrapper = Wrapper(config.mtv_dl_database_dir, config.download_path)
     app.download_queue = DownloadQueue(app.wrapper)
+    app.database_refresh_scheduler = None
+    if config.database_refresh_enabled:
+        app.database_refresh_scheduler = DatabaseRefreshScheduler(
+            app.download_queue,
+            config.database_refresh_cron,
+            config.database_refresh_timezone,
+        )
+        app.database_refresh_scheduler.start()
 
     @app.route("/")
     def index():

@@ -18,7 +18,7 @@ List of things I want to implement:
     * [x] containerize it, including all paths/mount points
     * [x] implement threading model and mutexes to avoid collisions
     * [x] implement download queue
-    * [ ] implement cron updates of the database
+    * [x] implement cron updates of the database
     * [ ] ... something about testing :)
     * [ ] forward backend errors to the frontend
     * [ ] in the container: use environment variables over the config file
