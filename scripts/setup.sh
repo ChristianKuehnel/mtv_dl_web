@@ -28,12 +28,7 @@ echo "Upgrading pip..."
 pip install --upgrade pip
 
 # Install dependencies
-echo "Installing dependencies from requirements.txt..."
-pip install -r requirements.txt
-
-if [ -f "requirements-dev.txt" ]; then
-    echo "Installing development dependencies from requirements-dev.txt..."
-    pip install -r requirements-dev.txt
-fi
+echo "Installing project with development dependencies..."
+pip install -e ".[dev]"
 
 echo "Setup complete!"

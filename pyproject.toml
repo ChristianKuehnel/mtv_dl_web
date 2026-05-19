@@ -1,2 +1,23 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mtv-dl-web"
+version = "0.1.0"
+dependencies = [
+    "Flask==2.3.3",
+    "mtv_dl==0.28.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "black==25.1.0",
+    "mypy",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
 [tool.black]
 line-length = 88

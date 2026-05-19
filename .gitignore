@@ -1,11 +1,5 @@
 # Virtual Environment
 .venv/
-
-# Node.js
-node_modules/
-package-lock.json
+# any egg_info files
+*.egg-info
 __pycache__
-
-# BMad personal config
-_bmad/config.user.toml
-_bmad/custom/config.user.toml
