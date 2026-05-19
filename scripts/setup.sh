@@ -12,9 +12,12 @@ cd "$SCRIPT_DIR/.."
 # Exit on any error
 set -e
 
-# Create virtual environment
-echo "Creating virtual environment..."
-python3 -m venv .venv
+if [ ! -d ".venv" ]; then
+    echo "Creating virtual environment..."
+    python3 -m venv .venv
+else
+    echo "Virtual environment already exists."
+fi
 
 # Activate virtual environment
 echo "Activating virtual environment..."
@@ -27,5 +30,10 @@ pip install --upgrade pip
 # Install dependencies
 echo "Installing dependencies from requirements.txt..."
 pip install -r requirements.txt
+
+if [ -f "requirements-dev.txt" ]; then
+    echo "Installing development dependencies from requirements-dev.txt..."
+    pip install -r requirements-dev.txt
+fi
 
 echo "Setup complete!"
