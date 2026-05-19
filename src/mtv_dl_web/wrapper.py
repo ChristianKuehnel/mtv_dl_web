@@ -3,6 +3,7 @@ import logging
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 import re
+import shlex
 import subprocess
 import sys
 from typing import Optional, Sequence
@@ -99,9 +100,20 @@ def normalize_filter_query(filter_query: str) -> str:
     return f"{field}{operator}{unquote_filter_pattern(pattern)}"
 
 
+def split_filter_query(filter_query: str) -> list[str]:
+    """Split whitespace-separated filter queries while preserving quoted spaces."""
+    return shlex.split(filter_query)
+
+
 def normalize_filter_queries(filter_queries: Sequence[str]) -> list[str]:
     """Convert caller-provided filters into validated mtv_dl arguments."""
-    return [normalize_filter_query(filter_query) for filter_query in filter_queries]
+    normalized_filter_queries: list[str] = []
+    for filter_query in filter_queries:
+        normalized_filter_queries.extend(
+            normalize_filter_query(split_filter_query_part)
+            for split_filter_query_part in split_filter_query(filter_query)
+        )
+    return normalized_filter_queries
 
 
 def parse_database_age(age: str) -> timedelta:
@@ -126,7 +138,10 @@ class Wrapper:
     """A wrapper class for MTV downloader functionality."""
 
     def __init__(
-        self, home_dir: Optional[str] = None, download_path: Optional[str] = None
+        self,
+        home_dir: Optional[str] = None,
+        download_path: Optional[str] = None,
+        exclude_audiodeskription: bool = True,
     ):
         """
         Initialize the Wrapper with an optional home directory.
@@ -134,9 +149,11 @@ class Wrapper:
         Args:
             home_dir (str): Path to the home directory for mtv_dl configuration
             download_path (str): Target path expression for downloaded files
+            exclude_audiodeskription (bool): Exclude audiodescription entries
         """
         self.home_dir = home_dir
         self.download_path = download_path
+        self.exclude_audiodeskription = exclude_audiodeskription
 
     def call_binary(
         self,
@@ -187,12 +204,16 @@ class Wrapper:
             dict or list: JSON data retrieved from mtv_dl as Python object
         """
         logger.info("Running mtv_dl dump command")
-        logger.debug("mtv_dl list filter queries: %s", filter_queries)
+        list_filter_queries = list(filter_queries)
+        if self.exclude_audiodeskription:
+            list_filter_queries.append("title!=Audiodeskription")
+
+        logger.debug("mtv_dl list filter queries: %s", list_filter_queries)
         result = self.call_binary(
             [
                 "dump",
                 "--include-future",
-                *normalize_filter_queries(filter_queries),
+                *normalize_filter_queries(list_filter_queries),
             ]
         )
 

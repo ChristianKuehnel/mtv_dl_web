@@ -1,10 +1,11 @@
-name: Lint
+name: CI
 
 on:
   pull_request:
 
 jobs:
   lint:
+    name: Lint
     runs-on: ubuntu-latest
 
     steps:
@@ -24,6 +25,33 @@ jobs:
 
       - name: Run lint
         run: scripts/lint.sh
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up project
+        run: scripts/setup.sh
+
+      - name: Run tests
+        run: scripts/test.sh
+
+  build-container-image:
+    name: Build container image
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
 
       - name: Build container image
         run: scripts/build_container_image.sh

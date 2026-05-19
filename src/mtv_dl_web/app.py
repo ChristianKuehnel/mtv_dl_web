@@ -4,6 +4,8 @@ import logging
 from flask import Flask, jsonify, request, send_from_directory
 
 from . import config
+from .queue import DownloadQueue
+from .scheduler import DatabaseRefreshScheduler
 from .wrapper import Wrapper
 
 
@@ -32,7 +34,20 @@ def create_app():
     logger.info("Using mtv_dl download path: %s", config.download_path)
 
     app = Flask(__name__)
-    app.wrapper = Wrapper(config.mtv_dl_database_dir, config.download_path)
+    app.wrapper = Wrapper(
+        config.mtv_dl_database_dir,
+        config.download_path,
+        config.exclude_audiodeskription,
+    )
+    app.download_queue = DownloadQueue(app.wrapper)
+    app.database_refresh_scheduler = None
+    if config.database_refresh_enabled:
+        app.database_refresh_scheduler = DatabaseRefreshScheduler(
+            app.download_queue,
+            config.database_refresh_cron,
+            config.database_refresh_timezone,
+        )
+        app.database_refresh_scheduler.start()
 
     @app.route("/")
     def index():
@@ -61,6 +76,13 @@ def create_app():
             "Handling request for /list from %s",
             request.headers.get("X-Forwarded-For", request.remote_addr),
         )
+        if app.download_queue.database_refresh_running():
+            response = jsonify(
+                {"error": "Database refresh in progress. Please try again later."}
+            )
+            response.headers["Content-Type"] = "application/json"
+            return response, 409
+
         filter_queries = request.args.getlist("filter")
         try:
             result = app.wrapper.list(filter_queries)
@@ -83,11 +105,10 @@ def create_app():
             "Handling request for /refresh_database from %s",
             request.headers.get("X-Forwarded-For", request.remote_addr),
         )
-        success = app.wrapper.refresh_database()
-        status_code = 200 if success else 500
-        response = jsonify({"success": success})
+        job = app.download_queue.enqueue_database_refresh()
+        response = jsonify({"job_id": job.id, "status": "queued", "success": True})
         response.headers["Content-Type"] = "application/json"
-        return response, status_code
+        return response
 
     @app.route("/download")
     def download():
@@ -101,11 +122,21 @@ def create_app():
             response.headers["Content-Type"] = "application/json"
             return response, 400
 
-        success = app.wrapper.download(show_hash)
-        status_code = 200 if success else 500
-        response = jsonify({"success": success})
+        title = request.args.get("title") or None
+        job = app.download_queue.enqueue(show_hash, title)
+        response = jsonify({"job_id": job.id, "status": "queued", "success": True})
         response.headers["Content-Type"] = "application/json"
-        return response, status_code
+        return response
+
+    @app.route("/queue")
+    def queue():
+        logger.info(
+            "Handling request for /queue from %s",
+            request.headers.get("X-Forwarded-For", request.remote_addr),
+        )
+        response = jsonify(app.download_queue.snapshot())
+        response.headers["Content-Type"] = "application/json"
+        return response
 
     return app
 

@@ -4,3 +4,8 @@ port: 8071
 logging_level: "DEBUG"
 download_basedir: "./Downloads/"
 mtv_dl_targetdir: "{topic}/{start} {title}{ext}"
+exclude_audiodeskription: true
+database_refresh:
+  enabled: true
+  cron: "0 3 * * *"
+  timezone: "Europe/Berlin"
