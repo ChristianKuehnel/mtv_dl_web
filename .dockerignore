@@ -1,0 +1,11 @@
+.git
+.github
+.venv
+venv
+__pycache__
+.pytest_cache
+.mypy_cache
+node_modules
+_bmad-output
+_bmad
+.agents
