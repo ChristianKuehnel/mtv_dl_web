@@ -25,6 +25,7 @@ def create_app():
     logger.info("Using mtv_dl database directory: %s", config.mtv_dl_database_dir)
 
     app = Flask(__name__)
+    app.wrapper = Wrapper(config.mtv_dl_database_dir)
 
     @app.route("/")
     def hello_world():
@@ -37,11 +38,22 @@ def create_app():
             "Handling request for /list from %s",
             request.headers.get("X-Forwarded-For", request.remote_addr),
         )
-        wrapper = Wrapper(config.mtv_dl_database_dir)
-        result = wrapper.list()
+        result = app.wrapper.list()
         response = jsonify(result)
         response.headers["Content-Type"] = "application/json"
         return response
+
+    @app.route("/refresh_database")
+    def refresh_database():
+        logger.info(
+            "Handling request for /refresh_database from %s",
+            request.headers.get("X-Forwarded-For", request.remote_addr),
+        )
+        success = app.wrapper.refresh_database()
+        status_code = 200 if success else 500
+        response = jsonify({"success": success})
+        response.headers["Content-Type"] = "application/json"
+        return response, status_code
 
     return app
 
