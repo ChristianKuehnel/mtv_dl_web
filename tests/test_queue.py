@@ -1,6 +1,7 @@
 from threading import Event
 import time
-import unittest
+
+import pytest
 
 from mtv_dl_web.queue import DownloadQueue
 
@@ -29,132 +30,120 @@ class RecordingWrapper:
         return True
 
 
-class DownloadQueueTest(unittest.TestCase):
-    def test_download_queue_processes_jobs_one_at_a_time(self) -> None:
-        wrapper = RecordingWrapper()
-        download_queue = DownloadQueue(wrapper)
+@pytest.fixture
+def wrapper() -> RecordingWrapper:
+    return RecordingWrapper()
 
-        first_job = download_queue.enqueue("first")
-        second_job = download_queue.enqueue("second")
 
-        self.assertEqual(first_job.id, 1)
-        self.assertEqual(second_job.id, 2)
-        self.assertTrue(wrapper.first_download_started.wait(timeout=1))
-        time.sleep(0.05)
-        self.assertEqual(wrapper.calls, [("first", "start")])
-        self.assertEqual(
-            download_queue.snapshot(),
-            {
-                "current": {"id": 1, "type": "download", "show_hash": "first"},
-                "pending": [{"id": 2, "type": "download", "show_hash": "second"}],
-                "pending_count": 1,
-            },
-        )
+@pytest.fixture
+def download_queue(wrapper: RecordingWrapper) -> DownloadQueue:
+    return DownloadQueue(wrapper)
 
-        wrapper.allow_first_download_to_finish.set()
-        wrapper.allow_database_refresh_to_finish.set()
-        download_queue.join()
 
-        self.assertEqual(
-            download_queue.snapshot(),
-            {
-                "current": None,
-                "pending": [],
-                "pending_count": 0,
-            },
-        )
-        self.assertEqual(
-            wrapper.calls,
-            [
-                ("first", "start"),
-                ("first", "finish"),
-                ("second", "start"),
-                ("second", "finish"),
-            ],
-        )
+def test_download_queue_processes_jobs_one_at_a_time(
+    wrapper: RecordingWrapper, download_queue: DownloadQueue
+) -> None:
+    first_job = download_queue.enqueue("first")
+    second_job = download_queue.enqueue("second")
 
-    def test_database_refresh_shares_queue_with_downloads(self) -> None:
-        wrapper = RecordingWrapper()
-        download_queue = DownloadQueue(wrapper)
+    assert first_job.id == 1
+    assert second_job.id == 2
+    assert wrapper.first_download_started.wait(timeout=1)
+    time.sleep(0.05)
+    assert wrapper.calls == [("first", "start")]
+    assert download_queue.snapshot() == {
+        "current": {"id": 1, "type": "download", "show_hash": "first"},
+        "pending": [{"id": 2, "type": "download", "show_hash": "second"}],
+        "pending_count": 1,
+    }
 
-        download_queue.enqueue("first")
-        refresh_job = download_queue.enqueue_database_refresh()
+    wrapper.allow_first_download_to_finish.set()
+    wrapper.allow_database_refresh_to_finish.set()
+    download_queue.join()
 
-        self.assertEqual(refresh_job.id, 2)
-        self.assertTrue(wrapper.first_download_started.wait(timeout=1))
-        time.sleep(0.05)
-        self.assertEqual(wrapper.calls, [("first", "start")])
-        self.assertEqual(
-            download_queue.snapshot(),
-            {
-                "current": {"id": 1, "type": "download", "show_hash": "first"},
-                "pending": [{"id": 2, "type": "database_refresh", "show_hash": None}],
-                "pending_count": 1,
-            },
-        )
+    assert download_queue.snapshot() == {
+        "current": None,
+        "pending": [],
+        "pending_count": 0,
+    }
+    assert wrapper.calls == [
+        ("first", "start"),
+        ("first", "finish"),
+        ("second", "start"),
+        ("second", "finish"),
+    ]
 
-        wrapper.allow_first_download_to_finish.set()
-        wrapper.allow_database_refresh_to_finish.set()
-        download_queue.join()
 
-        self.assertEqual(
-            wrapper.calls,
-            [
-                ("first", "start"),
-                ("first", "finish"),
-                ("database_refresh", "start"),
-                ("database_refresh", "finish"),
-            ],
-        )
+def test_database_refresh_shares_queue_with_downloads(
+    wrapper: RecordingWrapper, download_queue: DownloadQueue
+) -> None:
+    download_queue.enqueue("first")
+    refresh_job = download_queue.enqueue_database_refresh()
 
-    def test_database_refresh_running_state_only_tracks_active_refresh(self) -> None:
-        wrapper = RecordingWrapper()
-        download_queue = DownloadQueue(wrapper)
+    assert refresh_job.id == 2
+    assert wrapper.first_download_started.wait(timeout=1)
+    time.sleep(0.05)
+    assert wrapper.calls == [("first", "start")]
+    assert download_queue.snapshot() == {
+        "current": {"id": 1, "type": "download", "show_hash": "first"},
+        "pending": [{"id": 2, "type": "database_refresh", "show_hash": None}],
+        "pending_count": 1,
+    }
 
-        download_queue.enqueue("first")
-        download_queue.enqueue_database_refresh()
+    wrapper.allow_first_download_to_finish.set()
+    wrapper.allow_database_refresh_to_finish.set()
+    download_queue.join()
 
-        self.assertTrue(wrapper.first_download_started.wait(timeout=1))
-        self.assertFalse(download_queue.database_refresh_running())
+    assert wrapper.calls == [
+        ("first", "start"),
+        ("first", "finish"),
+        ("database_refresh", "start"),
+        ("database_refresh", "finish"),
+    ]
 
-        wrapper.allow_first_download_to_finish.set()
-        self.assertTrue(wrapper.database_refresh_started.wait(timeout=1))
-        self.assertTrue(download_queue.database_refresh_running())
 
-        wrapper.allow_database_refresh_to_finish.set()
-        download_queue.join()
+def test_database_refresh_running_state_only_tracks_active_refresh(
+    wrapper: RecordingWrapper, download_queue: DownloadQueue
+) -> None:
+    download_queue.enqueue("first")
+    download_queue.enqueue_database_refresh()
 
-        self.assertFalse(download_queue.database_refresh_running())
+    assert wrapper.first_download_started.wait(timeout=1)
+    assert not download_queue.database_refresh_running()
 
-    def test_database_refresh_is_not_queued_twice(self) -> None:
-        wrapper = RecordingWrapper()
-        download_queue = DownloadQueue(wrapper)
+    wrapper.allow_first_download_to_finish.set()
+    assert wrapper.database_refresh_started.wait(timeout=1)
+    assert download_queue.database_refresh_running()
 
-        download_queue.enqueue("first")
-        first_refresh_job = download_queue.enqueue_database_refresh()
-        second_refresh_job = download_queue.enqueue_database_refresh()
+    wrapper.allow_database_refresh_to_finish.set()
+    download_queue.join()
 
-        self.assertEqual(first_refresh_job, second_refresh_job)
-        self.assertEqual(first_refresh_job.id, 2)
-        self.assertTrue(wrapper.first_download_started.wait(timeout=1))
-        self.assertEqual(
-            download_queue.snapshot(),
-            {
-                "current": {"id": 1, "type": "download", "show_hash": "first"},
-                "pending": [{"id": 2, "type": "database_refresh", "show_hash": None}],
-                "pending_count": 1,
-            },
-        )
+    assert not download_queue.database_refresh_running()
 
-        wrapper.allow_first_download_to_finish.set()
-        download_queue.join()
 
-        self.assertEqual(
-            wrapper.calls,
-            [
-                ("first", "start"),
-                ("first", "finish"),
-                ("database_refresh", "start"),
-                ("database_refresh", "finish"),
-            ],
-        )
+def test_database_refresh_is_not_queued_twice(
+    wrapper: RecordingWrapper, download_queue: DownloadQueue
+) -> None:
+    download_queue.enqueue("first")
+    first_refresh_job = download_queue.enqueue_database_refresh()
+    second_refresh_job = download_queue.enqueue_database_refresh()
+
+    assert first_refresh_job == second_refresh_job
+    assert first_refresh_job.id == 2
+    assert wrapper.first_download_started.wait(timeout=1)
+    assert download_queue.snapshot() == {
+        "current": {"id": 1, "type": "download", "show_hash": "first"},
+        "pending": [{"id": 2, "type": "database_refresh", "show_hash": None}],
+        "pending_count": 1,
+    }
+
+    wrapper.allow_first_download_to_finish.set()
+    wrapper.allow_database_refresh_to_finish.set()
+    download_queue.join()
+
+    assert wrapper.calls == [
+        ("first", "start"),
+        ("first", "finish"),
+        ("database_refresh", "start"),
+        ("database_refresh", "finish"),
+    ]

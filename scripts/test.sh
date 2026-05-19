@@ -16,4 +16,4 @@ fi
 source .venv/bin/activate
 
 echo "Running tests..."
-python -m unittest discover -s tests
+python -m pytest tests

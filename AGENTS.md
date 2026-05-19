@@ -2,8 +2,10 @@
 
 ## Project Commands
 - Setup: `scripts/setup.sh`
+- If `.venv` does not exist, run `scripts/setup.sh` to create the virtual environment and install project dependencies.
 - Lint: `scripts/lint.sh`
 - Test suite: `scripts/test.sh`
+- Tests use pytest and live in the `tests/` directory.
 - Run locally: `scripts/run.sh`
 - Python syntax check: `.venv/bin/python -m compileall src/mtv_dl_web`
 
