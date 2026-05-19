@@ -1,10 +1,97 @@
 import json
 import logging
+from pathlib import Path
 import subprocess
+import sys
 from typing import Optional, Sequence
 
 
 logger = logging.getLogger(__name__)
+
+REGEX_FILTER_FIELDS = {
+    "description",
+    "start",
+    "dow",
+    "hour",
+    "minute",
+    "region",
+    "size",
+    "channel",
+    "topic",
+    "title",
+    "hash",
+    "url",
+}
+EQUALITY_FILTER_FIELDS = REGEX_FILTER_FIELDS | {
+    "duration",
+    "age",
+    "episode",
+    "season",
+}
+COMPARISON_FILTER_FIELDS = {
+    "duration",
+    "age",
+    "start",
+    "dow",
+    "hour",
+    "minute",
+    "size",
+    "episode",
+    "season",
+}
+
+
+def mtv_dl_binary() -> str:
+    """Return the mtv_dl executable matching the active Python environment."""
+    return str(Path(sys.executable).with_name("mtv_dl"))
+
+
+def validate_filter_query(filter_query: str) -> None:
+    """
+    Validate a single mtv_dl filter query.
+
+    Supported filter syntax comes from ``mtv_dl list --help``:
+    ``field=value``, ``field!=value``, ``field+value`` or ``field-value``.
+    """
+    field = None
+    operator = None
+    pattern = None
+
+    for candidate_field in sorted(EQUALITY_FILTER_FIELDS | COMPARISON_FILTER_FIELDS):
+        for candidate_operator in ("!=", "=", "+", "-"):
+            prefix = f"{candidate_field}{candidate_operator}"
+            if filter_query.startswith(prefix):
+                field = candidate_field
+                operator = candidate_operator
+                pattern = filter_query[len(prefix) :]
+                break
+        if field is not None:
+            break
+
+    if field is None or operator is None or not pattern:
+        raise ValueError(f"Invalid mtv_dl filter query: {filter_query!r}")
+
+    if operator in ("=", "!="):
+        allowed_fields = EQUALITY_FILTER_FIELDS
+    else:
+        allowed_fields = COMPARISON_FILTER_FIELDS
+
+    if field not in allowed_fields:
+        allowed_fields_text = ", ".join(sorted(allowed_fields))
+        raise ValueError(
+            f"Unsupported mtv_dl filter field/operator in {filter_query!r}. "
+            f"Allowed fields for {operator!r}: {allowed_fields_text}"
+        )
+
+
+def normalize_filter_queries(filter_queries: Sequence[str]) -> list[str]:
+    """Convert caller-provided filters into validated mtv_dl arguments."""
+    filters = list(filter_queries)
+
+    for filter_query in filters:
+        validate_filter_query(filter_query)
+
+    return filters
 
 
 class Wrapper:
@@ -30,7 +117,7 @@ class Wrapper:
             subprocess.CompletedProcess: The completed process on success
             None: If mtv_dl fails or is not available
         """
-        cmd = ["mtv_dl", *args]
+        cmd = [mtv_dl_binary(), *args]
 
         if self.home_dir:
             cmd.insert(1, "--dir")
@@ -48,20 +135,28 @@ class Wrapper:
             logger.error("mtv_dl binary not found")
             return None
 
-    def list(self):
+    def list(self, filter_queries: Sequence[str]):
         """
         List method for the Wrapper class.
 
         Calls the mtv_dl binary with dump command to get JSON output.
 
+        Args:
+            filter_queries: List of mtv_dl filter queries. Supported
+                operators are '=' and '!=' for equality/regex matching and '+'
+                and '-' for greater/less-than comparisons.
+
         Returns:
             dict or list: JSON data retrieved from mtv_dl as Python object
         """
         logger.info("Running mtv_dl dump command")
-        result = self.call_binary(["-r", "72", "--no-bar", "dump", "title=tagesschau"])
+        logger.debug("mtv_dl list filter queries: %s", filter_queries)
+        result = self.call_binary(
+            ["-r", "72", "--no-bar", "dump", *normalize_filter_queries(filter_queries)]
+        )
 
         if result is None:
-            return {}
+            raise RuntimeError("mtv_dl dump command failed")
 
         # Parse the JSON output directly
         if result.stdout.strip():
@@ -105,6 +200,5 @@ class Wrapper:
         """
         logger.info("Running mtv_dl download command")
         return (
-            self.call_binary(["-r", "72", "download", f"hash={show_hash}"])
-            is not None
+            self.call_binary(["-r", "72", "download", f"hash={show_hash}"]) is not None
         )

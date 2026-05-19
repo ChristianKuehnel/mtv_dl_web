@@ -13,29 +13,121 @@
         line-height: 1.5;
       }
 
+      * {
+        box-sizing: border-box;
+      }
+
       body {
         min-height: 100vh;
         margin: 0;
-        display: grid;
-        place-items: center;
-        background: #f6f7f9;
+        background: #f4f6f8;
         color: #20242c;
       }
 
       main {
-        width: min(90vw, 42rem);
+        width: min(96vw, 72rem);
+        margin: 0 auto;
+        padding: 2rem 1rem;
       }
 
       h1 {
-        margin: 0 0 0.75rem;
-        font-size: clamp(2rem, 8vw, 4rem);
-        line-height: 1;
+        margin: 0 0 1.25rem;
+        font-size: 2rem;
+        line-height: 1.15;
       }
 
-      p {
-        margin: 0;
-        font-size: 1.125rem;
+      form {
+        display: flex;
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+      }
+
+      input {
+        width: 100%;
+        min-width: 0;
+        padding: 0.7rem 0.8rem;
+        border: 1px solid #c9d0da;
+        border-radius: 6px;
+        background: #fff;
+        color: inherit;
+        font: inherit;
+      }
+
+      button {
+        flex: 0 0 auto;
+        padding: 0.7rem 1rem;
+        border: 1px solid #1864ab;
+        border-radius: 6px;
+        background: #1864ab;
+        color: #fff;
+        font: inherit;
+        font-weight: 650;
+        cursor: pointer;
+      }
+
+      button:disabled {
+        cursor: wait;
+        opacity: 0.65;
+      }
+
+      .status {
+        min-height: 1.5rem;
+        margin: 0 0 0.75rem;
         color: #5d6675;
+      }
+
+      .table-wrap {
+        width: 100%;
+        overflow-x: auto;
+        border: 1px solid #d7dde5;
+        border-radius: 8px;
+        background: #fff;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.9rem;
+      }
+
+      th,
+      td {
+        max-width: 22rem;
+        padding: 0.65rem 0.75rem;
+        border-bottom: 1px solid #e2e7ee;
+        text-align: left;
+        vertical-align: top;
+      }
+
+      th {
+        position: sticky;
+        top: 0;
+        background: #eef2f6;
+        color: #394150;
+        font-weight: 700;
+        text-transform: capitalize;
+      }
+
+      tbody tr:last-child td {
+        border-bottom: 0;
+      }
+
+      td {
+        overflow-wrap: anywhere;
+      }
+
+      @media (max-width: 42rem) {
+        main {
+          padding: 1rem 0.75rem;
+        }
+
+        form {
+          flex-direction: column;
+        }
+
+        button {
+          width: 100%;
+        }
       }
 
       @media (prefers-color-scheme: dark) {
@@ -44,8 +136,33 @@
           color: #f5f7fb;
         }
 
-        p {
+        input {
+          border-color: #3b4658;
+          background: #181d26;
+        }
+
+        button {
+          border-color: #4dabf7;
+          background: #1971c2;
+        }
+
+        .status {
           color: #bac2d0;
+        }
+
+        .table-wrap {
+          border-color: #30394a;
+          background: #181d26;
+        }
+
+        th {
+          background: #242b38;
+          color: #d7deea;
+        }
+
+        th,
+        td {
+          border-bottom-color: #30394a;
         }
       }
     </style>
@@ -53,7 +170,127 @@
   <body>
     <main>
       <h1>MTV Downloader</h1>
-      <p>The web application is running.</p>
+
+      <form id="search-form">
+        <input
+          id="search-query"
+          name="query"
+          type="search"
+          autocomplete="off"
+          placeholder="Search by title"
+          aria-label="Search by title"
+        >
+        <button id="search-button" type="submit">Search</button>
+      </form>
+
+      <p id="status" class="status" role="status"></p>
+
+      <div class="table-wrap">
+        <table>
+          <thead id="results-head"></thead>
+          <tbody id="results-body"></tbody>
+        </table>
+      </div>
     </main>
+
+    <script>
+      const form = document.querySelector("#search-form");
+      const input = document.querySelector("#search-query");
+      const button = document.querySelector("#search-button");
+      const statusElement = document.querySelector("#status");
+      const tableHead = document.querySelector("#results-head");
+      const tableBody = document.querySelector("#results-body");
+
+      function formatCellValue(value) {
+        if (value === null || value === undefined) {
+          return "";
+        }
+
+        if (typeof value === "object") {
+          return JSON.stringify(value);
+        }
+
+        return String(value);
+      }
+
+      function renderRows(data) {
+        tableHead.replaceChildren();
+        tableBody.replaceChildren();
+
+        const rows = Array.isArray(data) ? data : [data];
+
+        if (rows.length === 0) {
+          statusElement.textContent = "No results";
+          return;
+        }
+
+        const columns = Array.from(
+          rows.reduce((keys, row) => {
+            if (row && typeof row === "object" && !Array.isArray(row)) {
+              Object.keys(row).forEach((key) => keys.add(key));
+            }
+            return keys;
+          }, new Set()),
+        );
+
+        if (columns.length === 0) {
+          statusElement.textContent = "No table data";
+          return;
+        }
+
+        const headerRow = document.createElement("tr");
+        columns.forEach((column) => {
+          const headerCell = document.createElement("th");
+          headerCell.scope = "col";
+          headerCell.textContent = column;
+          headerRow.append(headerCell);
+        });
+        tableHead.append(headerRow);
+
+        rows.forEach((row) => {
+          const tableRow = document.createElement("tr");
+          columns.forEach((column) => {
+            const cell = document.createElement("td");
+            cell.textContent = formatCellValue(row[column]);
+            tableRow.append(cell);
+          });
+          tableBody.append(tableRow);
+        });
+
+        statusElement.textContent = `${rows.length} result${rows.length === 1 ? "" : "s"}`;
+      }
+
+      async function search(event) {
+        event.preventDefault();
+
+        const params = new URLSearchParams();
+        const query = input.value.trim();
+        if (query) {
+          params.append("filter", `${query}`);
+        }
+
+        button.disabled = true;
+        statusElement.textContent = "Searching";
+
+        try {
+          const response = await fetch(`/list?${params.toString()}`);
+          const data = await response.json();
+
+          if (!response.ok) {
+            throw new Error(data.error || "Search failed");
+          }
+
+          renderRows(data);
+        } catch (error) {
+          tableHead.replaceChildren();
+          tableBody.replaceChildren();
+          statusElement.textContent = error.message;
+        } finally {
+          button.disabled = false;
+        }
+      }
+
+      form.addEventListener("submit", search);
+    </script>
   </body>
 </html>

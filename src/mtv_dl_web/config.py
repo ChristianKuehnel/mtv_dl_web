@@ -55,6 +55,14 @@ config = _load_config()
 mtv_dl_database_dir: str = str(config["mtv_dl_database_dir"])
 host: str = str(config["host"])
 port: int = int(config["port"])
+logging_level: str = str(config["logging_level"])
 
 
-__all__ = ["CONFIG_PATH", "config", "host", "mtv_dl_database_dir", "port"]
+__all__ = [
+    "CONFIG_PATH",
+    "config",
+    "host",
+    "logging_level",
+    "mtv_dl_database_dir",
+    "port",
+]

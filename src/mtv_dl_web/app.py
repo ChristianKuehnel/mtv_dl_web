@@ -12,8 +12,12 @@ logger = logging.getLogger(__name__)
 
 def setup_logging() -> None:
     """Configure application logging."""
+    logging_level = getattr(logging, config.logging_level.upper(), None)
+    if not isinstance(logging_level, int):
+        raise ValueError(f"Invalid logging level: {config.logging_level!r}")
+
     logging.basicConfig(
-        level=logging.INFO,
+        level=logging_level,
         format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
     )
 
@@ -42,7 +46,18 @@ def create_app():
             "Handling request for /list from %s",
             request.headers.get("X-Forwarded-For", request.remote_addr),
         )
-        result = app.wrapper.list()
+        filter_queries = request.args.getlist("filter")
+        try:
+            result = app.wrapper.list(filter_queries)
+        except ValueError as e:
+            response = jsonify({"error": str(e)})
+            response.headers["Content-Type"] = "application/json"
+            return response, 400
+        except RuntimeError as e:
+            response = jsonify({"error": str(e)})
+            response.headers["Content-Type"] = "application/json"
+            return response, 500
+
         response = jsonify(result)
         response.headers["Content-Type"] = "application/json"
         return response
