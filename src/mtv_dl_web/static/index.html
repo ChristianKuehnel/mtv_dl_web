@@ -394,7 +394,7 @@
 
       <section class="queue-section" aria-labelledby="queue-heading">
         <div class="queue-header">
-          <h2 id="queue-heading">Download Queue</h2>
+          <h2 id="queue-heading">Work Queue</h2>
           <p id="queue-status" class="queue-status"></p>
         </div>
 
@@ -498,6 +498,7 @@
         return {
           id: job.id,
           showHash: job.show_hash,
+          type: job.type === "database_refresh" ? "Refresh" : "Download",
           state,
         };
       }
@@ -589,7 +590,8 @@
             throw new Error(data.error || "Database update failed");
           }
 
-          await loadHealth();
+          dbAgeElement.textContent = "Database update queued";
+          await loadQueue();
         } catch (error) {
           healthStatusElement.textContent = "Error";
           healthStatusElement.dataset.state = "error";
@@ -749,7 +751,7 @@
         });
 
         const headerRow = document.createElement("tr");
-        ["state", "job", "hash"].forEach((column) => {
+        ["state", "job", "type", "detail"].forEach((column) => {
           const headerCell = document.createElement("th");
           headerCell.scope = "col";
           headerCell.textContent = column;
@@ -760,17 +762,22 @@
         if (jobs.length === 0) {
           const row = document.createElement("tr");
           const cell = document.createElement("td");
-          cell.colSpan = 3;
+          cell.colSpan = 4;
           cell.textContent = "Queue empty";
           row.append(cell);
           queueBody.append(row);
-          queueStatusElement.textContent = "No downloads queued";
+          queueStatusElement.textContent = "No work queued";
           return;
         }
 
         jobs.forEach((job) => {
           const row = document.createElement("tr");
-          [job.state, String(job.id), job.showHash].forEach((value) => {
+          [
+            job.state,
+            String(job.id),
+            job.type,
+            job.showHash || "Database refresh",
+          ].forEach((value) => {
             const cell = document.createElement("td");
             cell.textContent = value;
             row.append(cell);
@@ -778,7 +785,7 @@
           queueBody.append(row);
         });
 
-        queueStatusElement.textContent = `${jobs.length} download${jobs.length === 1 ? "" : "s"}`;
+        queueStatusElement.textContent = `${jobs.length} queued item${jobs.length === 1 ? "" : "s"}`;
       }
 
       async function loadQueue() {

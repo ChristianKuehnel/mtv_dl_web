@@ -63,6 +63,13 @@ def create_app():
             "Handling request for /list from %s",
             request.headers.get("X-Forwarded-For", request.remote_addr),
         )
+        if app.download_queue.database_refresh_running():
+            response = jsonify(
+                {"error": "Database refresh in progress. Please try again later."}
+            )
+            response.headers["Content-Type"] = "application/json"
+            return response, 409
+
         filter_queries = request.args.getlist("filter")
         try:
             result = app.wrapper.list(filter_queries)
@@ -85,11 +92,10 @@ def create_app():
             "Handling request for /refresh_database from %s",
             request.headers.get("X-Forwarded-For", request.remote_addr),
         )
-        success = app.wrapper.refresh_database()
-        status_code = 200 if success else 500
-        response = jsonify({"success": success})
+        job = app.download_queue.enqueue_database_refresh()
+        response = jsonify({"job_id": job.id, "status": "queued", "success": True})
         response.headers["Content-Type"] = "application/json"
-        return response, status_code
+        return response
 
     @app.route("/download")
     def download():
