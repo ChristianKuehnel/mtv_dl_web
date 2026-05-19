@@ -17,6 +17,11 @@ if ! command -v shellcheck >/dev/null 2>&1; then
     exit 1
 fi
 
+if ! command -v npm >/dev/null 2>&1; then
+    echo "npm is not installed. Please install npm and run this script again."
+    exit 1
+fi
+
 if [ ! -d ".venv" ]; then
     echo "Creating virtual environment..."
     python3 -m venv .venv
@@ -36,5 +41,8 @@ pip install --upgrade pip
 # Install dependencies
 echo "Installing project with development dependencies..."
 pip install -e ".[dev]"
+
+echo "Installing HTML linting tools..."
+npm install --no-save prettier htmlhint
 
 echo "Setup complete!"

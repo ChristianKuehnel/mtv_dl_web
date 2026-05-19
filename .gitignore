@@ -7,3 +7,5 @@ __pycache__
 mtv_dl_db/
 # Standard Download folder for testing
 /Downloads
+# NodeJS modules, used for linting the project
+/node_modules
