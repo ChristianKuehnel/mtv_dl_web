@@ -20,4 +20,8 @@ fi
 
 echo "Using $CONTAINER_ENGINE"
 echo "Building $IMAGE_NAME..."
-"$CONTAINER_ENGINE" build -t "$IMAGE_NAME" .
+if [ "$CONTAINER_ENGINE" = "podman" ]; then
+    "$CONTAINER_ENGINE" build --format docker -t "$IMAGE_NAME" .
+else
+    "$CONTAINER_ENGINE" build -t "$IMAGE_NAME" .
+fi

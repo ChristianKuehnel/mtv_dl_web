@@ -13,6 +13,11 @@ The service listens on port `8071` inside the container and expects three mounte
 - `/downloads`: where downloaded shows are written
 - `/database`: where the `mtv_dl` database is stored
 
+The container runs as the non-root user `mtvdlweb` with UID/GID `10001`.
+The mounted `/downloads` and `/database` directories must be writable by that
+user. `/config` only needs to be readable unless the config file is created from
+inside the container.
+
 Container images are published to the GitHub Container Registry:
 
 <https://github.com/ChristianKuehnel/mtv_dl_web/pkgs/container/mtv_dl_web>
@@ -148,6 +153,16 @@ starting point.
 
 Keep `/downloads` and `/database` mounted to persistent host directories. Without
 those mounts, downloaded files and database state only live inside the container.
+If you use bind mounts, make the writable host directories accessible to UID/GID
+`10001`, for example:
+
+```sh
+mkdir -p config Downloads mtv_dl_db
+chown -R 10001:10001 Downloads mtv_dl_db
+```
+
+If your container runtime uses SELinux labels, add the appropriate label option
+to the bind mounts, for example `:Z` with Podman.
 
 
 ## TODOs
