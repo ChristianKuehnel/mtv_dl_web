@@ -46,6 +46,27 @@ def mtv_dl_binary() -> str:
     return str(Path(sys.executable).with_name("mtv_dl"))
 
 
+def parse_filter_query(filter_query: str) -> tuple[str, str, str]:
+    """Split a single mtv_dl filter query into field, operator, and pattern."""
+    for candidate_field in sorted(EQUALITY_FILTER_FIELDS | COMPARISON_FILTER_FIELDS):
+        for candidate_operator in ("!=", "=", "+", "-"):
+            prefix = f"{candidate_field}{candidate_operator}"
+            if filter_query.startswith(prefix):
+                pattern = filter_query[len(prefix) :]
+                if pattern:
+                    return candidate_field, candidate_operator, pattern
+
+    raise ValueError(f"Invalid mtv_dl filter query: {filter_query!r}")
+
+
+def unquote_filter_pattern(pattern: str) -> str:
+    """Remove one layer of shell-style quotes from a filter pattern."""
+    if len(pattern) >= 2 and pattern[0] == pattern[-1] and pattern[0] in {"'", '"'}:
+        return pattern[1:-1]
+
+    return pattern
+
+
 def validate_filter_query(filter_query: str) -> None:
     """
     Validate a single mtv_dl filter query.
@@ -53,23 +74,7 @@ def validate_filter_query(filter_query: str) -> None:
     Supported filter syntax comes from ``mtv_dl list --help``:
     ``field=value``, ``field!=value``, ``field+value`` or ``field-value``.
     """
-    field = None
-    operator = None
-    pattern = None
-
-    for candidate_field in sorted(EQUALITY_FILTER_FIELDS | COMPARISON_FILTER_FIELDS):
-        for candidate_operator in ("!=", "=", "+", "-"):
-            prefix = f"{candidate_field}{candidate_operator}"
-            if filter_query.startswith(prefix):
-                field = candidate_field
-                operator = candidate_operator
-                pattern = filter_query[len(prefix) :]
-                break
-        if field is not None:
-            break
-
-    if field is None or operator is None or not pattern:
-        raise ValueError(f"Invalid mtv_dl filter query: {filter_query!r}")
+    field, operator, _pattern = parse_filter_query(filter_query)
 
     if operator in ("=", "!="):
         allowed_fields = EQUALITY_FILTER_FIELDS
@@ -84,14 +89,16 @@ def validate_filter_query(filter_query: str) -> None:
         )
 
 
+def normalize_filter_query(filter_query: str) -> str:
+    """Validate and convert one filter query into one mtv_dl argument."""
+    validate_filter_query(filter_query)
+    field, operator, pattern = parse_filter_query(filter_query)
+    return f"{field}{operator}{unquote_filter_pattern(pattern)}"
+
+
 def normalize_filter_queries(filter_queries: Sequence[str]) -> list[str]:
     """Convert caller-provided filters into validated mtv_dl arguments."""
-    filters = list(filter_queries)
-
-    for filter_query in filters:
-        validate_filter_query(filter_query)
-
-    return filters
+    return [normalize_filter_query(filter_query) for filter_query in filter_queries]
 
 
 class Wrapper:
