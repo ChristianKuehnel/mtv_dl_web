@@ -1,15 +1,20 @@
 # mtv_dl_web
-A light-weight web UI for [mtv_dl](https://github.com/fnep/mtv_dl). It runs on your home lab and downloads the shows to your NAS.
+A light-weight web UI wrapper for [mtv_dl](https://github.com/fnep/mtv_dl). Thank you @fnep for creating this awesome tool! mtv_dl_web runs on your home lab and downloads the shows to your NAS. 
+
+The web UI looks like this:
+![screenshot of the web interface](doc/screenshot.png)
 
 ## Deployment
 
-This must be run behind some reverse proxy. Don't put it blindly in the public internet!
+This deployment assumes you know how to deploy containers and have a computer on your home (or somewhere else) where you can deploy containers. It also assumes you understand and accept the risks of deploying open source software in that environment.
 
-### Run With Docker Or Podman
+⚠️ This service must be run behind a reverse proxy with authentication. Don't put it blindly in the public Internet!
+
+### Run as container
 
 The service listens on port `8071` inside the container and expects three mounted directories:
 
-- `/config`: contains `mtv_dl_web.yaml`
+- `/config`: contains `mtv_dl_web.yaml` config file
 - `/downloads`: where downloaded shows are written
 - `/database`: where the `mtv_dl` database is stored
 
@@ -18,12 +23,28 @@ The mounted `/downloads` and `/database` directories must be writable by that
 user. `/config` only needs to be readable unless the config file is created from
 inside the container.
 
-Container images are published to the GitHub Container Registry:
+Container images are published to the [GitHub Container Registry](<https://github.com/ChristianKuehnel/mtv_dl_web/pkgs/container/mtv_dl_web>). Users should pull the published container image directly from GitHub.
 
-<https://github.com/ChristianKuehnel/mtv_dl_web/pkgs/container/mtv_dl_web>
 
-End users should pull the published container image directly from GitHub.
+Before starting the container, make sure the host **config directory contains
+`mtv_dl_web.yaml`**. You can use `config/mtv_dl_web.yaml` from this repository as a
+starting point.
 
+Keep `/downloads` and `/database` mounted to persistent host directories. Without
+those mounts, downloaded files, database state and download history only live inside the container.
+If you use bind mounts, make the writable host directories accessible to UID/GID
+`10001`, for example:
+
+```sh
+mkdir -p config Downloads mtv_dl_db
+chown -R 10001:10001 Downloads mtv_dl_db
+```
+
+If your container runtime uses SELinux labels, add the appropriate label option
+to the bind mounts, for example `:Z` with Podman.
+
+
+### Podman
 Pull the image with Podman:
 
 ```sh
@@ -48,7 +69,7 @@ podman run --rm \
   ghcr.io/christiankuehnel/mtv_dl_web:latest
 ```
 
-With Docker Compose use this snippet:
+### Docker Compose
 
 ```yaml
 services:
@@ -67,7 +88,7 @@ services:
       MTV_DL_WEB_DATABASE_REFRESH_CRON: "0 3 * * *"
 ```
 
-### Configuration
+### Configuration file
 
 The container reads `/config/mtv_dl_web.yaml`. A container-ready example lives
 at `config/mtv_dl_web.yaml`:
@@ -86,7 +107,7 @@ database_refresh:
   timezone: "Europe/Berlin"
 ```
 
-Configuration parameters:
+Parameters in the config file:
 
 - `mtv_dl_database_dir`: directory used by `mtv_dl` for its database. In the
   container this should normally be `/database`.
@@ -111,8 +132,11 @@ The default cron expression `0 3 * * *` refreshes the database every day at
 refreshes use the same work queue as downloads, so downloads and refreshes run
 one at a time.
 
-All configuration parameters can also be set through environment variables.
-Environment variables take precedence over `mtv_dl_web.yaml`. Use the
+### Environment variables
+
+All configuration parameters can also be set through environment variables. 
+This might be more convenient when deploying the service as a container.
+Environment variables take precedence over `mtv_dl_web.yaml`. The service uses the
 `MTV_DL_WEB_` prefix to avoid name collisions:
 
 - `MTV_DL_WEB_CONFIG`: path to the config file. Defaults to
@@ -146,24 +170,6 @@ podman run --rm \
   -e MTV_DL_WEB_DATABASE_REFRESH_ENABLED=false \
   ghcr.io/christiankuehnel/mtv_dl_web:latest
 ```
-
-Before starting the container, make sure the host config directory contains
-`mtv_dl_web.yaml`. You can use `config/mtv_dl_web.yaml` from this repository as a
-starting point.
-
-Keep `/downloads` and `/database` mounted to persistent host directories. Without
-those mounts, downloaded files and database state only live inside the container.
-If you use bind mounts, make the writable host directories accessible to UID/GID
-`10001`, for example:
-
-```sh
-mkdir -p config Downloads mtv_dl_db
-chown -R 10001:10001 Downloads mtv_dl_db
-```
-
-If your container runtime uses SELinux labels, add the appropriate label option
-to the bind mounts, for example `:Z` with Podman.
-
 
 ## TODOs
 
