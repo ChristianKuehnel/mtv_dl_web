@@ -58,7 +58,7 @@
       form {
         display: flex;
         gap: 0.75rem;
-        margin-bottom: 1rem;
+        margin-bottom: 0.65rem;
       }
 
       .health {
@@ -171,6 +171,96 @@
       button:disabled {
         cursor: wait;
         opacity: 0.65;
+      }
+
+      .filter-tools {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.5rem;
+        margin: 0 0 1rem;
+      }
+
+      .example-filter {
+        padding: 0.35rem 0.55rem;
+        border-color: #c9d0da;
+        background: #fff;
+        color: #2f3744;
+        font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+        font-size: 0.85rem;
+        font-weight: 600;
+      }
+
+      .example-filter:hover:not(:disabled),
+      .filter-help-button:hover,
+      .filter-help-button:focus-visible {
+        border-color: #1864ab;
+        color: #1864ab;
+      }
+
+      .filter-help {
+        position: relative;
+        display: inline-flex;
+      }
+
+      .filter-help-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 1.8rem;
+        height: 1.8rem;
+        padding: 0;
+        border-color: #c9d0da;
+        border-radius: 999px;
+        background: #fff;
+        color: #394150;
+        font-size: 1rem;
+        line-height: 1;
+      }
+
+      .filter-help-box {
+        position: absolute;
+        z-index: 2;
+        top: calc(100% + 0.45rem);
+        left: 50%;
+        width: min(28rem, calc(100vw - 2rem));
+        padding: 0.8rem 0.9rem;
+        border: 1px solid #d0d7e2;
+        border-radius: 8px;
+        background: #fff;
+        box-shadow: 0 0.75rem 1.75rem rgb(32 36 44 / 18%);
+        color: #20242c;
+        font-size: 0.88rem;
+        opacity: 0;
+        pointer-events: none;
+        transform: translate(-50%, -0.25rem);
+        transition:
+          opacity 120ms ease,
+          transform 120ms ease;
+      }
+
+      .filter-help:hover .filter-help-box,
+      .filter-help:focus-within .filter-help-box {
+        opacity: 1;
+        pointer-events: auto;
+        transform: translate(-50%, 0);
+      }
+
+      .filter-help-box p {
+        margin: 0 0 0.5rem;
+      }
+
+      .filter-help-box ul {
+        margin: 0.35rem 0 0.65rem;
+        padding-left: 1.1rem;
+      }
+
+      .filter-help-box li {
+        margin: 0.15rem 0;
+      }
+
+      .filter-help-box code {
+        font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
       }
 
       .status {
@@ -317,6 +407,22 @@
           width: 100%;
         }
 
+        .example-filter,
+        .filter-help-button {
+          width: auto;
+        }
+
+        .filter-help-box {
+          right: 0;
+          left: auto;
+          transform: translate(0, -0.25rem);
+        }
+
+        .filter-help:hover .filter-help-box,
+        .filter-help:focus-within .filter-help-box {
+          transform: translate(0, 0);
+        }
+
         .download-button {
           width: 2.2rem;
         }
@@ -340,6 +446,27 @@
         button {
           border-color: #4dabf7;
           background: #1971c2;
+        }
+
+        .example-filter,
+        .filter-help-button {
+          border-color: #3b4658;
+          background: #181d26;
+          color: #f5f7fb;
+        }
+
+        .example-filter:hover:not(:disabled),
+        .filter-help-button:hover,
+        .filter-help-button:focus-visible {
+          border-color: #74c0fc;
+          color: #74c0fc;
+        }
+
+        .filter-help-box {
+          border-color: #30394a;
+          background: #181d26;
+          color: #f5f7fb;
+          box-shadow: 0 0.75rem 1.75rem rgb(0 0 0 / 36%);
         }
 
         .update-db-button {
@@ -442,11 +569,52 @@
           name="query"
           type="search"
           autocomplete="off"
-          placeholder="Search by title"
           aria-label="Search by title"
         />
         <button id="search-button" type="submit">Search</button>
       </form>
+
+      <div class="filter-tools" aria-label="Example filters">
+        <button class="example-filter" type="button">title="abc"</button>
+        <button class="example-filter" type="button">channel=arte</button>
+        <button class="example-filter" type="button">topic="Tatort"</button>
+        <button class="example-filter" type="button">season=1</button>
+        <button class="example-filter" type="button">duration+30m</button>
+
+        <span class="filter-help">
+          <button
+            class="filter-help-button"
+            type="button"
+            aria-label="Show filter hints"
+            aria-describedby="filter-help-box"
+          >
+            ?
+          </button>
+          <span id="filter-help-box" class="filter-help-box" role="tooltip">
+            <p><strong>Operators</strong></p>
+            <ul>
+              <li><code>field=value</code> matches a value or regex.</li>
+              <li><code>field!=value</code> excludes a value or regex.</li>
+              <li><code>field+value</code> keeps values greater than value.</li>
+              <li><code>field-value</code> keeps values less than value.</li>
+            </ul>
+            <p><strong>Fields for = and !=</strong></p>
+            <p>
+              <code
+                >age, channel, description, dow, duration, episode, hash, hour,
+                minute, region, season, size, start, title, topic, url</code
+              >
+            </p>
+            <p><strong>Fields for + and -</strong></p>
+            <p>
+              <code
+                >age, dow, duration, episode, hour, minute, season, size,
+                start</code
+              >
+            </p>
+          </span>
+        </span>
+      </div>
 
       <p id="status" class="status" role="status"></p>
 
@@ -476,6 +644,8 @@
       const form = document.querySelector("#search-form");
       const input = document.querySelector("#search-query");
       const button = document.querySelector("#search-button");
+      const exampleFilterButtons = document.querySelectorAll(".example-filter");
+      const defaultFilter = 'title="abc"';
       const healthStatusElement = document.querySelector("#health-status");
       const dbAgeElement = document.querySelector("#db-age");
       const updateDbButton = document.querySelector("#update-db-button");
@@ -931,8 +1101,18 @@
       }
 
       form.addEventListener("submit", search);
+      exampleFilterButtons.forEach((exampleFilterButton) => {
+        exampleFilterButton.addEventListener("click", () => {
+          const exampleFilter = exampleFilterButton.textContent.trim();
+          input.value = [input.value.trim(), exampleFilter]
+            .filter(Boolean)
+            .join(" ");
+          input.focus();
+        });
+      });
       updateDbButton.addEventListener("click", refreshDatabase);
       alertCloseButton.addEventListener("click", hideAlert);
+      input.value = defaultFilter;
       updateDbButton.append(createDatabaseUpdateIcon());
       loadHealth();
       loadQueue();
