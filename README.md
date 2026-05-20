@@ -8,6 +8,8 @@ The web UI looks like this:
 
 This deployment assumes you know how to deploy containers and have a computer on your home (or somewhere else) where you can deploy containers. It also assumes you understand and accept the risks of deploying open source software in that environment.
 
+This service was mostly implemented by AI, so it will behave weird in some cases.
+
 ⚠️ This service must be run behind a reverse proxy with authentication. Don't put it blindly in the public Internet!
 
 ### Run as container
@@ -171,36 +173,6 @@ podman run --rm \
   ghcr.io/christiankuehnel/mtv_dl_web:latest
 ```
 
-## TODOs
-
-List of things I want to implement:
-
-- [x] For the MVP:
-    - [x] Create nice web ui for searching
-    - [x] Show database age on web ui, add a "update" button
-    * [x] Add a per-show download button
-    * [x] Add config parameter for the download folder
-    * [x] containerize it, including all paths/mount points
-    * [x] implement threading model and mutexes to avoid collisions
-    * [x] implement download queue
-    * [x] implement cron updates of the database
-    * [x] forward backend errors to the frontend
-    * [x] in the container: use environment variables over the config file
-    * [x] fix WARNING: "This is a development server. Do not use it in a production deployment. Use a production WSGI server instead."
-    * [x] update the queue so that it shows the title of the show, not just the hash, probably do that in the backend when enquing something
-    * [x] duration parameter doesn't work
-    * [x] cover different combinations of search queries
-    * [x] add config flag to add the filter `title!=Audiodeskription`
-* [ ] Cron searches
-    * [ ] allow user to store filter queries
-    * [ ] when updating the database, run those filter queries
-* maybe some day
-    * [ ] support a different output path when downloading series
-    * [ ] support a post-download script and/or notify the user about new downloads
-    * [ ] create a `mtv_dl` mock for testing, to not depend on live data
-    * [ ] ... something about more testing :)
-    * [ ] make the web UI nicer, somehow, whatever that means
-
 ## Development
 
 The `scripts/` directory is meant for local development and testing, not for end
@@ -218,3 +190,21 @@ Useful development commands:
   changes before publishing.
 - `scripts/run_container.sh`: build and run a local development container from
   the checkout.
+
+
+## Future work
+
+List of things I might want to implement in the future:
+
+* [ ] Cron searches
+    * [ ] allow user to store filter queries
+    * [ ] when updating the database, run those filter queries
+* maybe some day
+    * [ ] support a different output path when downloading series
+    * [ ] support a post-download script and/or notify the user about new downloads
+    * [ ] create a `mtv_dl` mock for testing, to not depend on live data
+    * [ ] ... something about more testing :)
+    * [ ] make the web UI nicer, somehow, whatever that means
+
+
+Anything else? Just create an issue and we'll figure it out.
