@@ -26,8 +26,14 @@ def setup_logging() -> None:
 
 def create_app():
     setup_logging()
-    Path(config.mtv_dl_database_dir).mkdir(parents=True, exist_ok=True)
-    Path(config.base_dir).mkdir(parents=True, exist_ok=True)
+    try:
+        Path(config.mtv_dl_database_dir).mkdir(parents=True, exist_ok=True)
+        Path(config.base_dir).mkdir(parents=True, exist_ok=True)
+        config.validate_runtime_permissions()
+    except OSError as e:
+        logger.critical("Startup permission check failed: %s", e)
+        raise SystemExit(1) from e
+
     logger.info("Starting MTV Downloader Web Application")
     logger.info("Using mtv_dl database directory: %s", config.mtv_dl_database_dir)
     logger.info("Using download base directory: %s", config.base_dir)
