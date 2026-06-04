@@ -1,3 +1,4 @@
+import logging
 import pytest
 import subprocess
 from typing import Sequence
@@ -54,3 +55,15 @@ def test_list_can_include_audiodeskription_when_configured() -> None:
     wrapper.list(["season=1"])
 
     assert wrapper.calls == [["dump", "--include-future", "season=1"]]
+
+
+def test_call_binary_logs_stdout_and_stderr_when_command_fails(caplog) -> None:
+    wrapper = Wrapper()
+
+    with caplog.at_level(logging.ERROR, logger="mtv_dl_web.wrapper"):
+        result = wrapper.call_binary(["some_invalid_command"])
+
+    assert result is None
+    assert "mtv_dl stdout:" in caplog.text
+    assert "mtv_dl stderr:" in caplog.text
+    assert "No such command 'some_invalid_command'" in caplog.text

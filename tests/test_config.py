@@ -1,5 +1,7 @@
 from pathlib import Path
 
+import pytest
+
 from mtv_dl_web import config
 
 
@@ -129,3 +131,58 @@ mtv_dl_targetdir: "{topic}/{start} {title}{ext}"
     loaded_config = config._load_config(config_path, {})
 
     assert loaded_config.get("exclude_audiodeskription", True) is True
+
+
+def test_validate_runtime_permissions_accepts_writable_paths(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    database_dir = tmp_path / "mtv_dl_db"
+    database_dir.mkdir()
+    (database_dir / "database.json").write_text("{}", encoding="utf-8")
+    (database_dir / "cache").mkdir()
+    (database_dir / "cache" / "entry.json").write_text("{}", encoding="utf-8")
+    download_dir = tmp_path / "Downloads"
+    download_dir.mkdir()
+
+    monkeypatch.setattr(config.os, "access", lambda path, mode: True)
+
+    config.validate_runtime_permissions(database_dir, download_dir)
+
+
+def test_validate_runtime_permissions_rejects_unwritable_database_file(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    database_dir = tmp_path / "mtv_dl_db"
+    database_dir.mkdir()
+    database_file = database_dir / "database.json"
+    database_file.write_text("{}", encoding="utf-8")
+    download_dir = tmp_path / "Downloads"
+    download_dir.mkdir()
+
+    def fake_access(path: Path, mode: int) -> bool:
+        return path != database_file
+
+    monkeypatch.setattr(config.os, "access", fake_access)
+
+    with pytest.raises(PermissionError, match="mtv_dl_database_dir entry"):
+        config.validate_runtime_permissions(database_dir, download_dir)
+
+
+def test_validate_runtime_permissions_rejects_unwritable_download_basedir(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    database_dir = tmp_path / "mtv_dl_db"
+    database_dir.mkdir()
+    download_dir = tmp_path / "Downloads"
+    download_dir.mkdir()
+
+    def fake_access(path: Path, mode: int) -> bool:
+        return path != download_dir
+
+    monkeypatch.setattr(config.os, "access", fake_access)
+
+    with pytest.raises(PermissionError, match="download_basedir"):
+        config.validate_runtime_permissions(database_dir, download_dir)

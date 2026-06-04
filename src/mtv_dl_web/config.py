@@ -120,6 +120,43 @@ def _join_download_path(base_dir: str, target_dir: str) -> str:
     return os.path.join(base_dir, target_dir)
 
 
+def _require_writable(path: Path, description: str) -> None:
+    if not path.exists():
+        raise PermissionError(f"{description} does not exist: {path}")
+    if not os.access(path, os.W_OK):
+        raise PermissionError(f"{description} is not writable: {path}")
+
+
+def validate_runtime_permissions(
+    database_dir: str | Path | None = None,
+    download_dir: str | Path | None = None,
+) -> None:
+    """Validate write permissions needed by mtv_dl at runtime."""
+    database_path = Path(
+        database_dir if database_dir is not None else mtv_dl_database_dir
+    )
+    download_path = Path(download_dir if download_dir is not None else base_dir)
+
+    if not database_path.is_dir():
+        raise PermissionError(
+            f"mtv_dl_database_dir is not a directory: {database_path}"
+        )
+    _require_writable(database_path, "mtv_dl_database_dir")
+
+    for current_dir, directory_names, file_names in os.walk(database_path):
+        current_path = Path(current_dir)
+        _require_writable(current_path, "mtv_dl_database_dir directory")
+        for entry_name in [*directory_names, *file_names]:
+            _require_writable(
+                current_path / entry_name,
+                "mtv_dl_database_dir entry",
+            )
+
+    if not download_path.is_dir():
+        raise PermissionError(f"download_basedir is not a directory: {download_path}")
+    _require_writable(download_path, "download_basedir")
+
+
 config = _load_config()
 database_refresh_config = config.get("database_refresh", {})
 if not isinstance(database_refresh_config, dict):
@@ -155,4 +192,5 @@ __all__ = [
     "mtv_dl_database_dir",
     "mtv_dl_targetdir",
     "port",
+    "validate_runtime_permissions",
 ]

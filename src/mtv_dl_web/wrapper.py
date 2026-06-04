@@ -183,6 +183,7 @@ class Wrapper:
             return subprocess.run(cmd, capture_output=True, text=True, check=True)
         except subprocess.CalledProcessError as e:
             logger.error("Error running mtv_dl: %s", e)
+            logger.error("mtv_dl stdout: %s", e.stdout)
             logger.error("mtv_dl stderr: %s", e.stderr)
             return None
         except FileNotFoundError:
