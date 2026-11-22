@@ -39,6 +39,19 @@ def test_normalize_filter_queries_rejects_unquoted_extra_words() -> None:
         normalize_filter_queries(["title=marie brand season=1"])
 
 
+def test_normalize_filter_queries_accepts_english_typographic_quotes() -> None:
+    assert normalize_filter_queries(["title=\u201cmarie brand\u201d season=1"]) == [
+        "title=marie brand",
+        "season=1",
+    ]
+    assert normalize_filter_queries(["topic=\u2018Tatort\u2019"]) == ["topic=Tatort"]
+
+
+def test_normalize_filter_queries_accepts_german_typographic_quotes() -> None:
+    assert normalize_filter_queries(["channel=\u201earte\u201c"]) == ["channel=arte"]
+    assert normalize_filter_queries(["title=\u201aprint\u2019"]) == ["title=print"]
+
+
 def test_list_excludes_audiodeskription_by_default() -> None:
     wrapper = RecordingWrapper()
 
