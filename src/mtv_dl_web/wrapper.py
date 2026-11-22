@@ -63,6 +63,23 @@ def parse_filter_query(filter_query: str) -> tuple[str, str, str]:
     raise ValueError(f"Invalid mtv_dl filter query: {filter_query!r}")
 
 
+TYPOGRAPHIC_QUOTE_TRANSLATION = str.maketrans(
+    {
+        "\u2018": "'",  # left single quote
+        "\u2019": "'",  # right single quote
+        "\u201a": "'",  # single low-9 quote
+        "\u201c": '"',  # left double quote
+        "\u201d": '"',  # right double quote
+        "\u201e": '"',  # double low-9 quote
+    }
+)
+
+
+def normalize_quotes(text: str) -> str:
+    """Replace typographic quotes with the ASCII quotes used by filter queries."""
+    return text.translate(TYPOGRAPHIC_QUOTE_TRANSLATION)
+
+
 def unquote_filter_pattern(pattern: str) -> str:
     """Remove one layer of shell-style quotes from a filter pattern."""
     if len(pattern) >= 2 and pattern[0] == pattern[-1] and pattern[0] in {"'", '"'}:
@@ -111,7 +128,9 @@ def normalize_filter_queries(filter_queries: Sequence[str]) -> list[str]:
     for filter_query in filter_queries:
         normalized_filter_queries.extend(
             normalize_filter_query(split_filter_query_part)
-            for split_filter_query_part in split_filter_query(filter_query)
+            for split_filter_query_part in split_filter_query(
+                normalize_quotes(filter_query)
+            )
         )
     return normalized_filter_queries
 
