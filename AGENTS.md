@@ -18,7 +18,7 @@
 ## GitHub Workflow
 - Follow GitHub best practices for all changes.
 - Never push directly to `main`; create a feature branch and open a pull request for every change.
-- `main` is branch-protected: the CI checks (Lint, Test, Build container image) must pass and the pull request needs one approval.
+- `main` is branch-protected: the CI checks (Lint, Test, Build container image) must pass and force pushes and deletions are disabled.
 - Do not merge your own pull requests; a human reviews and merges them.
 
 ## Configuration
