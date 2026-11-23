@@ -86,6 +86,11 @@ def create_app():
         logger.debug("Handling request for /")
         return send_from_directory(app.static_folder, "index.html")
 
+    @app.route("/livez")
+    def liveness():
+        # Keep the UI reachable so users can recover from database failures.
+        return jsonify({"status": "ok"})
+
     @app.route("/health")
     def health():
         try:

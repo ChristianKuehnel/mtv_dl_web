@@ -26,7 +26,7 @@ VOLUME ["/config", "/downloads", "/database"]
 EXPOSE 8071
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-    CMD curl --fail --silent --show-error http://127.0.0.1:8071/health >/dev/null || exit 1
+    CMD curl --fail --silent --show-error http://127.0.0.1:8071/livez >/dev/null || exit 1
 
 USER mtvdlweb
 
