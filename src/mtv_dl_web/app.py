@@ -93,6 +93,9 @@ def create_app():
 
     @app.route("/health")
     def health():
+        if app.download_queue.database_refresh_running():
+            return jsonify({"status": "refreshing"})
+
         try:
             last_db_update = app.wrapper.database_age()
         except RuntimeError as e:
