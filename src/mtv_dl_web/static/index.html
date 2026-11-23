@@ -6,7 +6,7 @@
     <title>MTV Downloader</title>
     <style>
       :root {
-        color-scheme: light dark;
+        color-scheme: light;
         font-family:
           Inter,
           ui-sans-serif,
@@ -53,6 +53,21 @@
         justify-content: space-between;
         gap: 1rem;
         margin: 0 0 1.25rem;
+      }
+
+      .header-tools {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 0.5rem 1rem;
+      }
+
+      .theme-picker {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        font-size: 0.95rem;
       }
 
       form {
@@ -400,7 +415,8 @@
         display: none;
       }
 
-      .result-sort select {
+      .result-sort select,
+      .theme-picker select {
         padding: 0.55rem;
         border: 1px solid #c9d0da;
         border-radius: 6px;
@@ -500,6 +516,10 @@
           gap: 0.65rem;
         }
 
+        .header-tools {
+          justify-content: flex-start;
+        }
+
         .health {
           justify-content: flex-start;
           margin-top: 0;
@@ -563,147 +583,187 @@
           cursor: default;
         }
       }
+    </style>
+    <style id="dark-theme" media="(prefers-color-scheme: dark)">
+      :root {
+        color-scheme: dark;
+      }
 
-      @media (prefers-color-scheme: dark) {
-        body {
-          background: #11141a;
-          color: #f5f7fb;
-        }
+      body {
+        background: #11141a;
+        color: #f5f7fb;
+      }
 
-        input,
-        .result-sort select {
-          border-color: #3b4658;
-          background: #181d26;
-        }
+      input,
+      .result-sort select,
+      .theme-picker select {
+        border-color: #3b4658;
+        background: #181d26;
+      }
 
-        button {
-          border-color: #4dabf7;
-          background: #1971c2;
-        }
+      button {
+        border-color: #4dabf7;
+        background: #1971c2;
+      }
 
-        .example-filter,
-        .filter-help-button {
-          border-color: #3b4658;
-          background: #181d26;
-          color: #f5f7fb;
-        }
+      .example-filter,
+      .filter-help-button {
+        border-color: #3b4658;
+        background: #181d26;
+        color: #f5f7fb;
+      }
 
-        .example-filter:hover:not(:disabled),
-        .filter-help-button:hover,
-        .filter-help-button:focus-visible {
-          border-color: #74c0fc;
-          color: #74c0fc;
-        }
+      .example-filter:hover:not(:disabled),
+      .filter-help-button:hover,
+      .filter-help-button:focus-visible {
+        border-color: #74c0fc;
+        color: #74c0fc;
+      }
 
-        .filter-help-box {
-          border-color: #30394a;
-          background: #181d26;
-          color: #f5f7fb;
-          box-shadow: 0 0.75rem 1.75rem rgb(0 0 0 / 36%);
-        }
+      .filter-help-box {
+        border-color: #30394a;
+        background: #181d26;
+        color: #f5f7fb;
+        box-shadow: 0 0.75rem 1.75rem rgb(0 0 0 / 36%);
+      }
 
-        .update-db-button {
-          border-color: #6f7c91;
-          background: #181d26;
-          color: #f5f7fb;
-        }
+      .update-db-button {
+        border-color: #6f7c91;
+        background: #181d26;
+        color: #f5f7fb;
+      }
 
-        .update-db-button:hover:not(:disabled) {
-          border-color: #74c0fc;
-          color: #74c0fc;
-        }
+      .update-db-button:hover:not(:disabled) {
+        border-color: #74c0fc;
+        color: #74c0fc;
+      }
 
-        .status {
-          color: #bac2d0;
-        }
+      .status {
+        color: #bac2d0;
+      }
 
-        .alert {
-          border-color: #33577f;
-          background: #152234;
-          color: #d8ebff;
-        }
+      .alert {
+        border-color: #33577f;
+        background: #152234;
+        color: #d8ebff;
+      }
 
-        .alert[data-state="error"] {
-          border-color: #842029;
-          background: #2b171b;
-          color: #ffc9c9;
-        }
+      .alert[data-state="error"] {
+        border-color: #842029;
+        background: #2b171b;
+        color: #ffc9c9;
+      }
 
-        .queue-status {
-          color: #bac2d0;
-        }
+      .queue-status {
+        color: #bac2d0;
+      }
 
-        .health {
-          color: #d7deea;
-        }
+      .health {
+        color: #d7deea;
+      }
 
-        .health-state[data-state="ok"] {
-          color: #69db7c;
-        }
+      .health-state[data-state="ok"] {
+        color: #69db7c;
+      }
 
-        .health-state[data-state="error"] {
-          color: #ff8787;
-        }
+      .health-state[data-state="error"] {
+        color: #ff8787;
+      }
 
-        .db-age {
-          color: #bac2d0;
-        }
+      .db-age {
+        color: #bac2d0;
+      }
 
-        .table-wrap {
-          border-color: #30394a;
-          background: #181d26;
-        }
+      .table-wrap {
+        border-color: #30394a;
+        background: #181d26;
+      }
 
-        th {
-          background: #242b38;
-          color: #d7deea;
-        }
+      th {
+        background: #242b38;
+        color: #d7deea;
+      }
 
-        th,
-        td {
-          border-bottom-color: #30394a;
-        }
+      th,
+      td {
+        border-bottom-color: #30394a;
+      }
 
-        .card {
-          border-color: #30394a;
-          background: #181d26;
-        }
+      .card {
+        border-color: #30394a;
+        background: #181d26;
+      }
 
-        .card-meta,
-        .queue-card-meta {
-          color: #bac2d0;
-        }
+      .card-meta,
+      .queue-card-meta {
+        color: #bac2d0;
+      }
 
-        .badge {
-          border-color: #3b4658;
-          background: #22293a;
-          color: #bac2d0;
-        }
+      .badge {
+        border-color: #3b4658;
+        background: #22293a;
+        color: #bac2d0;
+      }
 
-        .badge[data-state="running"],
-        .badge[data-state="downloaded"] {
-          border-color: #2b5e3a;
-          background: #14291c;
-          color: #69db7c;
-        }
+      .badge[data-state="running"],
+      .badge[data-state="downloaded"] {
+        border-color: #2b5e3a;
+        background: #14291c;
+        color: #69db7c;
       }
     </style>
+    <script>
+      const darkTheme = document.querySelector("#dark-theme");
+      const systemThemeMedia = darkTheme.media;
+      const themeStorageKey = "mtv_dl_web.theme";
+      let themePreference = "system";
+
+      function applyTheme(preference) {
+        // In System mode CSS reacts directly to OS/browser theme changes.
+        darkTheme.media = {
+          system: systemThemeMedia,
+          light: "not all",
+          dark: "all",
+        }[preference];
+      }
+
+      // Apply any saved override before the page is painted.
+      try {
+        const savedTheme = localStorage.getItem(themeStorageKey);
+        if (["light", "dark"].includes(savedTheme)) {
+          themePreference = savedTheme;
+          applyTheme(themePreference);
+        }
+      } catch {
+        // System mode still works when storage is unavailable.
+      }
+    </script>
   </head>
   <body>
     <main>
       <header class="page-header">
         <h1>MTV Downloader</h1>
 
-        <div class="health" aria-live="polite">
-          <span id="health-status" class="health-state">Checking</span>
-          <span id="db-age" class="db-age"></span>
-          <button
-            id="update-db-button"
-            class="update-db-button"
-            type="button"
-            title="Update database (can take a while)"
-            aria-label="Update database. This can take a while."
-          ></button>
+        <div class="header-tools">
+          <div class="health" aria-live="polite">
+            <span id="health-status" class="health-state">Checking</span>
+            <span id="db-age" class="db-age"></span>
+            <button
+              id="update-db-button"
+              class="update-db-button"
+              type="button"
+              title="Update database (can take a while)"
+              aria-label="Update database. This can take a while."
+            ></button>
+          </div>
+          <label class="theme-picker" for="theme-select">
+            Theme
+            <select id="theme-select" disabled>
+              <option value="system">System</option>
+              <option value="light">Light</option>
+              <option value="dark">Dark</option>
+            </select>
+          </label>
         </div>
       </header>
 
@@ -1538,6 +1598,18 @@
           button.disabled = false;
         }
       }
+
+      const themeSelect = document.querySelector("#theme-select");
+      themeSelect.value = themePreference;
+      themeSelect.disabled = false;
+      themeSelect.addEventListener("change", () => {
+        applyTheme(themeSelect.value);
+        try {
+          localStorage.setItem(themeStorageKey, themeSelect.value);
+        } catch {
+          // The theme still applies for this page when storage is blocked.
+        }
+      });
 
       form.addEventListener("submit", search);
       resultColumns

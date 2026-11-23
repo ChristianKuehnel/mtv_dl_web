@@ -4,6 +4,9 @@ A light-weight web UI wrapper for [mtv_dl](https://github.com/fnep/mtv_dl). Than
 The web UI looks like this:
 ![screenshot of the web interface](doc/screenshot.png)
 
+Use the **Theme** menu to follow your device's theme (**System**, the default)
+or choose **Light** or **Dark**. The choice is saved in your browser.
+
 ## Deployment
 
 This deployment assumes you know how to deploy containers and have a computer on your home (or somewhere else) where you can deploy containers. It also assumes you understand and accept the risks of deploying open source software in that environment.
