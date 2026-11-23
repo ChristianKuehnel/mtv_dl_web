@@ -374,6 +374,83 @@
         overflow-wrap: anywhere;
       }
 
+      .cards {
+        display: none;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .card {
+        padding: 0.75rem 0.85rem;
+        border: 1px solid #d7dde5;
+        border-radius: 8px;
+        background: #fff;
+        overflow-wrap: anywhere;
+      }
+
+      .card + .card {
+        margin-top: 0.75rem;
+      }
+
+      .result-card-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 0.75rem;
+      }
+
+      .result-card-title {
+        min-width: 0;
+        font-size: 1rem;
+        line-height: 1.4;
+      }
+
+      .result-card-header .download-button {
+        width: 2.75rem;
+        height: 2.75rem;
+      }
+
+      .card-meta,
+      .queue-card-detail {
+        margin: 0.3rem 0 0;
+      }
+
+      .card-meta,
+      .queue-card-meta {
+        color: #5d6675;
+        font-size: 0.88rem;
+      }
+
+      .queue-card-header {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.4rem 0.6rem;
+      }
+
+      .queue-card-detail {
+        font-weight: 600;
+      }
+
+      .badge {
+        display: inline-block;
+        padding: 0.05rem 0.55rem;
+        border: 1px solid #c9d0da;
+        border-radius: 999px;
+        background: #f1f3f6;
+        color: #4e5969;
+        font-size: 0.78rem;
+        font-weight: 650;
+      }
+
+      .badge[data-state="running"],
+      .badge[data-state="downloaded"] {
+        border-color: #a3d9b1;
+        background: #e6f4ea;
+        color: #236b33;
+      }
+
       @media (max-width: 42rem) {
         main {
           padding: 1rem 0.75rem;
@@ -403,18 +480,22 @@
           text-align: left;
         }
 
-        button {
+        form button {
           width: 100%;
         }
 
-        .example-filter,
-        .filter-help-button {
-          width: auto;
+        .filter-tools {
+          position: relative;
+        }
+
+        .filter-help {
+          position: static;
         }
 
         .filter-help-box {
           right: 0;
-          left: auto;
+          left: 0;
+          width: 100%;
           transform: translate(0, -0.25rem);
         }
 
@@ -423,12 +504,12 @@
           transform: translate(0, 0);
         }
 
-        .download-button {
-          width: 2.2rem;
+        .table-wrap {
+          display: none;
         }
 
-        .health .update-db-button {
-          width: 2.2rem;
+        .cards:not(:empty) {
+          display: block;
         }
       }
 
@@ -530,6 +611,29 @@
         td {
           border-bottom-color: #30394a;
         }
+
+        .card {
+          border-color: #30394a;
+          background: #181d26;
+        }
+
+        .card-meta,
+        .queue-card-meta {
+          color: #bac2d0;
+        }
+
+        .badge {
+          border-color: #3b4658;
+          background: #22293a;
+          color: #bac2d0;
+        }
+
+        .badge[data-state="running"],
+        .badge[data-state="downloaded"] {
+          border-color: #2b5e3a;
+          background: #14291c;
+          color: #69db7c;
+        }
       }
     </style>
   </head>
@@ -581,7 +685,7 @@
         <button class="example-filter" type="button">season=1</button>
         <button class="example-filter" type="button">duration+30m</button>
 
-        <span class="filter-help">
+        <div class="filter-help">
           <button
             class="filter-help-button"
             type="button"
@@ -590,7 +694,7 @@
           >
             ?
           </button>
-          <span id="filter-help-box" class="filter-help-box" role="tooltip">
+          <div id="filter-help-box" class="filter-help-box" role="tooltip">
             <p><strong>Operators</strong></p>
             <ul>
               <li><code>field=value</code> matches a value or regex.</li>
@@ -612,8 +716,8 @@
                 start</code
               >
             </p>
-          </span>
-        </span>
+          </div>
+        </div>
       </div>
 
       <p id="status" class="status" role="status"></p>
@@ -624,6 +728,12 @@
           <tbody id="results-body"></tbody>
         </table>
       </div>
+      <ul
+        id="result-cards"
+        class="cards"
+        role="list"
+        aria-label="Search results"
+      ></ul>
 
       <section class="queue-section" aria-labelledby="queue-heading">
         <div class="queue-header">
@@ -637,6 +747,12 @@
             <tbody id="queue-body"></tbody>
           </table>
         </div>
+        <ul
+          id="queue-cards"
+          class="cards"
+          role="list"
+          aria-label="Queued jobs"
+        ></ul>
       </section>
     </main>
 
@@ -652,12 +768,16 @@
       const statusElement = document.querySelector("#status");
       const tableHead = document.querySelector("#results-head");
       const tableBody = document.querySelector("#results-body");
+      const resultCards = document.querySelector("#result-cards");
       const queueStatusElement = document.querySelector("#queue-status");
       const queueHead = document.querySelector("#queue-head");
       const queueBody = document.querySelector("#queue-body");
+      const queueCards = document.querySelector("#queue-cards");
       const alertElement = document.querySelector("#alert");
       const alertMessageElement = document.querySelector("#alert-message");
       const alertCloseButton = document.querySelector("#alert-close");
+      const downloadButtons = new Map();
+      const pendingDownloads = new Set();
       let lastDbUpdate = null;
       const resultColumns = [
         "hash",
@@ -896,15 +1016,38 @@
         return icon;
       }
 
-      async function downloadShow(showHash, title, downloadButton) {
+      function syncDownloadButton(downloadButton, showHash) {
+        const pending = pendingDownloads.has(showHash);
+        downloadButton.disabled = !showHash || pending;
+        downloadButton.title = pending ? "Downloading" : "Download";
+        if (pending) {
+          downloadButton.setAttribute("aria-busy", "true");
+        } else {
+          downloadButton.removeAttribute("aria-busy");
+        }
+      }
+
+      function setDownloadPending(showHash, pending) {
+        if (pending) {
+          pendingDownloads.add(showHash);
+        } else {
+          pendingDownloads.delete(showHash);
+        }
+        downloadButtons.get(showHash)?.forEach((button) => {
+          syncDownloadButton(button, showHash);
+        });
+      }
+
+      async function downloadShow(showHash, title) {
+        if (!showHash || pendingDownloads.has(showHash)) {
+          return;
+        }
         const params = new URLSearchParams({ hash: showHash });
         if (title) {
           params.append("title", title);
         }
 
-        downloadButton.disabled = true;
-        downloadButton.title = "Downloading";
-        downloadButton.setAttribute("aria-busy", "true");
+        setDownloadPending(showHash, true);
         statusElement.textContent = "Starting download";
 
         try {
@@ -920,10 +1063,7 @@
           statusElement.textContent = error.message;
           showAlert(error.message);
         } finally {
-          downloadButton.disabled = false;
-          downloadButton.title = "Download";
-          downloadButton.removeAttribute("aria-busy");
-          downloadButton.replaceChildren(createDownloadIcon());
+          setDownloadPending(showHash, false);
         }
       }
 
@@ -952,13 +1092,101 @@
         return icon;
       }
 
-      function renderRows(data) {
+      function createDownloadButton(row) {
+        const showHash = formatCellValue(row.hash, "hash");
+        const title = formatCellValue(row.title, "title");
+        const downloadButton = document.createElement("button");
+        downloadButton.className = "download-button";
+        downloadButton.type = "button";
+        downloadButton.append(createDownloadIcon());
+        downloadButton.setAttribute(
+          "aria-label",
+          `Download ${title || showHash || "show"}`,
+        );
+        syncDownloadButton(downloadButton, showHash);
+        if (showHash) {
+          if (!downloadButtons.has(showHash)) {
+            downloadButtons.set(showHash, []);
+          }
+          downloadButtons.get(showHash).push(downloadButton);
+          downloadButton.addEventListener("click", () =>
+            downloadShow(showHash, title),
+          );
+        }
+        return downloadButton;
+      }
+
+      function createBadge(label) {
+        const badge = document.createElement("span");
+        badge.className = "badge";
+        badge.dataset.state = label.toLowerCase();
+        badge.textContent = label;
+        return badge;
+      }
+
+      function appendCardMeta(card, parts) {
+        const values = parts.filter(Boolean);
+        if (!values.length) {
+          return;
+        }
+        const meta = document.createElement("p");
+        meta.className = "card-meta";
+        values.forEach((value, index) => {
+          if (index > 0) {
+            meta.append(" · ");
+          }
+          meta.append(value);
+        });
+        card.append(meta);
+      }
+
+      function createResultCard(row) {
+        const value = (column) => formatCellValue(row[column], column);
+        const card = document.createElement("li");
+        card.className = "card";
+        const header = document.createElement("div");
+        header.className = "result-card-header";
+        const title = document.createElement("h2");
+        title.className = "result-card-title";
+        title.textContent = value("title") || "Untitled show";
+        header.append(title, createDownloadButton(row));
+        card.append(header);
+
+        const season = value("season");
+        const episode = value("episode");
+        const episodeLabel = [season && `S${season}`, episode && `E${episode}`]
+          .filter(Boolean)
+          .join(" ");
+        appendCardMeta(card, [value("channel"), value("topic"), episodeLabel]);
+        appendCardMeta(card, [
+          value("duration"),
+          value("size"),
+          value("start"),
+          value("age"),
+        ]);
+        appendCardMeta(card, [
+          value("region"),
+          row.downloaded && createBadge("Downloaded"),
+        ]);
+        return card;
+      }
+
+      function clearResults() {
         tableHead.replaceChildren();
         tableBody.replaceChildren();
+        resultCards.replaceChildren();
+        downloadButtons.clear();
+      }
+
+      function renderRows(data) {
+        clearResults();
 
         const rows = Array.isArray(data) ? data : [data];
+        const shows = rows.filter(
+          (row) => row && typeof row === "object" && Object.keys(row).length,
+        );
 
-        if (rows.length === 0) {
+        if (shows.length === 0) {
           statusElement.textContent = "No results";
           return;
         }
@@ -972,31 +1200,13 @@
         });
         tableHead.append(headerRow);
 
-        rows.forEach((row) => {
+        shows.forEach((row) => {
           const tableRow = document.createElement("tr");
           resultColumns.forEach((column) => {
             const cell = document.createElement("td");
 
             if (column === "hash") {
-              const showHash = formatCellValue(row[column], column);
-              const downloadButton = document.createElement("button");
-              downloadButton.className = "download-button";
-              downloadButton.type = "button";
-              downloadButton.title = "Download";
-              downloadButton.append(createDownloadIcon());
-              downloadButton.setAttribute(
-                "aria-label",
-                `Download ${formatCellValue(row.title, "title") || showHash}`,
-              );
-              downloadButton.disabled = !showHash;
-              downloadButton.addEventListener("click", () => {
-                downloadShow(
-                  showHash,
-                  formatCellValue(row.title, "title"),
-                  downloadButton,
-                );
-              });
-              cell.append(downloadButton);
+              cell.append(createDownloadButton(row));
             } else {
               cell.textContent = formatCellValue(row[column], column);
             }
@@ -1004,15 +1214,36 @@
             tableRow.append(cell);
           });
           tableBody.append(tableRow);
+          resultCards.append(createResultCard(row));
         });
 
-        statusElement.textContent = `${rows.length} result${rows.length === 1 ? "" : "s"}`;
+        statusElement.textContent = `${shows.length} result${shows.length === 1 ? "" : "s"}`;
+      }
+
+      function createQueueCard(job, detail) {
+        const card = document.createElement("li");
+        card.className = "card";
+        const header = document.createElement("div");
+        header.className = "queue-card-header";
+        const meta = document.createElement("span");
+        meta.className = "queue-card-meta";
+        meta.textContent = `#${job.id} · ${job.type}`;
+        header.append(createBadge(job.state), meta);
+        const description = document.createElement("p");
+        description.className = "queue-card-detail";
+        description.textContent = detail;
+        card.append(header, description);
+        return card;
+      }
+
+      function clearQueue() {
+        queueHead.replaceChildren();
+        queueBody.replaceChildren();
+        queueCards.replaceChildren();
       }
 
       function renderQueue(queue) {
-        queueHead.replaceChildren();
-        queueBody.replaceChildren();
-
+        clearQueue();
         const jobs = [];
         if (queue.current) {
           jobs.push(formatQueueJob(queue.current, "Running"));
@@ -1044,17 +1275,14 @@
 
         jobs.forEach((job) => {
           const row = document.createElement("tr");
-          [
-            job.state,
-            String(job.id),
-            job.type,
-            job.title || job.showHash || "Database refresh",
-          ].forEach((value) => {
+          const detail = job.title || job.showHash || "Database refresh";
+          [job.state, String(job.id), job.type, detail].forEach((value) => {
             const cell = document.createElement("td");
             cell.textContent = value;
             row.append(cell);
           });
           queueBody.append(row);
+          queueCards.append(createQueueCard(job, detail));
         });
 
         queueStatusElement.textContent = `${jobs.length} queued item${jobs.length === 1 ? "" : "s"}`;
@@ -1066,8 +1294,7 @@
 
           renderQueue(data);
         } catch (error) {
-          queueHead.replaceChildren();
-          queueBody.replaceChildren();
+          clearQueue();
           queueStatusElement.textContent = error.message;
           showAlert(error.message);
         }
@@ -1091,8 +1318,7 @@
 
           renderRows(data);
         } catch (error) {
-          tableHead.replaceChildren();
-          tableBody.replaceChildren();
+          clearResults();
           statusElement.textContent = error.message;
           showAlert(error.message);
         } finally {
