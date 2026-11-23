@@ -93,3 +93,34 @@ def test_create_app_exits_when_database_startup_refresh_fails(
         app_module.create_app()
 
     assert exc_info.value.code == 1
+
+
+def test_app_stays_live_and_accepts_refresh_when_database_age_probe_fails(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(app_module.config, "mtv_dl_database_dir", str(tmp_path / "db"))
+    monkeypatch.setattr(app_module.config, "base_dir", str(tmp_path / "downloads"))
+    monkeypatch.setattr(app_module.config, "validate_runtime_permissions", lambda: None)
+    monkeypatch.setattr(app_module.config, "database_refresh_enabled", False)
+    wrapper = FakeWrapper()
+    monkeypatch.setattr(app_module, "Wrapper", lambda *args: wrapper)
+    app = app_module.create_app()
+    client = app.test_client()
+
+    # Startup succeeds, then the database probe stops working.
+    wrapper.database_age_errors = wrapper.database_age_calls + 2
+    health = client.get("/health")
+    assert health.status_code == 500
+    assert health.get_json()["status"] == "error"
+
+    probe_calls = wrapper.database_age_calls
+    assert client.get("/livez").status_code == 200
+    assert wrapper.database_age_calls == probe_calls
+    assert client.get("/").status_code == 200
+
+    refresh = client.get("/refresh_database")
+    assert refresh.status_code == 200
+    assert refresh.get_json()["status"] == "queued"
+    app.download_queue.join()
+    assert wrapper.refresh_database_calls == 1
