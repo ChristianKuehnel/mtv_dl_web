@@ -4,6 +4,9 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>MTV Downloader</title>
+    <link rel="icon" href="/static/branding/favicon.ico" sizes="any" />
+    <link rel="icon" href="/static/branding/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/static/branding/icon-180.png" />
     <style>
       :root {
         color-scheme: light;
@@ -53,6 +56,20 @@
         justify-content: space-between;
         gap: 1rem;
         margin: 0 0 1.25rem;
+      }
+
+      .page-brand {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .page-logo {
+        flex: none;
+        width: 2.5rem;
+        height: 2.5rem;
+        padding: 0.125rem;
+        border-radius: 0.5rem;
       }
 
       .header-tools {
@@ -594,6 +611,10 @@
         color: #f5f7fb;
       }
 
+      .page-logo {
+        background: #f5f7fb;
+      }
+
       input,
       .result-sort select,
       .theme-picker select {
@@ -742,7 +763,16 @@
   <body>
     <main>
       <header class="page-header">
-        <h1>MTV Downloader</h1>
+        <div class="page-brand">
+          <img
+            class="page-logo"
+            src="/static/branding/icon.svg"
+            width="40"
+            height="40"
+            alt=""
+          />
+          <h1>MTV Downloader</h1>
+        </div>
 
         <div class="header-tools">
           <div class="health" aria-live="polite">
