@@ -1,4 +1,10 @@
 # mtv_dl_web
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="doc/branding/logo-dark.svg">
+  <img alt="mtv_dl_web" src="doc/branding/logo-light.svg" width="480">
+</picture>
+
 A light-weight web UI wrapper for [mtv_dl](https://github.com/fnep/mtv_dl). Thank you @fnep for creating this awesome tool! mtv_dl_web runs on your home lab and downloads the shows to your NAS. 
 
 The web UI looks like this:

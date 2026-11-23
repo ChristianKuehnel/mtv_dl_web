@@ -97,6 +97,23 @@ def test_create_app_exits_when_database_startup_refresh_fails(
     assert exc_info.value.code == 1
 
 
+def test_index_links_to_served_branding_assets(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(app_module.config, "validate_runtime_permissions", lambda: None)
+    monkeypatch.setattr(app_module.config, "database_refresh_enabled", False)
+    monkeypatch.setattr(app_module, "Wrapper", lambda *args: FakeWrapper())
+    client = app_module.create_app().test_client()
+
+    index = client.get("/")
+    assert index.status_code == 200
+    for filename in ("favicon.ico", "icon.svg", "icon-180.png"):
+        url = f"/static/branding/{filename}"
+        assert url in index.get_data(as_text=True)
+        asset = client.get(url)
+        assert asset.status_code == 200
+        assert asset.mimetype.startswith("image/")
+        assert asset.data
+
+
 def test_app_stays_live_and_accepts_refresh_when_database_age_probe_fails(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

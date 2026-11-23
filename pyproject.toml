@@ -27,7 +27,7 @@ dev = [
 where = ["src"]
 
 [tool.setuptools.package-data]
-mtv_dl_web = ["static/index.html"]
+mtv_dl_web = ["static/index.html", "static/branding/*"]
 
 [tool.black]
 line-length = 88
