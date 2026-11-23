@@ -841,6 +841,8 @@
       const downloadButtons = new Map();
       const pendingDownloads = new Set();
       let lastDbUpdate = null;
+      let healthRequestId = 0;
+      let databaseRefreshRunning = null;
       const resultColumns = [
         "hash",
         "channel",
@@ -1097,8 +1099,6 @@
 
       function renderDatabaseAge() {
         if (!lastDbUpdate) {
-          dbAgeElement.textContent = "";
-          dbAgeElement.removeAttribute("title");
           return;
         }
 
@@ -1110,8 +1110,21 @@
       }
 
       async function loadHealth() {
+        const requestId = ++healthRequestId;
         try {
           const data = await fetchJson("/health");
+          if (requestId !== healthRequestId) {
+            return;
+          }
+
+          if (data.status === "refreshing") {
+            lastDbUpdate = null;
+            healthStatusElement.textContent = "Updating database";
+            healthStatusElement.dataset.state = "refreshing";
+            dbAgeElement.textContent = "";
+            dbAgeElement.removeAttribute("title");
+            return;
+          }
 
           lastDbUpdate = new Date(data.last_db_update);
           if (Number.isNaN(lastDbUpdate.getTime())) {
@@ -1122,12 +1135,14 @@
           healthStatusElement.dataset.state = "ok";
           renderDatabaseAge();
         } catch (error) {
+          if (requestId !== healthRequestId) {
+            return;
+          }
           lastDbUpdate = null;
           healthStatusElement.textContent = "Error";
           healthStatusElement.dataset.state = "error";
           dbAgeElement.textContent = error.message;
           dbAgeElement.removeAttribute("title");
-          showAlert(error.message);
         }
       }
 
@@ -1144,8 +1159,10 @@
             throw new Error(data.error || "Database update failed");
           }
 
+          lastDbUpdate = null;
           dbAgeElement.textContent = "Database update queued";
-          await loadQueue();
+          dbAgeElement.removeAttribute("title");
+          await loadQueue(true);
         } catch (error) {
           healthStatusElement.textContent = "Error";
           healthStatusElement.dataset.state = "error";
@@ -1475,11 +1492,20 @@
         queueStatusElement.textContent = `${jobs.length} queued item${jobs.length === 1 ? "" : "s"}`;
       }
 
-      async function loadQueue() {
+      async function loadQueue(recheckHealth = false) {
         try {
           const data = await fetchJson("/queue");
 
           renderQueue(data);
+          const refreshing = data.current?.type === "database_refresh";
+          if (
+            recheckHealth ||
+            refreshing !== databaseRefreshRunning ||
+            (!refreshing && healthStatusElement.dataset.state === "refreshing")
+          ) {
+            databaseRefreshRunning = refreshing;
+            await loadHealth();
+          }
         } catch (error) {
           clearQueue();
           queueStatusElement.textContent = error.message;
